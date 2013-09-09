@@ -1,0 +1,57 @@
+
+use ICSharpCode
+
+namespace Venom.TypeSystem
+
+class Namespace implements NRefactory.TypeSystem.INamespace
+	
+	var _assembly as CobraAssembly
+	var _parentNamespace as Namespace
+	var _fullName as String
+	var _name as String
+	var _childNamespaces = List<of Namespace>()
+	var _typeMap = Dictionary<of NRefactory.TypeSystem.TopLevelTypeName, NRefactory.TypeSystem.ITypeDefinition>()
+	
+	cue init(asm as CobraAssembly)
+		base.init
+		_assembly = asm
+		_fullName = ""
+		_name = ""
+
+	get externAlias as String?
+		return nil
+	
+	
+	get fullName from var
+	
+	get name from var
+	
+	get symbolKind as NRefactory.TypeSystem.SymbolKind
+		return NRefactory.TypeSystem.SymbolKind.Namespace
+	
+	get parentNamespace as NRefactory.TypeSystem.INamespace
+		return _parentNamespace
+	
+	get childNamespaces as IEnumerable<of NRefactory.TypeSystem.INamespace>
+		for ns in _childNamespaces
+			yield ns
+		yield break
+	
+	get types as IEnumerable<of NRefactory.TypeSystem.ITypeDefinition>
+		return _typeMap.values
+	
+	get compilation as NRefactory.TypeSystem.ICompilation
+		return _assembly.compilation
+	
+	get contributingAssemblies as IEnumerable<of NRefactory.TypeSystem.IAssembly>
+		return @[_assembly to NRefactory.TypeSystem.IAssembly]
+	
+	def getChildNamespace(name as String) as NRefactory.TypeSystem.INamespace?
+		for ns in _childNamespaces
+			if ns.name == name
+				return ns
+		return nil
+	
+	def getTypeDefinition(name as String, typeParamCount as int) as NRefactory.TypeSystem.ITypeDefinition?
+		key = NRefactory.TypeSystem.TopLevelTypeName(_fullName, name, typeParamCount)
+		return if(_typeMap.containsKey(key), _typeMap[key], nil)

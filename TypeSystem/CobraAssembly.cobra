@@ -1,0 +1,75 @@
+
+use ICSharpCode
+
+namespace Venom.TypeSystem
+
+class CobraAssembly implements NRefactory.TypeSystem.IAssembly
+	
+	var _compilation as NRefactory.TypeSystem.ICompilation
+	get compilation from var
+	
+	var _context as NRefactory.TypeSystem.ITypeResolveContext
+	var _projectContent as CobraProjectContent
+	
+	cue init(compilation as NRefactory.TypeSystem.ICompilation, projectContent as CobraProjectContent)
+		base.init
+		_compilation = compilation
+		_projectContent = projectContent
+		_context = NRefactory.TypeSystem.SimpleTypeResolveContext(this)
+		
+	get isMainAssembly as bool
+		return _compilation.mainAssembly == this
+	
+	get unresolvedAssembly as NRefactory.TypeSystem.IUnresolvedAssembly
+		return _projectContent
+		
+	get assemblyName as String
+		return _projectContent.assemblyName
+	
+	get fullAssemblyName as String
+		return _projectContent.fullAssemblyName
+	
+	get assemblyAttributes as IList<of NRefactory.TypeSystem.IAttribute>
+		asmAtts = List<of NRefactory.TypeSystem.IAttribute>()
+		for file in _projectContent.files
+			if file inherits UnresolvedCobraFile
+				atts = file.assemblyAttributes
+				context = CobraTypeResolveContext(this, file.rootUsingScope.resolve(_compilation))
+				for a in atts
+					asmAtts.add(a.createResolvedAttribute(context))
+		return asmAtts
+	
+	get moduleAttributes as IList<of NRefactory.TypeSystem.IAttribute>
+		modAtts = List<of NRefactory.TypeSystem.IAttribute>()
+		for file in _projectContent.files
+			if file inherits UnresolvedCobraFile
+				atts = file.moduleAttributes
+				context = CobraTypeResolveContext(this, file.rootUsingScope.resolve(_compilation))
+				for a in atts
+					modAtts.add(a.createResolvedAttribute(context))
+		return modAtts
+	
+	var _rootNamespace as Namespace?
+	
+	get rootNamespace as NRefactory.TypeSystem.INamespace
+		if _rootNamespace <> nil
+			return _rootNamespace
+		
+		_rootNamespace = Namespace(this)
+		for file in _projectContent.files
+			if file inherits UnresolvedCobraFile
+				for scope in file.usings
+					# TODO: See https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/TypeSystem/CSharpAssembly.cs#L93
+					trace scope.namespaceName
+		
+		return _rootNamespace to !
+	
+	def internalsVisibleTo(asm as NRefactory.TypeSystem.IAssembly) as bool
+		return asm == this
+	
+	var typeMap = Dictionary<of NRefactory.TypeSystem.TopLevelTypeName, NRefactory.TypeSystem.ITypeDefinition>()
+	def getTypeDefinition(topLevelTypeName as NRefactory.TypeSystem.TopLevelTypeName) as NRefactory.TypeSystem.ITypeDefinition?
+		return if(.typeMap.containsKey(topLevelTypeName), .typeMap[topLevelTypeName], nil)
+		
+	get topLevelTypeDefinitions as IEnumerable<of NRefactory.TypeSystem.ITypeDefinition>?
+		return .typeMap.values

@@ -1,0 +1,98 @@
+
+use ICSharpCode
+
+namespace Venom.TypeSystem
+
+class UnresolvedCobraFile
+	inherits NRefactory.TypeSystem.Implementation.AbstractFreezable
+	implements NRefactory.TypeSystem.IUnresolvedFile, NRefactory.Documentation.IUnresolvedDocumentationProvider
+	has SerializableAttribute
+	
+	#see here: https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/TypeSystem/CSharpUnresolvedFile.cs
+	def freezeInternal is protected, override
+		base.freezeInternal
+		# TODO
+	
+	var path = ""
+	pro fileName as String
+		get
+			return .path
+		set
+			NRefactory.TypeSystem.Implementation.FreezableHelper.throwIfFrozen(this)
+			.path = value
+	
+	
+	var lastWriteTimeStamp as DateTime?
+	pro lastWriteTime as DateTime?
+		get
+			return .lastWriteTimeStamp
+		set
+			NRefactory.TypeSystem.Implementation.FreezableHelper.throwIfFrozen(this)
+			.lastWriteTimeStamp = value
+			
+	var errorList as IList<of NRefactory.TypeSystem.Error> = List<of NRefactory.TypeSystem.Error>()
+	pro errors from errorList
+	
+	var topUsingScope = UsingScope()
+	get rootUsingScope from topUsingScope
+	
+	var topLevelTypeDefs as IList<of NRefactory.TypeSystem.IUnresolvedTypeDefinition> = _
+		List<of NRefactory.TypeSystem.IUnresolvedTypeDefinition>()
+	get topLevelTypeDefinitions from topLevelTypeDefs
+	
+	var assemblyAtts  as IList<of NRefactory.TypeSystem.IUnresolvedAttribute> = _
+		List<of NRefactory.TypeSystem.IUnresolvedAttribute>()
+	get assemblyAttributes from assemblyAtts
+	
+	var moduleAtts  as IList<of NRefactory.TypeSystem.IUnresolvedAttribute> = _
+		List<of NRefactory.TypeSystem.IUnresolvedAttribute>()
+	get moduleAttributes from moduleAtts
+	
+	var usings as IList<of UsingScope> = List<of UsingScope>()
+	var documentation = Dictionary<of NRefactory.TypeSystem.IUnresolvedEntity, String>()
+	
+	def addDocumentation(entity as NRefactory.TypeSystem.IUnresolvedEntity, doc as String)
+		NRefactory.TypeSystem.Implementation.FreezableHelper.throwIfFrozen(this)
+		.documentation[entity] = doc
+	
+	def getUsingScope(location as NRefactory.TextLocation) as UsingScope
+		for scope in .usings
+			if scope.region.isInside(location)
+				return scope
+		return .topUsingScope
+	
+	def getTopLevelTypeDefinition(location as NRefactory.TextLocation) as NRefactory.TypeSystem.IUnresolvedTypeDefinition?
+		for typeDef in .topLevelTypeDefs
+			if typeDef.region.isInside(location)
+				return typeDef
+		return nil
+	
+	def getInnermostTypeDefinition(location as NRefactory.TextLocation) as NRefactory.TypeSystem.IUnresolvedTypeDefinition?
+		parent as NRefactory.TypeSystem.IUnresolvedTypeDefinition? = nil
+		typeDef = .getTopLevelTypeDefinition(location)
+		while typeDef <> nil
+			parent = typeDef
+			for nestedType in parent.nestedTypes
+				if nestedType.region.isInside(location)
+					typeDef = parent
+		return parent
+	
+	def getMember(location as NRefactory.TextLocation) as NRefactory.TypeSystem.IUnresolvedMember?
+		typeDef = .getInnermostTypeDefinition(location)
+		if typeDef == nil, return nil
+		for member in typeDef.members
+			if member.region.isInside(location)
+				return member
+		return nil
+	
+	def getDocumentation(entity as NRefactory.TypeSystem.IUnresolvedEntity) as String?
+		return if(.documentation.containsKey(entity), .documentation[entity], nil)
+	
+	def getDocumentation(entity as NRefactory.TypeSystem.IUnresolvedEntity, resolvedEntity as NRefactory.TypeSystem.IEntity) as NRefactory.Documentation.DocumentationComment?
+		doc = .getDocumentation(entity)
+		if doc <> nil
+			return NRefactory.Documentation.DocumentationComment(
+				NRefactory.Editor.StringTextSource(doc),
+				NRefactory.TypeSystem.SimpleTypeResolveContext(resolvedEntity)
+			)
+		return nil

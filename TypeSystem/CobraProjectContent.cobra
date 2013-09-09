@@ -1,0 +1,175 @@
+
+use ICSharpCode
+
+namespace Venom.TypeSystem
+
+class CobraProjectContent
+	implements NRefactory.TypeSystem.IProjectContent
+	has SerializableAttribute
+	"""
+	Represents as assembly consisting of Cobra source code.
+	
+	See: https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/CSharpProjectContent.cs
+	"""
+	
+	#TODO? Should we use an immutable structure like the CSharpProjectContent class?
+	
+	# these need to be public fields so they can be serialized
+	var asmName as String
+	var fullAsmName as String
+	var projFileName as String
+	var fileLocation as String
+	var unresolvedFiles as Dictionary<of String, NRefactory.TypeSystem.IUnresolvedFile>
+	var asmReferences as List<of NRefactory.TypeSystem.IAssemblyReference>
+	var cobraCompilerSettings as CobraCompilerSettings
+	
+	cue init
+		base.init
+		.unresolvedFiles = Dictionary<of String, NRefactory.TypeSystem.IUnresolvedFile>()
+		.asmReferences = List<of NRefactory.TypeSystem.IAssemblyReference>()
+		.cobraCompilerSettings = CobraCompilerSettings()
+	
+	get files as IEnumerable<of NRefactory.TypeSystem.IUnresolvedFile>
+		return .unresolvedFiles.values
+		
+	get assemblyReferences as IEnumerable<of NRefactory.TypeSystem.IAssemblyReference>
+		return .asmReferences
+		
+	get projectFileName from projFileName
+	
+	get assemblyName from asmName
+	
+	get fullAssemblyName from fullAsmName
+	
+	get location from fileLocation
+	
+	get compilerSettings as Object
+		return .cobraCompilerSettings to Object
+	
+	get assemblyAttributes as IEnumerable<of NRefactory.TypeSystem.IUnresolvedAttribute>
+		attributes = List<of NRefactory.TypeSystem.IUnresolvedAttribute>()
+		for f in .files
+			attributes.addRange(f.assemblyAttributes)
+		return attributes
+		
+	get moduleAttributes as IEnumerable<of NRefactory.TypeSystem.IUnresolvedAttribute>
+		attributes = List<of NRefactory.TypeSystem.IUnresolvedAttribute>()
+		for f in .files
+			attributes.addRange(f.moduleAttributes)
+		return attributes
+		
+	get topLevelTypeDefinitions as IEnumerable<of NRefactory.TypeSystem.IUnresolvedTypeDefinition>
+		defs = List<of NRefactory.TypeSystem.IUnresolvedTypeDefinition>()
+		for f in .files
+			defs.addRange(f.topLevelTypeDefinitions)
+		return defs
+		
+	def getFile(fileName as String) as NRefactory.TypeSystem.IUnresolvedFile?
+		file as NRefactory.TypeSystem.IUnresolvedFile? = nil
+		if .unresolvedFiles.tryGetValue(fileName, out file)
+			return file
+		return nil
+
+	def createCompilation as NRefactory.TypeSystem.ICompilation
+		snapshot = NRefactory.TypeSystem.DefaultSolutionSnapshot()
+		compilation = NRefactory.TypeSystem.Implementation.SimpleCompilation(snapshot, this, .asmReferences)
+		snapshot.addCompilation(this, compilation)
+		return compilation
+
+	def createCompilation(snapshot as NRefactory.TypeSystem.ISolutionSnapshot) as NRefactory.TypeSystem.ICompilation
+		return NRefactory.TypeSystem.Implementation.SimpleCompilation(snapshot, this, .asmReferences)
+	
+	def setAssemblyName(name as String) as NRefactory.TypeSystem.IProjectContent
+		.fullAsmName = name
+		pos = name.indexOf(',')
+		.asmName = if(pos > 0, name.substring(0, pos), name)
+		return this
+	
+	def setProjectFileName(name as String) as NRefactory.TypeSystem.IProjectContent
+		.projFileName = name
+		return this
+	
+	def setLocation(location as String) as NRefactory.TypeSystem.IProjectContent
+		.fileLocation = location
+		return this
+	
+	def setCompilerSettings(settings as Object) as NRefactory.TypeSystem.IProjectContent
+		if not settings inherits CobraCompilerSettings
+			throw ArgumentException("settings must be an instance of CobraCompilerSettings", "settings")
+		.cobraCompilerSettings = settings to CobraCompilerSettings
+		.cobraCompilerSettings.freeze
+		return this
+	
+	def addAssemblyReferences(refs as IEnumerable<of NRefactory.TypeSystem.IAssemblyReference>) as NRefactory.TypeSystem.IProjectContent
+		.asmReferences.addRange(refs)
+		return this
+	
+	def addAssemblyReferences(refs as NRefactory.TypeSystem.IAssemblyReference[]) as NRefactory.TypeSystem.IProjectContent
+		.asmReferences.addRange(refs)
+		return this
+	
+	def removeAssemblyReferences(refs as IEnumerable<of NRefactory.TypeSystem.IAssemblyReference>) as NRefactory.TypeSystem.IProjectContent
+		for r in refs
+			.asmReferences.remove(r)
+		return this
+	
+	def removeAssemblyReferences(refs as NRefactory.TypeSystem.IAssemblyReference[]) as NRefactory.TypeSystem.IProjectContent
+		for r in refs
+			.asmReferences.remove(r)
+		return this
+	
+	def addOrUpdateFiles(files as vari NRefactory.TypeSystem.IUnresolvedFile) as NRefactory.TypeSystem.IProjectContent
+		for f in files
+			.unresolvedFiles[f.fileName] = f
+		return this
+	
+	def addOrUpdateFiles(files as IEnumerable<of NRefactory.TypeSystem.IUnresolvedFile>) as NRefactory.TypeSystem.IProjectContent
+		for f in files
+			.unresolvedFiles[f.fileName] = f
+		return this
+	
+	def removeFiles(fileNames as vari String) as NRefactory.TypeSystem.IProjectContent
+		for name in fileNames
+			.unresolvedFiles.remove(name)
+		return this
+	
+	def removeFiles(fileNames as IEnumerable<of String>) as NRefactory.TypeSystem.IProjectContent
+		for name in fileNames
+			.unresolvedFiles.remove(name)
+		return this
+		
+	def resolve(context as NRefactory.TypeSystem.ITypeResolveContext) as NRefactory.TypeSystem.IAssembly
+		cache = context.compilation.cacheManager
+		asm = cache.getShared(this) to NRefactory.TypeSystem.IAssembly?
+		if asm <> nil, return asm
+		asm = CobraAssembly(context.compilation, this)
+		return cache.getOrAddShared(this, asm) to NRefactory.TypeSystem.IAssembly
+		
+	def updateProjectContent(
+		oldFile as NRefactory.TypeSystem.IUnresolvedFile,
+		newFile as NRefactory.TypeSystem.IUnresolvedFile?
+	) as NRefactory.TypeSystem.IProjectContent has ObsoleteAttribute("Use RemoveFiles/AddOrUpdateFiles instead")
+		if oldFile == newFile, return this
+		
+		if newFile <> nil
+			if not NRefactory.Utils.Platform.fileNameComparer.equals(oldFile.fileName, newFile.fileName)
+				throw ArgumentException("When newFile is specified, it must use the same file name as oldFile.")
+			.unresolvedFiles[newFile.fileName] = newFile
+		else
+			.unresolvedFiles.remove(oldFile.fileName)
+		
+		return this
+	
+	def updateProjectContent(
+		oldFiles as IEnumerable<of NRefactory.TypeSystem.IUnresolvedFile>?,
+		newFiles as IEnumerable<of NRefactory.TypeSystem.IUnresolvedFile>?
+	) as NRefactory.TypeSystem.IProjectContent has ObsoleteAttribute("Use RemoveFiles/AddOrUpdateFiles instead")
+		if oldFiles <> nil
+			for f in oldFiles
+				.unresolvedFiles.remove(f.fileName)
+		
+		if newFiles <> nil
+			for f in newFiles
+				.unresolvedFiles[f.fileName] = f
+		
+		return this

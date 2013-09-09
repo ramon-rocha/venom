@@ -1,0 +1,3 @@
+
+class Temp implements Cobra.Compiler.INode
+	pass

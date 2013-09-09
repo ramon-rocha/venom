@@ -1,0 +1,8 @@
+
+namespace Venom.TestFramework
+
+class TimedTestRunner
+
+	def runAllTests is shared
+		runner = Test.TestRunner(TimedTestRunListener())
+		runner.runAllTests

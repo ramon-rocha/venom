@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.0</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{0FB2F70A-7183-4003-BF21-90310459176C}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Venom</RootNamespace>
+    <UsePartialTypes>false</UsePartialTypes>
+    <AssemblyName>Venom</AssemblyName>
+    <UseMSBuildEngine>False</UseMSBuildEngine>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+    <Optimize>false</Optimize>
+    <DebuggingTips>true</DebuggingTips>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+    <PerformanceQualityOption>Turbo</PerformanceQualityOption>
+    <Turbo>true</Turbo>
+    <Contracts>none</Contracts>
+    <IncludeAsserts>false</IncludeAsserts>
+    <IncludeNilChecks>false</IncludeNilChecks>
+    <IncludeTests>false</IncludeTests>
+    <EmbedRunTime>true</EmbedRunTime>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="TypeSystem\" />
+    <Folder Include="CobraSyntax\" />
+    <Folder Include="CobraSyntax\Statements\" />
+    <Folder Include="CobraSyntax\Expressions\" />
+    <Folder Include="TestFramework\" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="TestFramework\TimedTestRunListener.cobra" />
+    <None Include="TestFramework\TimedTestRunner.cobra" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CobraSyntax\AbstractSyntaxNode.cobra" />
+    <Compile Include="CobraSyntax\NodeType.cobra" />
+    <Compile Include="CobraSyntax\SyntaxNode.cobra" />
+    <Compile Include="TypeSystem\CobraProjectContent.cobra" />
+    <Compile Include="TypeSystem\CobraCompilerSettings.cobra" />
+    <Compile Include="CobraSyntax\NilAstNode.cobra" />
+    <Compile Include="TypeSystem\CobraAssembly.cobra" />
+    <Compile Include="TypeSystem\CobraTypeResolveContext.cobra" />
+    <Compile Include="TypeSystem\UsingScope.cobra" />
+    <Compile Include="TypeSystem\UnresolvedCobraFile.cobra" />
+    <Compile Include="TypeSystem\Namespace.cobra" />
+    <Compile Include="CobraSyntax\Parser.cobra" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Cobra.Compiler">
+      <HintPath>lib\Cobra.Compiler.dll</HintPath>
+    </Reference>
+    <Reference Include="ICSharpCode.NRefactory">
+      <HintPath>lib\ICSharpCode.NRefactory.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

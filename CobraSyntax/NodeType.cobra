@@ -1,0 +1,14 @@
+
+namespace Venom.CobraSyntax
+
+enum NodeType
+	Unknown,
+	TypeReference,
+	TypeDeclaration,
+	Member,
+	Statement,
+	Expression,
+	Token,
+	QueryClause,
+	Whitespace,
+	Pattern

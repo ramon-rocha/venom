@@ -1,0 +1,12 @@
+
+use ICSharpCode
+
+namespace Venom.CobraSyntax
+
+class NilAstNode inherits AbstractSyntaxNode
+	
+	get isNull as bool is override
+		return true
+		
+	def _doMatch(other as AbstractSyntaxNode, match as NRefactory.PatternMatching.Match) as bool is override
+		return other.isNull

@@ -1,0 +1,18 @@
+
+use ICSharpCode
+
+namespace Venom.CobraSyntax
+
+class SyntaxNode inherits AbstractSyntaxNode
+	
+	var _fileName as String
+	get fileName from var
+	
+	var _errors = List<of NRefactory.TypeSystem.Error>()
+	get errors from var
+	
+	def _doMatch(other as AbstractSyntaxNode, match as NRefactory.PatternMatching.Match) as bool is override
+		# TODO: https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/Ast/SyntaxTree.cs#L132
+		return false
+	
+	

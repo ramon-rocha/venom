@@ -1,0 +1,16 @@
+namespace Venom.CobraSyntax
+
+class IdentifierExpression inherits Expression
+	adds ExpressionBehavior
+	implements IExpression
+	
+	cue init(id as Identifier)
+		base.init(id, nil)
+		_identifier = id
+	
+	get identifier from var as Identifier
+
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [_identifier.name] : [_firstToken.which]")
+		return sb.toString

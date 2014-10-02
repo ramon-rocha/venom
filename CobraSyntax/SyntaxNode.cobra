@@ -1,18 +1,310 @@
-
 use ICSharpCode
 
 namespace Venom.CobraSyntax
 
-class SyntaxNode inherits AbstractSyntaxNode
+interface ISyntaxNode
+	"""
+	Each node can represent a statement, expression, or other Cobra language syntax construct.
+	"""
 	
-	var _fileName as String
-	get fileName from var
+	get fileName as String
+		"""
+		The name of the file where this node was created from.
+		"""
 	
-	var _errors = List<of NRefactory.TypeSystem.Error>()
-	get errors from var
+	get firstToken as Cobra.Compiler.IToken
+		"""
+		The first token that is part of the node.
+		"""
 	
-	def _doMatch(other as AbstractSyntaxNode, match as NRefactory.PatternMatching.Match) as bool is override
-		# TODO: https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/Ast/SyntaxTree.cs#L132
-		return false
+	get lastToken as Cobra.Compiler.IToken
+		"""
+		The last token that is part of the node.  This may be the same token as .firstToken
+		"""
 	
+	get beginOffset as int
+		"""
+		The character offset from the beginning of the source file where the node begins.
+		"""
 	
+	get endOffset as int
+		"""
+		The character offset from the beginning of the source file where the node ends.
+		"""
+
+	get span as int
+		"""
+		The number of characters between the starting and ending points of the node in the source file.
+		"""
+
+	get beginLocation as NRefactory.TextLocation
+		"""The beginning line and column number of this node."""
+
+	get endLocation as NRefactory.TextLocation
+		"""The ending line and column number of this node."""
+	
+	pro parent as ISyntaxNode?
+		"""The immediate parent of this node in the AST."""
+	
+	get root as ISyntaxNode
+		"""The top-most node in the AST."""
+	
+	get children as ISyntaxNode*
+		"""The stream of child nodes under this node."""
+	
+	get childCount as int
+		"""The number of child nodes under this node."""
+	
+	get extraTokens as IReadOnlyList<of Cobra.Compiler.IToken>
+		"""
+		A list of tokens that were not expected to be contained in this node but are.
+		"""
+	
+	get missingTokens as IReadOnlyList<of Cobra.Compiler.IToken>
+		"""
+		A list of tokens that were expected but were missing from the source code when this node was constructed.
+		"""
+	
+	def toPrettyString as String is nonvirtual
+		"""
+		A human-readable representation of this node
+		"""
+	
+	def toPrettyString(level as int) as String is nonvirtual
+		"""
+		A human-readable representation of this node indented a number of times equal to 'level'.
+		"""
+
+class NodeList inherits List<of ISyntaxNode>
+	pass
+
+class SyntaxNode
+	implements ISyntaxNode
+	is abstract
+	"""
+	This is the base class from which all other nodes in the syntax tree inherit.
+	"""
+
+	shared
+		def parse(stream as ITokenStream) as ISyntaxNode
+			throw NotImplementedException()
+	
+	cue init
+		.init(nil)
+	
+	cue init(extraTokens as TokenList?)
+		.init(Cobra.Compiler.Token.empty, extraTokens)
+	
+	cue init(child as ISyntaxNode, extraTokens as TokenList?)
+		.init(extraTokens)
+		_addChild(child)
+	
+	cue init(token as Cobra.Compiler.IToken, extraTokens as TokenList?)
+		.init(token, token, extraTokens)
+	
+	cue init(children as NodeList, extraTokens as TokenList?)
+		.init(children.first.firstToken, children.last.lastToken, children, extraTokens)
+	
+	cue init(
+		firstToken as Cobra.Compiler.IToken,
+		lastToken as Cobra.Compiler.IToken,
+		extraTokens as TokenList?
+	)
+		require
+			not lastToken.isEmpty implies lastToken.charNum >= firstToken.charNum
+		body
+			.init(firstToken, lastToken, NodeList(), extraTokens)
+	
+	cue init(
+		firstToken as Cobra.Compiler.IToken,
+		lastToken as Cobra.Compiler.IToken,
+		children as NodeList,
+		extraTokens as TokenList?
+	)
+		require
+			not lastToken.isEmpty implies _
+				lastToken.charNum >= firstToken.colNum
+			
+			not lastToken.isEmpty and children.count <> 0 implies _
+				lastToken.charNum + lastToken.length >= children.last.endOffset
+		body
+			base.init
+			_fileName = firstToken.fileName
+			_firstToken = firstToken
+			_lastToken = lastToken
+			_children = NodeList(children.count)
+			_addChildren(children)
+			if extraTokens <> nil
+				_extraTokens = TokenList(extraTokens)
+			else
+				_extraTokens = TokenList()
+	
+	get fileName from var as String
+		"""
+		The name of the file where this node was created from.
+		"""
+	
+	get firstToken from var as Cobra.Compiler.IToken
+		"""
+		The first token that is part of the node.
+		"""
+	
+	get lastToken from var as Cobra.Compiler.IToken
+		"""
+		The last token that is part of the node.  This may be the same token as .firstToken
+		"""
+	
+	get beginOffset as int
+		"""
+		The character offset from the beginning of the source file to where the node begins.
+		"""
+		return _firstToken.charNum
+	
+	get endOffset as int
+		"""
+		The character offset from the beginning of the source file to where the node ends.
+		"""
+		ensure
+			result >= .beginOffset
+		body
+			if _lastToken is Cobra.Compiler.Token.empty
+				offset = _firstToken.charNum
+				length = _firstToken.length
+			else
+				offset = _lastToken.charNum
+				length = _lastToken.length
+			return offset + length
+
+	get span as int
+		"""
+		The number of characters between the starting and ending points of the node in the source file.
+		"""
+		ensure result >= 0
+		return .endOffset - .beginOffset
+
+	var _beginLocation = NRefactory.TextLocation.empty
+	get beginLocation as NRefactory.TextLocation
+		"""
+		The beginning line and column number of this node.
+		"""
+		if _beginLocation.isEmpty
+			line = _firstToken.lineNum
+			column = _firstToken.colNum
+			_beginLocation = NRefactory.TextLocation(line, column)
+		return _beginLocation
+
+	var _endLocation = NRefactory.TextLocation.empty
+	get endLocation as NRefactory.TextLocation
+		"""
+		The ending line and column number of this node.
+		"""
+		if _endLocation.isEmpty
+			if _lastToken is Cobra.Compiler.Token.empty
+				line = _firstToken.lineNum
+				column = _firstToken.colNum + _firstToken.text.trim.length
+			else
+				line = _lastToken.lineNum
+				column = _lastToken.colNum + _lastToken.text.trim.length
+			_endLocation = NRefactory.TextLocation(line, column)
+		return _endLocation
+
+	var _parent as ISyntaxNode?	
+	pro parent as ISyntaxNode?
+		"""
+		The immediate parent of this node in the AST.
+		"""
+		get
+			return _parent
+		set
+			require _parent == nil
+			_parent = value
+	
+	get root as ISyntaxNode
+		"""
+		The top-most node in the AST.
+		"""
+		if .parent == nil
+			return this
+		else
+			return .parent.root
+	
+	var _children as NodeList
+	get children as ISyntaxNode*
+		"""
+		The stream of child nodes under this node.
+		"""
+		return _children
+	
+	get childCount as int
+		"""
+		The number of child nodes under this node.
+		"""
+		return _children.count
+	
+	def _addChild(child as ISyntaxNode)
+		"""
+		Adds the given node as a child to this node.  The child node should not already have a parent node.
+		"""
+		require child.parent == nil
+		ensure child.parent is this
+		_children.add(child)
+		child.parent = this
+	
+	def _addChildren(children as IList<of ISyntaxNode>)
+		"""
+		Adds the given nodes as children to this node.  The child nodes should not already have a parent node.
+		"""
+		for child in children, _addChild(child)
+	
+	get extraTokens from var as IReadOnlyList<of Cobra.Compiler.IToken>
+		"""
+		A list of tokens that were not expected to be contained in this node.
+		"""
+	
+	get missingTokens from var as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+		"""
+		A list of tokens that were expected but were missing from the source code when this node was constructed.
+		
+		The position of each token in the list is where the token was expected.
+		"""
+	
+	def toCobraSource as String is abstract
+		"""
+		Generates Cobra source code for this node and its children
+		"""
+
+	def _toPrettyString as String
+		ensure result.count('\n') == 0
+		return .toString
+	
+	def _appendIndent(sb as StringBuilder, count as int)
+		for i in count
+			sb.append('|   ')
+	
+	def toPrettyString as String is nonvirtual
+		"""
+		A human-readable representation of this node
+		"""
+		return .toPrettyString(0)
+
+	def toPrettyString(level as int) as String is nonvirtual
+		"""
+		A human-readable representation of this node indented a number of times equal to 'level'.
+		"""
+		sb = StringBuilder()
+		_appendIndent(sb, level)
+		sb.append(_toPrettyString)
+
+		if _firstToken is not Cobra.Compiler.Token.empty
+			bl = .beginLocation
+			el = .endLocation
+			sb.append(" ([bl.line], [bl.column]) - ([el.line], [el.column])")
+		
+		if _extraTokens.count <> 0
+			sb.append('; extra tokens: [_extraTokens]')
+		sb.appendLine
+		
+		for child in _children
+			sb.append(child.toPrettyString(level + 1))
+		
+		return sb.toString

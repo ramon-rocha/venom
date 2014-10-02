@@ -1,0 +1,5 @@
+
+namespace Venom.CobraSyntax
+
+class AssertStatement inherits Statement
+	pass

@@ -1,0 +1,90 @@
+
+namespace Venom.CobraSyntax
+
+class MemberDeclaration
+	inherits Statement
+	adds NamedBehavior, DocumentationBehavior
+	is abstract
+	"""
+	This is the base class for member declarations.  This includes namespaces,
+	type definitions, fields, properties, and methods. However, this does not
+	include local variables, method parameters, or use directives.
+	"""
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		docString as DocString?,
+		children as NodeList?,
+		extraTokens as TokenList?
+	)
+		require keywordToken.isKeyword
+		base.init(keywordToken, identifier.firstToken, extraTokens)
+		
+		_identifier = identifier
+		_name = identifier.name
+		_addChild(identifier)
+		if docString <> nil
+			_addChild(docString)
+			_docString = docString
+		if children <> nil
+			_addChildren(children)
+	
+	get keywordToken as Cobra.Compiler.IToken
+		return _firstToken
+	
+	get identifier from var as Identifier
+
+class FieldDeclaration inherits MemberDeclaration
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		docString as DocString?,
+		isToken as Cobra.Compiler.IToken?,
+		isValues as TokenList?,
+		hasToken as Cobra.Compiler.IToken?,
+		attributes as NodeList?,
+		extraTokens as TokenList?
+	)
+		require keywordToken.which == TokenKind.FieldKeyword
+		base.init(keywordToken, identifier, docString, nil, extraTokens)
+		#TODO: initializer
+	
+class NamespaceDeclaration inherits MemberDeclaration
+	"""
+	This node repesents a namespace declaration
+	"""
+	
+	cue init(keywordToken as Cobra.Compiler.IToken, identifier as QualifiedIdentifier, children as NodeList?, extraTokens as TokenList? = nil)
+		require keywordToken.which == TokenKind.NamespaceKeyword
+		base.init(keywordToken, identifier, nil, children, extraTokens)
+
+class MethodDeclaration inherits MemberDeclaration
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		docString as DocString?,
+		isToken as Cobra.Compiler.IToken?,
+		isValues as TokenList?,
+		hasToken as Cobra.Compiler.IToken?,
+		attributes as NodeList?,
+		bodySection as ISyntaxNode,
+		extraTokens as TokenList?
+	)
+		require keywordToken.which == TokenKind.MethodKeyword
+		base.init(keywordToken, identifier, docString, nil, extraTokens)
+		_lastToken = bodySection.lastToken
+		_addChild(bodySection)
+	
+	/#
+	var _statements as IReadOnlyList<of IStatement>? = nil
+	get statements as IReadOnlyList<of IStatement>
+		if _statements == nil
+			stmts = List<of IStatement>(_children.count)
+			for node in _bodySection
+				if node implements IStatement, stmts.add(node)
+			_statements = stmts
+		return _statements to !
+	#/

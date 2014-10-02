@@ -34,7 +34,7 @@ class CobraAssembly implements NRefactory.TypeSystem.IAssembly
 		for file in _projectContent.files
 			if file inherits UnresolvedCobraFile
 				atts = file.assemblyAttributes
-				context = CobraTypeResolveContext(this, file.rootUsingScope.resolve(_compilation))
+				context = CobraTypeResolveContext(this)
 				for a in atts
 					asmAtts.add(a.createResolvedAttribute(context))
 		return asmAtts
@@ -44,7 +44,7 @@ class CobraAssembly implements NRefactory.TypeSystem.IAssembly
 		for file in _projectContent.files
 			if file inherits UnresolvedCobraFile
 				atts = file.moduleAttributes
-				context = CobraTypeResolveContext(this, file.rootUsingScope.resolve(_compilation))
+				context = CobraTypeResolveContext(this)
 				for a in atts
 					modAtts.add(a.createResolvedAttribute(context))
 		return modAtts
@@ -58,9 +58,9 @@ class CobraAssembly implements NRefactory.TypeSystem.IAssembly
 		_rootNamespace = Namespace(this)
 		for file in _projectContent.files
 			if file inherits UnresolvedCobraFile
-				for scope in file.usings
-					# TODO: See https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/TypeSystem/CSharpAssembly.cs#L93
-					trace scope.namespaceName
+				pass
+				# TODO: See https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/TypeSystem/CSharpAssembly.cs#L93
+				
 		
 		return _rootNamespace to !
 	

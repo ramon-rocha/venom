@@ -1,0 +1,287 @@
+﻿# terminals are enclosed in single quotes except for single quote terminals which are enclosed in double quotes
+
+# trailing ? means an optional item
+
+# trailing + and * means repeat 1 or more times, or 0 or more times, respectively. 
+
+# . means any character
+
+# EOL means end of line
+
+# EOF means end of file
+
+# INDENT means tab character or four spaces retained until a DEDENT (a non-blank/non-comment line with fewer INDENTS) is encountered
+
+module
+		= EOL* (compilerDirective EOL+)* docString? EOL* moduleClause* EOF
+
+docString (no dedents allowed between start/end quotes)
+		= '"""' .+ '""""' EOL
+		| "'''" .+ "''''" EOL
+
+moduleClause
+		= compilerDirective EOL+
+		| namespaceMember
+
+compilerDirective
+		= '@help'
+		| '@throw'
+		| '@error'
+		| '@warning'
+		| '@number'
+		| '@platform'
+		| '@ref'
+		| '@args' '.+'+
+
+namespaceMember
+		= useDirective
+		| namespaceDeclaration
+		| classDeclaration
+		| interfaceDeclaration
+		| structDeclaration
+		| enumDeclaration
+		| sigDeclaration
+		| extensionDeclaration
+		| mixinDeclaration
+		| assemblyDeclaration
+
+useDirective
+		= 'use' (identifier '=')? qualifiedIdentifier ('from' libraryIdentifier)? EOL*
+
+identifier
+		= ('_'*alphanumericIdentifier)+('_'*alphanumericIdentifier)*
+
+libraryIdentifier
+		= "See http://cobra-language.com/trac/cobra/wiki/UseDirective"
+
+namespaceDeclaration
+		= 'namespace' qualifiedIdentifier namespaceContents?
+
+qualifiedIdentifier
+		= pascalCaseIdentifier('.'pascalCaseIdentifier)*
+
+namespaceContents
+		= EOL+ docString? EOL* namespaceMember*
+		| EOL+ INDENT docString? EOL* namespaceMember* DEDENT
+
+classDeclaration
+		= 'class' classIdentifier EOL* classSpecBlock? EOL+ INDENT docString? classDefinition DEDENT
+
+classIdentifier
+		= pascalCaseIdentifier('<of 'genericParams'>')?
+
+classReference
+		= (qualifiedIdentifier'.')?classIdentifier
+
+interfaceReference
+		= (qualifiedIdentifier'.')?interfaceIdentifier
+
+mixinReference
+		= (qualifiedIdentifier'.')?mixinIdentifier
+
+# It's difficult to represent classSpecBlock and classSpecs in correct EBNF notation.
+# Note that a classSpecBlock can be on the same line as the classDeclaration, on the following lines,
+# optionally indented, or some combination thereof.  Also, classSpecs can be in any
+# order but cannot be repeated (cannot have two lines starting with 'is' for example).
+
+classSpecs
+		= INDENT classSpec (EOL* classSpec)* DEDENT
+		| classSpec (EOL* classSpec)*
+
+classSpec
+		= 'is' classAccessModifier (',' classAccessModifier)*
+		| 'has' attributeReference (',' attributeReference)*
+		| 'where' genericParam 'must be' genericConstraints
+		| 'inherits' classReference
+		| 'implements' interfaceReference (',' interfaceReference)*
+		| 'adds' mixinReference (',' mixinReference)*
+		
+genericParams
+		= genericParam (',' genericParam)*
+
+genericParam
+		= pascalCaseIdentifier
+
+genericConstraints
+		= 
+		
+classAccessModifier
+		= 'public'
+		| 'protected'
+		| 'private'
+		| 'internal'
+		| 'extern'
+		| 'abstract'
+		| 'partial'
+
+attributeReference
+		= (qualifiedIdentifier'.')?attributeIdentifier attributeArgs?
+
+attributeIdentifier
+		= pascalCaseIdentifier
+
+attributeArgs
+		= '(' expression (','expression)* ')'
+
+interfaceIdentifier
+		= pascalCaseIdentifier('<of 'genericParams'>')?
+
+mixinIdentifier
+		= pascalCaseIdentifier
+
+classDefinition
+		| testMethod* EOL* 'pass'
+		| (classMember EOL*)+
+
+testMethod
+		= 'test' camelCaseIdentifier? EOL+ INDENT statements EOL* DEDENT
+
+classMember
+		= testMethod
+		| varDeclaration
+		| propertyDeclaration
+		| initializerDeclaration
+		| eventDeclaration
+		| methodDeclaration
+		| enumDeclaration
+		| sigDeclaration
+		| invariant
+		| sharedBlock
+		
+statements
+		= statement EOL+ statement*
+		| statement
+
+statement
+		= printStatement
+		| printBlock
+		| 'pass'
+
+printStatement
+		= 'print' ('to' classReference',')? expression (',' expression)? 'stop'? EOL|EOF
+
+printToBlock
+		= 'print' 'to' classReference EOL+ INDENT ('print' expression 'stop'?)* DEDENT
+
+varDeclaration
+		= 'var' varIdentifier ('as' typeIdentifier)? ('=' expression)? varSpecBlock? EOL+ (INDENT docString EOL* DEDENT)?
+
+varIdentifier
+		= '_'*camelCaseIdentifier
+
+localVarIdentifier
+		= camelCaseIdentifier
+
+paramIdentifier
+		= camelCaseIdentifier
+
+typeIdentifier
+		= cobraType(typeSuffix*)
+		| (pascalCaseIdentifier'.')*pascalCaseIdentifier('<of 'genericParams'>')?(typeSuffix*)
+
+cobraType
+		= 'bool'
+		| 'char'
+		| 'int'primitiveSize?
+		| 'uint'primitiveSize?
+		| 'float'primitiveSize?
+		| 'decimal'
+		| 'number'
+		| 'dynamic'
+		
+primitiveSize
+		= '8'
+		| '16'
+		| '32'
+		| '64'
+
+typeSuffix
+		= '?'
+		| '*'
+		| '[]'
+
+expression
+		= typeIdentifier
+		| varIdentifier
+		| localVarIdentifier
+		| paramIdentifier
+		| stringLiteral
+
+stringLiteral
+		=
+
+varSpecBlock
+		=
+
+interfaceDeclaration
+		=
+
+structDeclaration
+		=
+
+enumDeclaration
+		=
+
+enumIdentifier
+		= pascalCaseIdentifier('<of 'genericParams'>')?
+
+sigDeclaration
+		=
+
+extensionDeclaration
+		=
+
+mixinDeclaration
+		=
+
+methodDeclaration
+		= 'def' methodIdentifier methodParams? ('as' typeReference)? methodSpecBlock? EOL+ INDENT docString? methodDefinition DEDENT
+
+methodIdentifier
+		= '_'*camelCaseIdentifier('<of 'genericParams'>')?
+
+methodParams
+		= '(' methodParam (',' methodParam)* ')'
+
+methodParam
+		= paramIdentifier ('as' 'vari'? paramDesc? typeReference('=' expression)?)?
+
+paramDesc
+		= 'out'
+		| 'inout'
+		| 'in'
+
+methodSpecBlock
+		= 'is' methodAccessModifier (',' methodAccessModifier)*
+		| 'has' attributeReference (',' attributeReference)*
+
+methodAccessModifier
+		= 'override'
+		| 'new'
+		| 'shared'
+		| 'nonvirtual'
+		| 'virtual'
+		| 'protected'
+		| 'private'
+		| 'internal'
+		| 'public'
+		| 'extern'
+
+methodDefinition
+		= (requireStatement EOL+)? (ensureStatement EOL+)? EOL+ INDENT statements EOL* DEDENT
+		| (requireStatement EOL+)? (ensureStatement EOL+)? testMethod* 'body' EOL+ INDENT statements EOL* DEDENT
+		| (requireStatement EOL+)? ensureBlock? testMethod* 'body' EOL+ INDENT statements EOL* DEDENT
+		| requireBlock? ensureBlock? testMethod* 'body' EOL+ INDENT statements EOL* DEDENT
+		| requireBlock? (ensureStatement EOL+)? testMethod* 'body' EOL+ INDENT statements EOL* DEDENT
+
+requireStatement
+		= 'or'? 'require' expression
+
+requireBlock
+		= 'or'? 'require' EOL+ INDENT (expression EOL+)+ DEDENT
+
+ensureStatement
+		= 'and'? 'ensure' expression
+
+ensureBlock
+		='and'? 'ensure' EOL+ INDENT (expression EOL+)+ DEDENT

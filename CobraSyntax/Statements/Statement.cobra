@@ -1,0 +1,23 @@
+
+namespace Venom.CobraSyntax
+
+interface IStatement
+	inherits ISyntaxNode
+	pass
+
+mixin StatementBehavior
+	pass
+
+class Statement
+	implements IStatement
+	inherits SyntaxNode
+	adds StatementBehavior
+	is abstract
+	"""
+	An abstract syntax node for a statement.
+	
+	If possible, do not put an implementation in this class.  Put it in StatementBehavior.
+	"""
+	
+	def toCobraSource as String is override
+		return "TODO"

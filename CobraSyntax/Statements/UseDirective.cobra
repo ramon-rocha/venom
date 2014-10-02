@@ -1,0 +1,137 @@
+﻿use ICSharpCode
+
+namespace Venom.CobraSyntax
+
+class UseDirective inherits Statement
+	"""
+	Examples:
+	
+	use Foo
+	use Foo.Bar
+	use Foo.Bar from FooBar
+	use Foo.Bar from "FooBar"
+	use Foo.Bar from 'FooBar'
+	use f = Foo
+	use f = Foo.Bar
+	use f = Foo.Bar from FooBar
+	use f = Foo.Bar from "FooBar"
+	use f = Foo.Bar from 'FooBar'
+	"""
+
+	def parse(stream as ITokenStream) as UseDirective is new, shared
+		require
+			stream.token.kind == TokenKind.UseKeyword
+		ensure
+			not result.firstToken.isMissing
+			result.firstToken is result.useKeyword
+			result.firstToken.isKeyword
+		test
+			filename = "UseDirectiveTests.cobra"
+			ud = UseDirective.parse(TokenStream("use Foo", filename))
+			assert ud.firstToken is ud.useKeyword
+			assert ud.lastToken is ud.qualifiedId.firstToken is ud.qualifiedId.lastToken
+			assert ud.alias == nil
+			assert ud.fromKeyword == nil
+			assert ud.isLibraryImplicit
+			lib = ud.libraryName
+			assert lib.name == lib.fileName == lib.libraryFileName == "Foo"
+			
+			ud = UseDirective.parse(TokenStream("use Foo.Bar", filename))
+			
+			ud = UseDirective.parse(TokenStream("use System.Windows.Controls", filename))
+			ud = UseDirective.parse(TokenStream("use System.Windows.Controls.Primitives", filename))
+			
+			ud = UseDirective.parse(TokenStream('use Microsoft.Build.Utilities from "Microsoft.Build.Utilities.v4.0"', filename))
+		body
+			useKeyword = stream.grab
+
+			if stream.token.kind == TokenKind.Identifier
+				missingIdToken = stream.expect(TokenKind.Identifier)
+				id = QualifiedIdentifier(Identifier(missingIdToken)) # TODO id = _makeQualifiedIdentifier
+			else
+				missingIdToken = stream.expect(TokenKind.Identifier)
+				id = QualifiedIdentifier(Identifier(missingIdToken))
+			
+			# TODO: alias?
+			
+			fromKeyword = stream.grabOptional(TokenKind.FromKeyword)
+			if fromKeyword <> nil
+				libName = LibraryName.parse(stream) to LibraryName
+				skippedTokens = TokenList()
+			else
+				skippedTokens = stream.skipToNextLine
+			
+			return UseDirective(useKeyword, nil, id, fromKeyword, libName, skippedTokens)
+	
+	cue init(
+		useKeyword as Cobra.Compiler.IToken, alias as Identifier?, qualifiedId as QualifiedIdentifier,
+		fromKeyword as Cobra.Compiler.IToken?, libraryName as LibraryName?,
+		skippedTokens as TokenList?
+	)
+		require
+			useKeyword.isKeyword
+			useKeyword.which == TokenKind.UseKeyword
+			fromKeyword <> nil implies libraryName <> nil
+			libraryName <> nil implies fromKeyword <> nil
+		ensure
+			_extraTokens == skippedTokens
+		body
+			base.init(useKeyword, qualifiedId.lastToken, skippedTokens)
+			_useKeyword, _alias, _qualifiedId = useKeyword, alias, qualifiedId
+			_addChild(qualifiedId)
+			if fromKeyword <> nil
+				_fromKeyword, _libraryName = fromKeyword, libraryName
+				_addChild(_libraryName to !)
+				_lastToken = libraryName.lastToken
+	
+	get alias from var as Identifier?
+	get qualifiedId from var as QualifiedIdentifier
+	get useKeyword from var as Cobra.Compiler.IToken
+	get fromKeyword from var as Cobra.Compiler.IToken?
+	get libraryName from var as LibraryName?
+	
+	get isLibraryImplicit as bool
+		return _fromKeyword == nil
+
+	def toCobraSource as String is override
+		if _fromKeyword <> nil
+			return "use [_qualifiedId.toCobraSource] from [_libraryName.toCobraSource]"
+		return "use [_qualifiedId.toCobraSource]"
+
+
+class LibraryName
+	inherits SyntaxNode
+	adds NamedBehavior
+	"""
+	Follows the 'from' keyword in a use directive.
+	"""
+	
+	var _namespaceId as QualifiedIdentifier?
+	
+	cue init(stringToken as Cobra.Compiler.IToken, skippedTokens as TokenList?)
+		base.init(stringToken, skippedTokens)
+		if stringToken.isEmpty or stringToken.value == nil
+			_libraryFileName = ""
+		else
+			_libraryFileName = stringToken.value to String
+		_name = _libraryFileName
+	
+	cue init(libName as QualifiedIdentifier, skippedTokens as TokenList?)
+		base.init(libName.firstToken, skippedTokens)
+		_namespaceId = libName
+		_lastToken = libName.lastToken
+		_libraryFileName = libName.qualifiedName
+		_name = _libraryFileName
+	
+	get libraryFileName from var as String
+
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [.name] : [_firstToken.which]")
+		return sb.toString
+	
+	def toCobraSource as String is override
+		if _namespaceId <> nil
+			return _namespaceId.toCobraSource
+		else
+			return _firstToken.text

@@ -21,10 +21,9 @@ class Namespace implements NRefactory.TypeSystem.INamespace
 	get externAlias as String?
 		return nil
 	
+	get name from var
 	
 	get fullName from var
-	
-	get name from var
 	
 	get symbolKind as NRefactory.TypeSystem.SymbolKind
 		return NRefactory.TypeSystem.SymbolKind.Namespace

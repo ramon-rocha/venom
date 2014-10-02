@@ -1,0 +1,93 @@
+
+namespace Venom.CobraSyntax
+
+mixin DocumentationBehavior
+	"""
+	Add this mixin to declarations that are allowed to have doc strings.
+	"""
+
+	get hasDocString as bool
+		return _docString <> nil
+	
+	get docString from var as DocString?
+
+
+extend Cobra.Compiler.IToken
+	
+	def startsDocString as bool
+		"""
+		Indicates that this token is the starting point for a doc string.
+		"""
+		kind = .kind
+		return kind == TokenKind.DocStringStart or kind == TokenKind.DocStringLine
+	
+	def endsDocString as bool
+		"""
+		Indicates that this token is the ending point for a doc string.
+		"""
+		kind = .kind
+		return kind == TokenKind.DocStringEnd or kind == TokenKind.DocStringLine
+
+
+class DocString inherits SyntaxNode
+
+	def parse(stream as ITokenStream) as DocString is new, shared
+		require
+			stream.token.startsDocString
+		ensure
+			result.firstToken.startsDocString
+			result.lastToken.endsDocString
+		test oneLine
+			filename = 'DocStringTest.cobra'
+			stream = TokenStream('"""This is a doc string"""', filename)
+			ds = DocString.parse(stream)
+			assert ds.firstToken is ds.lastToken
+			assert ds.content == "This is a doc string"
+		test multiLine
+			filename = 'DocStringTest.cobra'
+			stream = TokenStream('"""\n This\n is\n a\n doc\n string\n too\n"""', filename)
+			ds = DocString.parse(stream)
+			assert ds.firstToken is not ds.lastToken
+			assert ds.firstToken.lineNum == 1
+			assert ds.lastToken.lineNum == 8
+			assert ds.lastToken.text.startsWith('"""')
+			assert ds.content == " This\n is\n a\n doc\n string\n too\n"
+		body
+			token = stream.grab
+			if token.kind == TokenKind.DocStringLine
+				return DocString(token)
+			
+			# multi-line doc string
+			openTag = token
+			content = StringBuilder()
+			while stream.token.kind == TokenKind.DocStringContent
+				content.append(stream.grab.text)
+			closeTag = stream.expect(TokenKind.DocStringEnd)
+			return DocString(openTag, content.toString, closeTag)
+
+	cue init(oneLiner as Cobra.Compiler.IToken)
+		require oneLiner.kind == TokenKind.DocStringLine
+		base.init(oneLiner, nil)
+		content = oneLiner.text
+		lastIndex = content.lastIndexOf('"""')
+		_content = content.substring(3, lastIndex - 3)
+	
+	cue init(openTag as Cobra.Compiler.IToken, content as String, closeTag as Cobra.Compiler.IToken)
+		require
+			openTag.kind == TokenKind.DocStringStart
+			closeTag.kind == TokenKind.DocStringEnd
+		body
+			base.init(openTag, closeTag, nil)
+			_content = content
+	
+	get content from var as String
+
+	def toCobraSource as String is override
+		sb = StringBuilder(_firstToken.text)
+		if _firstToken.lineNum == _lastToken.lineNum
+			sb.append(_content)
+			sb.appendLine(_lastToken.text)
+		else
+			sb.appendLine(_content)
+			sb.appendLine(_lastToken.text)
+		return sb.toString

@@ -3,14 +3,12 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>10.0.0</ProductVersion>
+    <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{0FB2F70A-7183-4003-BF21-90310459176C}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Venom</RootNamespace>
     <UsePartialTypes>false</UsePartialTypes>
     <AssemblyName>Venom</AssemblyName>
-    <UseMSBuildEngine>False</UseMSBuildEngine>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -38,38 +36,80 @@
     <OutputPath>bin\Debug</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <ConsolePause>false</ConsolePause>
+    <BackEnd>clr</BackEnd>
+    <NativeCompilerArgs>/fullpaths</NativeCompilerArgs>
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="TypeSystem\" />
     <Folder Include="CobraSyntax\" />
     <Folder Include="CobraSyntax\Statements\" />
     <Folder Include="CobraSyntax\Expressions\" />
-    <Folder Include="TestFramework\" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="TestFramework\TimedTestRunListener.cobra" />
-    <None Include="TestFramework\TimedTestRunner.cobra" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="CobraSyntax\AbstractSyntaxNode.cobra" />
-    <Compile Include="CobraSyntax\NodeType.cobra" />
-    <Compile Include="CobraSyntax\SyntaxNode.cobra" />
+    <Folder Include="CobraSyntax\Comments\" />
+    <Folder Include="CobraSyntax\Parser\" />
+    <Folder Include="CobraSyntax\Statements\ExpressionStatements\" />
     <Compile Include="TypeSystem\CobraProjectContent.cobra" />
-    <Compile Include="TypeSystem\CobraCompilerSettings.cobra" />
-    <Compile Include="CobraSyntax\NilAstNode.cobra" />
     <Compile Include="TypeSystem\CobraAssembly.cobra" />
     <Compile Include="TypeSystem\CobraTypeResolveContext.cobra" />
     <Compile Include="TypeSystem\UsingScope.cobra" />
     <Compile Include="TypeSystem\UnresolvedCobraFile.cobra" />
     <Compile Include="TypeSystem\Namespace.cobra" />
-    <Compile Include="CobraSyntax\Parser.cobra" />
+    <Compile Include="CobraSyntax\SyntaxNode.cobra" />
+    <Compile Include="CobraSyntax\Expressions\Expression.cobra" />
+    <Compile Include="CobraSyntax\Comments\DocString.cobra" />
+    <Compile Include="CobraSyntax\AccessModifiers.cobra" />
+    <Compile Include="CobraSyntax\Expressions\LiteralExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\BinaryOperatorExpression.cobra" />
+    <Compile Include="CobraSyntax\Statements\ExpressionStatements\AssignmentStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ExpressionStatements\ExpressionStatement.cobra" />
+    <Compile Include="CobraSyntax\Identifier.cobra" />
+    <Compile Include="CobraSyntax\Expressions\IdentifierExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\ExpressionList.cobra" />
+    <Compile Include="CobraCompilerSettings.cobra" />
+    <Compile Include="CobraSyntax\Statements\DeclarationStatements\LocalDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Parser\CobraParser.cobra" />
+    <Compile Include="CobraSyntax\Statements\DeclarationStatements\TypeDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\DeclarationStatements\MemberDeclaration.cobra" />
+    <Folder Include="CobraSyntax\Tokens\" />
+    <Compile Include="CobraSyntax\Tokens\CobraTokenizer.cobra" />
+    <Compile Include="CobraSyntax\Tokens\TokenStream.cobra" />
+    <Compile Include="CobraSyntax\Tokens\TokenKind.cobra" />
+    <Compile Include="CobraSyntax\Statements\Statement.cobra" />
+    <Compile Include="CobraSyntax\Statements\UseDirective.cobra" />
+    <Compile Include="CobraSyntax\Statements\PrintStatement.cobra" />
+    <Folder Include="TestData\" />
+    <Compile Include="TestData\TestData.cobra" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="Cobra.Compiler">
-      <HintPath>lib\Cobra.Compiler.dll</HintPath>
-    </Reference>
     <Reference Include="ICSharpCode.NRefactory">
       <HintPath>lib\ICSharpCode.NRefactory.dll</HintPath>
     </Reference>
+    <Reference Include="Mono.Cecil">
+      <HintPath>lib\Mono.Cecil.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
+  <ItemGroup>
+    <None Include="CobraSyntax\Statements\AssertStatement.cobra" />
+    <None Include="CobraSyntax\Statements\BranchStatement.cobra" />
+    <None Include="CobraSyntax\Statements\BreakStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ContinueStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ExpectStatement.cobra" />
+    <None Include="CobraSyntax\Statements\LockStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ForStatement.cobra" />
+    <None Include="CobraSyntax\Statements\IfStatement.cobra" />
+    <None Include="CobraSyntax\Statements\IgnoreStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ListenStatement.cobra" />
+    <None Include="CobraSyntax\Statements\RaiseStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ReturnStatement.cobra" />
+    <None Include="CobraSyntax\Statements\ThrowStatement.cobra" />
+    <None Include="CobraSyntax\Statements\TraceStatement.cobra" />
+    <None Include="CobraSyntax\Statements\TryCatchBlock.cobra" />
+    <None Include="CobraSyntax\Statements\UsingStatement.cobra" />
+    <None Include="CobraSyntax\Statements\WhileStatement.cobra" />
+    <None Include="CobraSyntax\Statements\YieldStatement.cobra" />
+    <None Include="CobraSyntax\Statements\StatementList.cobra" />
+    <None Include="CobraSyntax\Statements\ExpressionStatements\CallStatement.cobra" />
+    <None Include="TestData\Notepad.cobra" />
+    <None Include="TestData\grammar.txt" />
   </ItemGroup>
 </Project>

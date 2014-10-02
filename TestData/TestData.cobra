@@ -1,0 +1,26 @@
+
+class TestData is internal
+	
+	shared, readonly
+		var useDirectives = @[
+			"use FooNamespace1",
+			"use FooNamespace2 from FooLibrary2",
+			"use FooNamespace3 from 'FooLibrary3'",
+			"use FooNamespace4 from r'FooLibrary4'",
+			"use FooNamespace5 from ns'FooLibrary5'",
+			
+			"use Foo.BarNamespace1", # 5
+			"use Foo.BarNamespace2 from FooLibrary2",
+			"use Foo.BarNamespace3 from 'FooLibrary3'",
+			"use Foo.BarNamespace4 from 'Foo.BarLibrary4'",
+			"use Foo.BarNamespace5 from r'Foo.BarLibrary5'",
+			"use Foo.BarNamespace6 from ns'Foo.BarLibrary6'", # 10
+			
+			"use FooNamespace1 from Foo.BarLibrary1",
+			'use FooNamespace2 from "Foo.BarLibrary2"',
+			"use FooAlias = FooNamespace1",
+			"use FooAlias = FooNamespace1 from Foo.BarLibrary1",
+
+			"use Foo.Bar.Baz", # 15
+			"use FBZ = Foo.Bar.Baz",
+		]

@@ -1,0 +1,94 @@
+
+namespace Venom.CobraSyntax
+
+class CobraTokenizer inherits Cobra.Compiler.CobraTokenizer
+	"""
+	Converts Cobra source code into a TokenStream.
+	"""
+	
+	test
+		tokenizer = CobraTokenizer(Cobra.Compiler.FakeTypeProvider())
+
+		source = _
+			"use System.Diagnostics\n\n" +
+			"namespace Venom.TokenizerTest # here is a comment!\n\n" +
+			"class Program\n" +
+				"\tdef main\n" +
+					"\t\tx, y = 1.5, 2.0\n" +
+					"\t\tprint x, ' + ', y, ' = ', x + y"
+		
+		expectedTokens = _
+			"USE ID DOT ID EOL EOL " +
+			"NAMESPACE ID DOT ID COMMENT EOL EOL " +
+			"CLASS ID EOL " +
+				"INDENT DEF ID EOL " +
+					"INDENT ID COMMA ID ASSIGN FRACTIONAL_LIT COMMA FRACTIONAL_LIT EOL " +
+					"PRINT ID COMMA STRING_SINGLE COMMA ID COMMA STRING_SINGLE COMMA ID PLUS ID EOL " +
+			"DEDENT DEDENT EOF"
+		
+		tokenizer.startSource('test.cobra', source)
+		tokens = tokenizer.allTokens
+
+		whichTokens = for t in tokens get t.which
+		assert whichTokens.join(' ') == expectedTokens
+
+		assert tokenizer.comments.count == 1
+		comment = tokenizer.comments[0]
+		assert comment.which == 'COMMENT'
+		assert comment.text == '# here is a comment!'
+		assert comment.length == comment.text.length
+		assert comment.lineNum == 3
+		assert comment.colNum == 31
+
+		checked = 0
+		for t in tokens
+			checked += 1
+			if t.which == 'FRACTIONAL_LIT'
+				assert t.value.typeOf.name == 'Decimal'
+				assert t.value == 1.5
+				break
+		if checked == tokens.count
+			# we didn't find the FRACTIONAL_LIT token
+			throw FallThroughException()
+	
+	cue init(typeProvider as Cobra.Compiler.ITypeProvider, verbosity as int = 0)
+		base.init(verbosity)
+		_typeProvider = typeProvider
+	
+	var _comments = List<of Cobra.Compiler.IToken>()
+	get comments as IReadOnlyList<of Cobra.Compiler.IToken>
+		return _comments
+
+	def _reset is override
+		and ensure
+			_typeProvider <> nil
+			Cobra.Compiler.Node.typeProvider <> nil
+			_comments.count == 0
+		body
+			base._reset
+			
+			if _typeProvider == nil
+				if Cobra.Compiler.Node.typeProvider <> nil
+					_typeProvider = Cobra.Compiler.Node.typeProvider
+				else
+					_typeProvider = Cobra.Compiler.FakeTypeProvider()
+			
+			if Cobra.Compiler.Node.typeProvider == nil
+				# We must set Node.typeProvider in addition to _typeProvider otherwise
+				# we cannot create instances of Cobra.Compiler.DecimalType
+				Cobra.Compiler.Node.typeProvider = _typeProvider
+			
+			if _comments.count <> 0, _comments.clear
+	
+	def throwError(msg as String) is override
+		# just record it, don't throw it like we do in the base class
+		.recordError(msg)
+	
+	get willReturnComments as bool is override
+		return true
+	
+	def commentToken(tok as Cobra.Compiler.IToken) as Cobra.Compiler.IToken? is override
+		# always store comment tokens
+		tok = base.commentToken(tok) ? tok
+		_comments.add(tok)
+		return tok

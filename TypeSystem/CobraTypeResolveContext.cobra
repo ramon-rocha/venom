@@ -11,9 +11,6 @@ class CobraTypeResolveContext implements NRefactory.TypeSystem.ITypeResolveConte
 	get compilation as NRefactory.TypeSystem.ICompilation?
 		return _assembly.compilation
 	
-	var _currentUsingScope as ResolvedUsingScope?
-	get currentUsingScope from var
-	
 	var _currentTypeDefinition as NRefactory.TypeSystem.ITypeDefinition?
 	get currentTypeDefinition from var
 	
@@ -25,31 +22,25 @@ class CobraTypeResolveContext implements NRefactory.TypeSystem.ITypeResolveConte
 	
 	cue init(
 		asm as NRefactory.TypeSystem.IAssembly,
-		usingScope as ResolvedUsingScope? = nil,
 		typeDefinition as NRefactory.TypeSystem.ITypeDefinition? = nil,
 		member as NRefactory.TypeSystem.IMember? = nil
 	)
 		base.init
 		_assembly = asm
-		_currentUsingScope = usingScope
 		_currentTypeDefinition = typeDefinition
 		_currentMember = member
 		
 	cue init(
 		asm as NRefactory.TypeSystem.IAssembly,
-		usingScope as ResolvedUsingScope,
 		typeDefinition as NRefactory.TypeSystem.ITypeDefinition,
 		member as NRefactory.TypeSystem.IMember,
 		methodTypeParameterNames as String[]
 	)
-		.init(asm, usingScope, typeDefinition, member)
+		.init(asm, typeDefinition, member)
 		_methodTypeParameterNames = methodTypeParameterNames
 	
 	def withCurrentTypeDefinition(typeDefinition as NRefactory.TypeSystem.ITypeDefinition) as NRefactory.TypeSystem.ITypeResolveContext
-		return CobraTypeResolveContext(_assembly, _currentUsingScope, typeDefinition, _currentMember, _methodTypeParameterNames)
+		return CobraTypeResolveContext(_assembly, typeDefinition, _currentMember, _methodTypeParameterNames)
 	
 	def withCurrentMember(member as NRefactory.TypeSystem.IMember) as NRefactory.TypeSystem.ITypeResolveContext
-		return CobraTypeResolveContext(_assembly, _currentUsingScope, _currentTypeDefinition, member, _methodTypeParameterNames)
-	
-	def withUsingScope(usingScope as ResolvedUsingScope) as NRefactory.TypeSystem.ITypeResolveContext
-		return CobraTypeResolveContext(_assembly, usingScope, _currentTypeDefinition, _currentMember, _methodTypeParameterNames)
+		return CobraTypeResolveContext(_assembly, _currentTypeDefinition, member, _methodTypeParameterNames)

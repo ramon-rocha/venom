@@ -1,0 +1,5 @@
+﻿
+namespace Venom.CobraSyntax
+
+class StatementList inherits List<of IStatement>
+	pass

@@ -1,0 +1,10 @@
+
+use ICSharpCode
+
+class CobraCompilerSettings
+	has SerializableAttribute
+	"""
+	Cobra compiler parameters.
+	"""
+	
+	pass

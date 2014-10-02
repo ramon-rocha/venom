@@ -35,23 +35,3 @@ class UsingScope inherits NRefactory.TypeSystem.Implementation.AbstractFreezable
 		if _parent <> nil
 			return "[_parent.namespaceName].[_shortName]"
 		return _shortName
-	
-	def resolve(compilation as NRefactory.TypeSystem.ICompilation) as ResolvedUsingScope
-		cache = compilation.cacheManager
-		resolved = cache.getShared(this) to ResolvedUsingScope?
-		if resolved == nil
-			context = CobraTypeResolveContext(compilation.mainAssembly, if(_parent, _parent.resolve(compilation), nil))
-			resolved = cache.getOrAddShared(this, ResolvedUsingScope(context, this)) to ResolvedUsingScope
-		return resolved to !
-	
-
-class ResolvedUsingScope
-	
-	var _parentContext as CobraTypeResolveContext
-	var _usingScope as UsingScope
-	
-	cue init(context as CobraTypeResolveContext, usingScope as UsingScope)
-		base.init
-		_parentContext = context
-		_usingScope = usingScope
-		

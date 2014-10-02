@@ -1,0 +1,154 @@
+
+namespace Venom.CobraSyntax
+
+class TokenKind
+	"""
+	This class contains string constants, shared variables, and shared methods
+	for determing which kind of token a	token instance is.
+	"""
+	
+	cue init is private
+		base.init
+	
+	#region Misc. Tokens
+	const EndOfLine = 'EOL'
+	const EndOfFile = 'EOF'
+	const Indent = 'INDENT'
+	const Dedent = 'DEDENT'
+	const CompilerDirective = 'AT_ID'
+	#endregion
+	
+	#region Operators and Delimiters
+	const AssignmentOperator = 'ASSIGN'
+	const LessThanOperator = 'LT'
+	const GreaterThanOperator = 'GT'
+	const OpenParenthesis = 'LPAREN'
+	const CloseParenthesis = 'RPAREN'
+	const Comma = 'COMMA'
+	const OpenBracket = 'LBRACKET'
+	const CloseBracket = 'RBRACKET'
+	const Dot = 'DOT'
+	const QuestionMark = 'QUESTION'
+	const ExclamationPoint = 'BANG'
+	#endregion
+	
+	#region DocString tokens
+	const DocStringLine = 'DOC_STRING_LINE'
+	const DocStringStart = 'DOC_STRING_START'
+	const DocStringContent = 'DOC_STRING_BODY_TEXT'
+	const DocStringEnd = 'DOC_STRING_STOP'
+	#endregion
+	
+	#region String tokens
+	const SingleQuotedString = 'STRING_SINGLE'
+	const SingleQuotedStringStart = 'STRING_START_SINGLE'
+	const SingleQuotedStringPart = 'STRING_PART_SINGLE'
+	const SingleQuotedStringEnd = 'STRING_STOP_SINGLE'
+	
+	const DoubleQuotedString = 'STRING_DOUBLE'
+	const DoubleQuotedStringStart = 'STRING_START_DOUBLE'
+	const DoubleQuotedStringPart = 'STRING_PART_DOUBLE'
+	const DoubleQuotedStringEnd = 'STRING_STOP_DOUBLE'
+	#endregion
+	
+	#region Top-Level Declarations
+	const NamespaceKeyword = 'NAMESPACE'
+	const ClassKeyword = 'CLASS'
+	const MixinKeyword = 'MIXIN'
+	const InterfaceKeyword = 'INTERFACE'
+	const SigKeyword = 'SIG'
+	const StructKeyword = 'STRUCT'
+	const EnumKeyword = 'ENUM'
+	const ExtendKeyword = 'EXTEND'
+	#endregion
+	
+	#region Member Declarations
+	const CueKeyword = 'CUE'
+	const FieldKeyword = 'VAR'
+	const PropertyKeyword = 'PRO'
+	const GetterKeyword = 'GET'
+	const SetterKeyword = 'SET'
+	const MethodKeyword = 'DEF'
+	const ConstKeyword = 'CONST'
+	#endregion
+	
+	#region Tests and Contracts
+	const TestKeyword = 'TEST'
+	const InvariantKeyord = 'INVARIANT'
+	const RequireKeyword = 'REQUIRE'
+	const EnsureKeyword = 'ENSURE'
+	#endregion
+	
+	#region Modifiers
+	const SharedKeyword = 'SHARED'
+	const OverrideKeyword = 'OVERRIDE'
+	const AbstractKeyword = 'ABSTRACT'
+	const ProtectedKeyword = 'PROTECTED'
+	const PrivateKeyword = 'PRIVATE'
+	const InternalKeyword = 'INTERNAL'
+	const ReadOnlyKeyword = 'READONLY'
+	const PartialKeyword = 'PARTIAL'
+	const NonVirtualKeyword = 'NONVIRTUAL'
+	const NewKeyword = 'NEW'
+	const ExternKeyword = 'EXTERN'
+	const PublicKeyword = 'PUBLIC'
+	const VirtualKeyword = 'VIRTUAL'
+	#endregion
+	
+	const Identifier = 'ID'
+	const CallStart = 'OPEN_CALL'
+	const CallEnd = TokenKind.CloseParenthesis
+	const GenericIdentifierStart = 'OPEN_GENERIC'
+	const GenericIdentifierEnd = TokenKind.GreaterThanOperator
+	
+	#region Misc. Keywords
+	const UseKeyword = 'USE'
+	const FromKeyword = 'FROM'
+	const NilKeyword = 'NIL'
+	const ToKeyword = 'TO'
+	const StopKeyword = 'STOP'
+	const AsKeyword = 'AS'
+	#endregion
+	
+	#region Statement Keywords
+	const PassKeyword = 'PASS'
+	const PrintKeyword = 'PRINT'
+	const ReturnKeyword = 'RETURN'
+	const IfKeyword = 'IF'
+	#endregion
+
+	shared, readonly
+		var namespaceStatementKeywords = @[
+			TokenKind.NamespaceKeyword,
+			TokenKind.ClassKeyword,
+			TokenKind.MixinKeyword,
+			TokenKind.InterfaceKeyword,
+			TokenKind.SigKeyword,
+			TokenKind.StructKeyword,
+			TokenKind.EnumKeyword,
+			TokenKind.ExtendKeyword,
+			TokenKind.UseKeyword
+		]
+			"""
+			These are the keywords used to start statements that are valid inside of a namespace.
+			In addition to namespace member declarations, use directives are also included.
+			"""
+		
+		var modifierKeywords = @[
+			TokenKind.PublicKeyword,
+			TokenKind.ProtectedKeyword,
+			TokenKind.PrivateKeyword,
+			TokenKind.OverrideKeyword,
+			TokenKind.AbstractKeyword,
+			TokenKind.ReadOnlyKeyword,
+			TokenKind.SharedKeyword,
+			TokenKind.InternalKeyword,
+			TokenKind.ExternKeyword,
+			TokenKind.NonVirtualKeyword,
+			TokenKind.VirtualKeyword
+		]
+			"""
+			These are the different keywords for modifiers that can be applied to declarations.
+			The are sometimes called "is names" since they ususally follow the "is" keyword.
+			However, they can also be used sometimes to start an indented block.
+			"""

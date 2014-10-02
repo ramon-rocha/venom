@@ -1,0 +1,26 @@
+
+use ICSharpCode
+
+namespace Venom.CobraSyntax
+
+interface IExpression
+	inherits ISyntaxNode
+	
+	pass
+
+mixin ExpressionBehavior
+	pass
+
+class Expression
+	implements IExpression
+	inherits SyntaxNode
+	adds ExpressionBehavior
+	is abstract
+	"""
+	An abstract syntax node for an expression.
+	
+	If possible, do not put an implementation in this class.  Put it in ExpressionBehavior.
+	"""	
+	
+	def toCobraSource as String is override
+		return "TODO"

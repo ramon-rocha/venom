@@ -1,0 +1,19 @@
+
+namespace Venom.CobraSyntax
+
+class ExpressionStatement
+	inherits Expression
+	implements IStatement
+	adds StatementBehavior
+	is abstract
+	"""
+	The base class for all expressions that can also be statements
+	such as method calls or assignment expression statements.
+	"""
+	
+	cue init(exp as IExpression, extraTokens as TokenList?)
+		base.init(exp, extraTokens)
+		_expression = exp
+	
+	get expression from var as IExpression
+

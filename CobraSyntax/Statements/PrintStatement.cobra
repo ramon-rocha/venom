@@ -1,0 +1,51 @@
+
+namespace Venom.CobraSyntax
+
+class PrintStatement inherits Statement
+	
+	cue init(
+		printKeyword as Cobra.Compiler.IToken,
+		toKeyword as Cobra.Compiler.IToken?,
+		destination as IExpression?,
+		stopKeyword as Cobra.Compiler.IToken?,
+		expressions as ExpressionList,
+		skippedTokens as TokenList?
+	)
+		require
+			toKeyword implies destination
+			destination implies toKeyword
+		body
+			base.init(printKeyword, skippedTokens)
+			if stopKeyword <> nil, _lastToken = stopKeyword
+			_printKeyword = printKeyword
+			exps = List<of IExpression>(expressions)
+			_expressions = exps
+			_toKeyword, _destination, _stopKeyword = toKeyword, destination, stopKeyword
+			if destination, _addChild(destination)
+			# TODO: Add expression list as single node
+			for e in exps, _addChild(e)
+	
+	get printKeyword from var as Cobra.Compiler.IToken
+		"""
+		Token for the 'print' keyword.
+		"""
+	
+	get toKeyword from var as Cobra.Compiler.IToken?
+		"""
+		Optional token for the 'to' keyword.  nil when not present.
+		"""
+	
+	get destination from var as IExpression?
+		"""
+		Optional TextWriter to print to.  nil when printing to Console.
+		"""
+	
+	get stopKeyword from var as Cobra.Compiler.IToken?
+		"""
+		Optional token for the 'stop' keyword.  nil when not present.
+		"""
+	
+	get expressions from var as IReadOnlyList<of IExpression>
+		"""
+		One or more comma delimited expressions to print
+		"""

@@ -1,0 +1,226 @@
+use ICSharpCode
+
+namespace Venom.CobraSyntax
+
+mixin NamedBehavior
+
+	get name from var as String
+	
+	get isUnderscored as bool
+		return .name.startsWith('_')
+
+	get isPascalCased as bool
+		return .name.isCapitalized
+	
+	get isCamelCased as bool
+		return not .name.isCapitalized
+
+class Identifier inherits SyntaxNode
+	adds NamedBehavior
+	
+	shared, readonly
+		var validKinds as String[] = @[
+			TokenKind.Identifier,
+			TokenKind.CallStart,
+			TokenKind.GenericIdentifierStart
+		]
+	
+	def parse(stream as ITokenStream) as Identifier is new, shared
+		require stream.token.kind in .validKinds
+		return Identifier(stream.grab)
+	
+	cue init(token as Cobra.Compiler.IToken)
+		require
+			token.kind in .validKinds
+		test camelCaseAndLocation
+			token = Cobra.Compiler.Token("test.cobra", 4, 8, 30, TokenKind.Identifier, "testing", nil)
+			id = Identifier(token)			
+			assert id.name == "testing"
+			assert id.toCobraSource == "testing"
+			assert id.isCamelCased
+			assert not id.isPascalCased
+			assert not id.isUnderscored
+			assert id.fileName == "test.cobra"
+			assert id.firstToken == id.lastToken == token
+			assert id.beginLocation == NRefactory.TextLocation(4, 8)
+			assert id.endLocation == NRefactory.TextLocation(4, 15)
+			assert id.beginOffset == 30
+			assert id.endOffset == 37
+			assert id.span == 7
+			assert id.childCount == 0
+			assert id.extraTokens.count == 0
+			assert id.root is id
+			assert id.parent == nil
+		test pascalCase
+			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.Identifier, "File", nil)
+			id = Identifier(token)
+			assert id.name == "File"
+			assert id.toCobraSource == "File"
+			assert not id.isCamelCased
+			assert id.isPascalCased
+			assert not id.isUnderscored
+		test underscored
+			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.Identifier, "__secret", nil)
+			id = Identifier(token)
+			assert id.name == "__secret"
+			assert id.toCobraSource == "__secret"
+			assert id.isCamelCased
+			assert not id.isPascalCased
+			assert id.isUnderscored
+		test invocation
+			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.CallStart, "_someCall(", nil)
+			id = Identifier(token)
+			assert id.name == "_someCall"
+			assert id.toCobraSource == "_someCall"
+			assert id.isCamelCased
+			assert not id.isPascalCased
+			assert id.isUnderscored
+		test generic
+			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.GenericIdentifierStart, "Foo<of", nil)
+			id = Identifier(token)
+			assert id.name == "Foo"
+			assert id.toCobraSource == "Foo"
+			assert not id.isCamelCased
+			assert id.isPascalCased
+			assert not id.isUnderscored
+		body
+			base.init(token, nil)
+			text = token.text
+			branch token.kind
+				on TokenKind.CallStart
+					_name = text[0:text.length - 1]
+				on TokenKind.GenericIdentifierStart
+					_name = text[0:text.length - 3]
+				else
+					_name = text
+	
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [.name] : [_firstToken.which]")
+		return sb.toString
+		
+	def toCobraSource as String is override
+		return _name
+		
+class QualifiedIdentifier inherits Identifier
+	"""
+	Represents a collection of tokens that make up a qualified identifier.
+
+	Examples:
+	System
+	System.Collections
+	System.Collections.Generic
+	System.Collections.Generic.List<of int>
+	"""
+
+	test
+		sysId = Identifier(Cobra.Compiler.Token("test.cobra", 1, 1, 1, TokenKind.Identifier, "System", nil))
+		ns = QualifiedIdentifier(sysId)
+		assert ns.name == "System"
+		assert ns.qualifiedName == "System"
+
+		dot = Cobra.Compiler.Token(ns.fileName, 1, 7, 7, TokenKind.Dot, ".", nil)
+		colId = Identifier(Cobra.Compiler.Token(ns.fileName, 1, 8, 8, TokenKind.Identifier, "Collections", nil))
+		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(colId))
+		assert ns.name == "Collections"
+		assert ns.qualifiedName == "System.Collections"
+
+		dot = Cobra.Compiler.Token(ns.fileName, 1, 20, 20, TokenKind.Dot, ".", nil)
+		genId = Identifier(Cobra.Compiler.Token(ns.fileName, 1, 21, 21, TokenKind.Identifier, "Generic", nil))
+		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(genId))
+		assert ns.name == "Generic"
+		assert ns.qualifiedName == "System.Collections.Generic"
+	
+	test generics
+		pass
+	
+	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
+		require stream.token.kind == TokenKind.Identifier
+		
+		left = Identifier.parse(stream)
+
+		if stream.token.kind == TokenKind.Dot
+			dot = stream.grab
+			if stream.token.kind == TokenKind.Identifier
+				right = QualifiedIdentifier.parse(stream)
+			else
+				right = QualifiedIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+			return QualifiedIdentifier(left, dot, right)
+		else
+			return QualifiedIdentifier(left)
+
+
+	var _left as Identifier
+	var _dot as Cobra.Compiler.IToken?
+	var _right as Identifier?
+	
+	cue init(identifier as Identifier)
+		base.init(identifier.firstToken)
+		_left, _dot, _right = identifier, nil, nil
+	
+	cue init(left as Identifier, dot as Cobra.Compiler.IToken, right as Identifier)
+		base.init(left.firstToken)
+		_left, _dot, _right = left, dot, right
+		_lastToken = right.lastToken
+
+	cue init(left as Identifier, dot as Cobra.Compiler.IToken, right as QualifiedIdentifier)
+		base.init(left.firstToken)
+		_left, _dot, _right = left, dot, right
+		_lastToken = right.lastToken
+	
+	get name as String is override
+		and ensure c'.' not in result
+		if _right, return _right.name
+		return _left.name
+	
+	var _qualifiedName as String? = nil
+	get qualifiedName as String
+		if _qualifiedName == nil
+			if _left inherits QualifiedIdentifier
+				left = _left.qualifiedName
+			else
+				left = _left.name
+			
+			if _right == nil
+				_qualifiedName = _left.name
+			else if _right inherits QualifiedIdentifier
+				if _left inherits QualifiedIdentifier
+					_qualifiedName = "[left].[_right.qualifiedName]"
+				else
+					_qualifiedName = "[left].[_right.qualifiedName]"
+			else
+				_qualifiedName = "[left].[_right.name]"
+		
+		return _qualifiedName to !
+
+	def _toPrettyString as String is override
+		return .toString + " : [.qualifiedName]"
+	
+	def toCobraSource as String is override
+		return .qualifiedName #TODO: preserve any whitespace between identifiers and dots
+	
+
+use ICobraToken = Cobra.Compiler.IToken # workaround inability to use Cobra.Compiler.IToken* as parameter type
+class GenericIdentifier inherits Identifier
+	"""
+	Examples:
+
+	List<of int>
+	Dictionary<of String, int>
+	Dictionary<of System.String, int>
+	Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>
+	"""
+
+	var _openIdentifier as Identifier
+	var _commas as IReadOnlyList<of Cobra.Compiler.IToken>
+	var _types as IReadOnlyList<of Identifier>
+	
+	cue init(open as Identifier, commas as ICobraToken*, types as Identifier*, close as Cobra.Compiler.IToken)
+		ensure _commas.count == _types.count - 1
+		base.init(open.firstToken)
+		_openIdentifier, _lastToken = open, close
+		_commas = List<of Cobra.Compiler.IToken>(commas)
+		_types = List<of Identifier>(types)
+	
+	get name as String is override
+		return "TODO"

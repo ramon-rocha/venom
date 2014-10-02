@@ -1,0 +1,58 @@
+
+namespace Venom.CobraSyntax
+
+class TypeDeclaration
+	inherits MemberDeclaration
+	is abstract
+	"""
+	This is the base class for member declarations of type definitions
+	such as classes, interfaces, structs, etc.
+	"""
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		indentToken as Cobra.Compiler.IToken,
+		docString as DocString?,
+		isToken as Cobra.Compiler.IToken?,
+		isValues as TokenList?,
+		hasToken as Cobra.Compiler.IToken?,
+		attributes as NodeList?,
+		dedentToken as Cobra.Compiler.IToken,
+		members as NodeList,
+		extraTokens as TokenList?
+	)
+		require all for m in members get m inherits MemberDeclaration
+		base.init(keywordToken, identifier, docString, members, extraTokens)
+		_lastToken = dedentToken
+		_indentToken = indentToken
+		_dedentToken = dedentToken
+	
+	get indentToken from var as Cobra.Compiler.IToken
+	get dedentToken from var as Cobra.Compiler.IToken
+	
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [.childCount] child nodes ")
+		return sb.toString
+
+class ClassDeclaration inherits TypeDeclaration
+	"""
+	This node repesents a class declaration.
+	"""
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		indentToken as Cobra.Compiler.IToken,
+		docString as DocString?,
+		isToken as Cobra.Compiler.IToken?,
+		isValues as TokenList?,
+		hasToken as Cobra.Compiler.IToken?,
+		attributes as NodeList?,
+		dedentToken as Cobra.Compiler.IToken,
+		members as NodeList,
+		extraTokens as TokenList?
+	)
+		require keywordToken.kind == TokenKind.ClassKeyword
+		base.init(keywordToken, identifier, indentToken, docString, isToken, isValues, hasToken, attributes, dedentToken, members, extraTokens)

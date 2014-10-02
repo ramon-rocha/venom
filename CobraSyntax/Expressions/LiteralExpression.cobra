@@ -1,0 +1,17 @@
+
+namespace Venom.CobraSyntax
+
+class LiteralExpression inherits Expression is abstract
+	
+	def toCobraSource as String is override
+		return _firstToken.text
+
+class ListLiteral inherits LiteralExpression
+	pass
+	
+class StringLiteral inherits LiteralExpression
+
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [.firstToken.text] : [_firstToken.which]")
+		return sb.toString

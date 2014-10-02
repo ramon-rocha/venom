@@ -7,12 +7,12 @@ class CobraProjectContent
 	implements NRefactory.TypeSystem.IProjectContent
 	has SerializableAttribute
 	"""
-	Represents as assembly consisting of Cobra source code.
+	Represents as assembly consisting of Cobra source code (parsed files).
 	
-	See: https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/CSharpProjectContent.cs
+	See
+		https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory.CSharp/CSharpProjectContent.cs
+		https://github.com/icsharpcode/NRefactory/blob/master/ICSharpCode.NRefactory/TypeSystem/IProjectContent.cs
 	"""
-	
-	#TODO? Should we use an immutable structure like the CSharpProjectContent class?
 	
 	# these need to be public fields so they can be serialized
 	var asmName as String
@@ -97,7 +97,6 @@ class CobraProjectContent
 		if not settings inherits CobraCompilerSettings
 			throw ArgumentException("settings must be an instance of CobraCompilerSettings", "settings")
 		.cobraCompilerSettings = settings to CobraCompilerSettings
-		.cobraCompilerSettings.freeze
 		return this
 	
 	def addAssemblyReferences(refs as IEnumerable<of NRefactory.TypeSystem.IAssemblyReference>) as NRefactory.TypeSystem.IProjectContent

@@ -42,9 +42,10 @@ interface ITokenStream
 		Returns current token in the stream without advancing the stream to the next token.
 		"""
 
-	def peek(howFar = 1) as ICobraToken
+	def peek(howFar = 1, skipComments = true) as ICobraToken
 		"""
 		Looks ahead in the token stream 'howFar' places and returns that Token.
+		When 'skipComments' is 'true', comment tokens don't count when looking ahead.
 		"""
 
 	def grab as ICobraToken
@@ -129,7 +130,7 @@ class TokenStream
 		body
 			return .peek(0)
 
-	def peek(howFar = 1) as ICobraToken
+	def peek(howFar = 1, skipComments = true) as ICobraToken
 		require
 			howFar >= 0
 		test
@@ -138,10 +139,29 @@ class TokenStream
 			assert stream.peek(5).kind == TokenKind.DocStringEnd
 			assert stream.peek(6).kind == TokenKind.EndOfLine
 			assert stream.peek(10_000) is Cobra.Compiler.Token.empty
+		test comments
+			stream = TokenStream("/#\na block comment\n#/", 'just_a_comment.cobra')
+			assert stream.peek(0, false).kind == TokenKind.Comment
+			assert stream.peek(0, true).isEOF == true
+
+			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			while stream.token.lineNum <> 150
+				stream.grab
+			stream.grab
+			assert stream.peek(0, false).kind == TokenKind.Comment
+			assert stream.peek(0, false).text == "# main menu"
+			assert stream.peek(0, true).kind <> TokenKind.Comment
+			assert stream.token.kind <> TokenKind.Comment
+			assert stream.peek(0) is stream.token
 		body
 			index = _currentIndex + howFar
-			if index < _tokenCount
-				return _tokens[index]
+			while index < _tokenCount
+				token = _tokens[index]
+				if skipComments and token.kind == TokenKind.Comment
+					index += 1
+				else
+					return token
+				
 			return _emptyToken
 	
 	def grab as ICobraToken

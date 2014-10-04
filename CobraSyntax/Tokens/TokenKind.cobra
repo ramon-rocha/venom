@@ -38,6 +38,8 @@ class TokenKind
 	const DocStringContent = 'DOC_STRING_BODY_TEXT'
 	const DocStringEnd = 'DOC_STRING_STOP'
 	#endregion
+
+	const Comment = "COMMENT"
 	
 	#region String tokens
 	const SingleQuotedString = 'STRING_SINGLE'

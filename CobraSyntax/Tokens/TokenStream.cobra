@@ -124,7 +124,7 @@ class TokenStream
 	
 	get token as ICobraToken
 		test
-			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			stream = TokenStream(Path.combine('TestData', 'Notepad.cobra'))
 			assert stream.token.kind == TokenKind.DocStringStart
 			assert stream.token is stream.token
 		body
@@ -134,7 +134,7 @@ class TokenStream
 		require
 			howFar >= 0
 		test
-			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			stream = TokenStream(Path.combine('TestData', 'Notepad.cobra'))
 			assert stream.peek.kind == TokenKind.DocStringContent
 			assert stream.peek(5).kind == TokenKind.DocStringEnd
 			assert stream.peek(6).kind == TokenKind.EndOfLine
@@ -142,11 +142,12 @@ class TokenStream
 		test comments
 			stream = TokenStream("/#\na block comment\n#/", 'just_a_comment.cobra')
 			assert stream.peek(0, false).kind == TokenKind.Comment
-			assert stream.peek(0, true).isEOF == true
+			assert stream.peek(0, true).kind == TokenKind.EndOfLine
 
-			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			stream = TokenStream(Path.combine('TestData', 'Notepad.cobra'))
 			while stream.token.lineNum <> 150
 				stream.grab
+			stream.grab
 			stream.grab
 			assert stream.peek(0, false).kind == TokenKind.Comment
 			assert stream.peek(0, false).text == "# main menu"
@@ -170,13 +171,13 @@ class TokenStream
 			_currentIndex >= _tokenCount implies .token is Cobra.Compiler.Token.empty
 		
 		test basics
-			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			stream = TokenStream(Path.combine('TestData', 'Notepad.cobra'))
 			assert stream.grab.kind == TokenKind.DocStringStart
 			assert stream.grab.kind == TokenKind.DocStringContent
 			assert stream.grab is not stream.grab
 		
 		test readingPastEndOfStream
-			stream = TokenStream(r'..\TestData\Notepad.cobra')
+			stream = TokenStream(Path.combine('TestData', 'Notepad.cobra'))
 			while stream.token is not Cobra.Compiler.Token.empty
 				token = stream.grab
 			assert token.isEOF
@@ -247,5 +248,5 @@ class TokenStream
 	def toTechString as String
 		sb = StringBuilder()
 		for i in _currentIndex:_tokenCount
-			sb.appendLine(.peek(i).toTechString)
+			sb.appendLine(.peek(i, false).toTechString)
 		return sb.toString

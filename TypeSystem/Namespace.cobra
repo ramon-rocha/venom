@@ -54,3 +54,6 @@ class Namespace implements NRefactory.TypeSystem.INamespace
 	def getTypeDefinition(name as String, typeParamCount as int) as NRefactory.TypeSystem.ITypeDefinition?
 		key = NRefactory.TypeSystem.TopLevelTypeName(_fullName, name, typeParamCount)
 		return if(_typeMap.containsKey(key), _typeMap[key], nil)
+	
+	def toReference as NRefactory.TypeSystem.ISymbolReference?
+		return nil #TODO

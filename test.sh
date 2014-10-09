@@ -11,7 +11,6 @@ TypeSystem/*.cobra \
 CobraSyntax/*.cobra \
 CobraSyntax/Parser/*.cobra \
 CobraSyntax/Tokens/*.cobra \
-CobraSyntax/Comments/*.cobra \
 CobraSyntax/Expressions/*.cobra \
 CobraSyntax/Statements/*.cobra \
 CobraSyntax/Statements/DeclarationStatements/*.cobra \

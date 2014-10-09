@@ -43,6 +43,7 @@ class DocString inherits SyntaxNode
 			ds = DocString.parse(stream)
 			assert ds.firstToken is ds.lastToken
 			assert ds.content == "This is a doc string"
+			assert ds.toCobraSource == '"""This is a doc string"""\n' # why the extra \n?
 		test multiLine
 			filename = 'DocStringTest.cobra'
 			stream = TokenStream('"""\n This\n is\n a\n doc\n string\n too\n"""', filename)
@@ -52,6 +53,7 @@ class DocString inherits SyntaxNode
 			assert ds.lastToken.lineNum == 8
 			assert ds.lastToken.text.startsWith('"""')
 			assert ds.content == " This\n is\n a\n doc\n string\n too\n"
+			assert ds.toCobraSource == '"""\n This\n is\n a\n doc\n string\n too\n"""\n' # why the extra \n?
 		body
 			token = stream.grab
 			if token.kind == TokenKind.DocStringLine
@@ -84,10 +86,7 @@ class DocString inherits SyntaxNode
 
 	def toCobraSource as String is override
 		sb = StringBuilder(_firstToken.text)
-		if _firstToken.lineNum == _lastToken.lineNum
+		if _firstToken.lineNum <> _lastToken.lineNum
 			sb.append(_content)
-			sb.appendLine(_lastToken.text)
-		else
-			sb.appendLine(_content)
-			sb.appendLine(_lastToken.text)
+			sb.append(_lastToken.text)
 		return sb.toString

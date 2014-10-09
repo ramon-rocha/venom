@@ -9,6 +9,7 @@
     <OutputType>Library</OutputType>
     <UsePartialTypes>false</UsePartialTypes>
     <AssemblyName>Venom</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,7 +37,6 @@
     <Folder Include="CobraSyntax\" />
     <Folder Include="CobraSyntax\Statements\" />
     <Folder Include="CobraSyntax\Expressions\" />
-    <Folder Include="CobraSyntax\Comments\" />
     <Folder Include="CobraSyntax\Parser\" />
     <Folder Include="CobraSyntax\Statements\ExpressionStatements\" />
     <Compile Include="TypeSystem\CobraProjectContent.cobra" />
@@ -46,8 +46,8 @@
     <Compile Include="TypeSystem\UnresolvedCobraFile.cobra" />
     <Compile Include="TypeSystem\Namespace.cobra" />
     <Compile Include="CobraSyntax\SyntaxNode.cobra" />
+    <Compile Include="CobraSyntax\DocString.cobra" />
     <Compile Include="CobraSyntax\Expressions\Expression.cobra" />
-    <Compile Include="CobraSyntax\Comments\DocString.cobra" />
     <Compile Include="CobraSyntax\AccessModifiers.cobra" />
     <Compile Include="CobraSyntax\Expressions\LiteralExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\BinaryOperatorExpression.cobra" />

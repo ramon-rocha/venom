@@ -71,7 +71,7 @@ class Identifier inherits SyntaxNode
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.CallStart, "_someCall(", nil)
 			id = Identifier(token)
 			assert id.name == "_someCall"
-			assert id.toCobraSource == "_someCall"
+			assert id.toCobraSource == "_someCall("
 			assert id.isCamelCased
 			assert not id.isPascalCased
 			assert id.isUnderscored
@@ -79,7 +79,7 @@ class Identifier inherits SyntaxNode
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.GenericIdentifierStart, "Foo<of", nil)
 			id = Identifier(token)
 			assert id.name == "Foo"
-			assert id.toCobraSource == "Foo"
+			assert id.toCobraSource == "Foo<of"
 			assert not id.isCamelCased
 			assert id.isPascalCased
 			assert not id.isUnderscored
@@ -100,7 +100,7 @@ class Identifier inherits SyntaxNode
 		return sb.toString
 		
 	def toCobraSource as String is override
-		return _name
+		return _firstToken.text
 		
 class QualifiedIdentifier inherits Identifier
 	"""
@@ -114,19 +114,20 @@ class QualifiedIdentifier inherits Identifier
 	"""
 
 	test
-		sysId = Identifier(Cobra.Compiler.Token("test.cobra", 1, 1, 1, TokenKind.Identifier, "System", nil))
+		fn = "test.cobra"
+		sysId = Identifier(Cobra.Compiler.Token(fn, 1, 1, 1, TokenKind.Identifier, "System", nil))
 		ns = QualifiedIdentifier(sysId)
 		assert ns.name == "System"
 		assert ns.qualifiedName == "System"
 
-		dot = Cobra.Compiler.Token(ns.fileName, 1, 7, 7, TokenKind.Dot, ".", nil)
-		colId = Identifier(Cobra.Compiler.Token(ns.fileName, 1, 8, 8, TokenKind.Identifier, "Collections", nil))
+		dot = Cobra.Compiler.Token(fn, 1, 7, 7, TokenKind.Dot, ".", nil)
+		colId = Identifier(Cobra.Compiler.Token(fn, 1, 8, 8, TokenKind.Identifier, "Collections", nil))
 		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(colId))
 		assert ns.name == "Collections"
 		assert ns.qualifiedName == "System.Collections"
 
-		dot = Cobra.Compiler.Token(ns.fileName, 1, 20, 20, TokenKind.Dot, ".", nil)
-		genId = Identifier(Cobra.Compiler.Token(ns.fileName, 1, 21, 21, TokenKind.Identifier, "Generic", nil))
+		dot = Cobra.Compiler.Token(fn, 1, 20, 20, TokenKind.Dot, ".", nil)
+		genId = Identifier(Cobra.Compiler.Token(fn, 1, 21, 21, TokenKind.Identifier, "Generic", nil))
 		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(genId))
 		assert ns.name == "Generic"
 		assert ns.qualifiedName == "System.Collections.Generic"

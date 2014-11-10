@@ -26,12 +26,18 @@ class Identifier inherits SyntaxNode
 		]
 	
 	def parse(stream as ITokenStream) as Identifier is new, shared
-		require stream.token.kind in .validKinds
-		return Identifier(stream.grab)
+		require
+			stream.token.kind in .validKinds _
+			or stream.token.kind in TokenKind.cobraTypes
+		body
+			if stream.token.kind == TokenKind.GenericIdentifierStart
+				return GenericIdentifier.parse(stream)
+			return Identifier(stream.grab)
 	
 	cue init(token as Cobra.Compiler.IToken)
 		require
-			token.kind in .validKinds
+			token.kind in .validKinds _
+			or token.kind in TokenKind.cobraTypes
 		test camelCaseAndLocation
 			token = Cobra.Compiler.Token("test.cobra", 4, 8, 30, TokenKind.Identifier, "testing", nil)
 			id = Identifier(token)			
@@ -85,7 +91,7 @@ class Identifier inherits SyntaxNode
 			assert not id.isUnderscored
 		body
 			base.init(token, nil)
-			text = token.text
+			text = token.text.trim
 			branch token.kind
 				on TokenKind.CallStart
 					_name = text[0:text.length - 1]
@@ -131,24 +137,57 @@ class QualifiedIdentifier inherits Identifier
 		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(genId))
 		assert ns.name == "Generic"
 		assert ns.qualifiedName == "System.Collections.Generic"
-	
-	test generics
-		pass
+		
+		dot = Cobra.Compiler.Token(fn, 1, 27, 27, TokenKind.Dot, ".", nil)
+		open = Cobra.Compiler.Token(fn, 1, 28, 28, TokenKind.GenericIdentifierStart, "List<of", nil)
+		intType = Cobra.Compiler.Token(fn, 1, 35, 35, TokenKind.Integer, "int", nil)
+		close = Cobra.Compiler.Token(fn, 1, 39, 39, TokenKind.GenericIdentifierEnd, ">", nil)
+		listId = GenericIdentifier(Identifier(open), List<of Cobra.Compiler.IToken>(), [Identifier(intType)], close)
+		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(listId))
+		assert ns.name == "List<of int>"
+		assert ns.qualifiedName == "System.Collections.Generic.List<of int>"
+
 	
 	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
-		require stream.token.kind == TokenKind.Identifier
-		
-		left = Identifier.parse(stream)
+		require stream.token.kind in .validKinds
+		test
+			source = "System"
+			stream = TokenStream(source, "test.cobra")
+			id = QualifiedIdentifier.parse(stream)
+			assert id.name == id.qualifiedName == "System"
 
-		if stream.token.kind == TokenKind.Dot
+			source = "System.Collections"
+			stream = TokenStream(source, "test.cobra")
+			id = QualifiedIdentifier.parse(stream)
+			assert id.name == "Collections"
+			assert id.qualifiedName == "System.Collections"
+
+			source = "System.Collections.Generic"
+			stream = TokenStream(source, "test.cobra")
+			id = QualifiedIdentifier.parse(stream)
+			assert id.name == "Generic"
+			assert id.qualifiedName == "System.Collections.Generic"
+
+			source = "System.Collections.Generic.List<of int>"
+			stream = TokenStream(source, "test.cobra")
+			id = QualifiedIdentifier.parse(stream)
+			assert id.name == "List<of int>"
+			assert id.qualifiedName == "System.Collections.Generic.List<of int>"
+		body
+			left = Identifier.parse(stream)
+			
+			if stream.token.kind <> TokenKind.Dot
+				return QualifiedIdentifier(left)
+			
 			dot = stream.grab
-			if stream.token.kind == TokenKind.Identifier
+			kind = stream.token.kind
+			if kind in .validKinds
 				right = QualifiedIdentifier.parse(stream)
+			else if kind in TokenKind.cobraTypes
+				right = QualifiedIdentifier(Identifier.parse(stream))
 			else
 				right = QualifiedIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
 			return QualifiedIdentifier(left, dot, right)
-		else
-			return QualifiedIdentifier(left)
 
 
 	var _left as Identifier
@@ -207,6 +246,7 @@ class GenericIdentifier inherits Identifier
 	Examples:
 
 	List<of int>
+	List<of List<of int>>
 	Dictionary<of String, int>
 	Dictionary<of System.String, int>
 	Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>
@@ -215,13 +255,81 @@ class GenericIdentifier inherits Identifier
 	var _openIdentifier as Identifier
 	var _commas as IReadOnlyList<of Cobra.Compiler.IToken>
 	var _types as IReadOnlyList<of Identifier>
+
+	def parse(stream as ITokenStream) as Identifier is new, shared
+		require
+			stream.token.kind == TokenKind.GenericIdentifierStart
+		test
+			source = "List<of int>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "List<of int>"
+
+			source = "List<of List<of int>>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "List<of List<of int>>"
+
+			source = "Dictionary<of String, int>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "Dictionary<of String, int>"
+
+			source = "Dictionary<of System.String, int>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "Dictionary<of System.String, int>"
+
+			source = "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
+		body
+			open = Identifier(stream.grab)
+			commas = List<of Cobra.Compiler.IToken>()
+			types = List<of Identifier>()
+			kind = stream.token.kind
+			if kind in .validKinds
+				id as Identifier = QualifiedIdentifier.parse(stream)
+			else if kind in TokenKind.cobraTypes
+				id = Identifier.parse(stream)
+			else
+				id = Identifier(stream.expect(TokenKind.Identifier))
+			types.add(id)
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				kind = stream.token.kind
+				if kind in .validKinds
+					id = QualifiedIdentifier.parse(stream)
+				else if kind in TokenKind.cobraTypes
+					id = Identifier.parse(stream)
+				else
+					id = Identifier(stream.expect(TokenKind.Identifier))
+				types.add(id)
+			close = stream.expect(TokenKind.GenericIdentifierEnd)	
+			return GenericIdentifier(open, commas, types, close)
 	
 	cue init(open as Identifier, commas as ICobraToken*, types as Identifier*, close as Cobra.Compiler.IToken)
-		ensure _commas.count == _types.count - 1
-		base.init(open.firstToken)
-		_openIdentifier, _lastToken = open, close
-		_commas = List<of Cobra.Compiler.IToken>(commas)
-		_types = List<of Identifier>(types)
+		require
+			open.firstToken.kind == TokenKind.GenericIdentifierStart
+			close.kind == TokenKind.GenericIdentifierEnd
+		ensure
+			_commas.count == _types.count - 1
+		body
+			base.init(open.firstToken)
+			_openIdentifier, _lastToken = open, close
+			_commas = List<of Cobra.Compiler.IToken>(commas)
+			_types = List<of Identifier>(types)
 	
 	get name as String is override
-		return "TODO"
+		sb = StringBuilder(_openIdentifier.name)
+		sb.append("<of ")
+		typeNames = List<of String>(_types.count)
+		for t in _types
+			if t inherits QualifiedIdentifier
+				typeNames.add(t.qualifiedName)
+			else
+				typeNames.add(t.name)
+		sb.append(typeNames.join(', '))
+		sb.append(">")
+		return sb.toString

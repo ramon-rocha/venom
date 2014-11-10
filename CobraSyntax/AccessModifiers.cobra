@@ -2,8 +2,9 @@
 namespace Venom.CobraSyntax
 
 enum AccessModifiers
+	has Flags
 	
-	Undefined = 0
+	None = 0
 	Public = 1
 	Protected = 2
 	Private = 4

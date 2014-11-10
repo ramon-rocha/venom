@@ -10,6 +10,15 @@ class TokenKind
 	cue init is private
 		base.init
 	
+	#region Cobra Types
+	const Integer = 'INT'
+
+	shared, readonly
+		var cobraTypes = @[
+			TokenKind.Integer
+		]
+	#endregion
+
 	#region Misc. Tokens
 	const EndOfLine = 'EOL'
 	const EndOfFile = 'EOF'

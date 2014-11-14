@@ -1,2 +1,80 @@
 
-# can be AnonmyousMethodDeclaration, LocalVariableDeclaration, ParameterDeclaration
+namespace Venom.CobraSyntax
+
+class LocalDeclaration
+	inherits SyntaxNode
+	is abstract
+	"""
+	A declaration with only local scope.
+	Can be an AnonmyousMethodDeclaration, LocalVariableDeclaration, or ParameterDeclaration
+	"""
+	pass
+
+class ParameterDeclaration inherits LocalDeclaration
+	
+	get identifier from var as Identifier
+	get asKeyword from var as Cobra.Compiler.IToken?
+	get returnIdentifier from var as QualifiedIdentifier?
+	get defaultValue from var as Expression?
+	get isOutputOnly from var as bool
+	get isInputAndOutput from var as bool
+
+	def parse(stream as ITokenStream) as ParameterDeclaration? is new, shared
+		id = Identifier.parse(stream)
+		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
+		if asKeyword, returnId = QualifiedIdentifier.parse(stream) to ?
+		# TODO: in, inout, ref, vari, and =
+		return ParameterDeclaration(id, asKeyword, returnId)
+	
+	cue init(id as Identifier, asKeyword as Cobra.Compiler.IToken?, returnId as QualifiedIdentifier?)
+		base.init(id, nil)
+		_identifier = id
+		if asKeyword
+			_asKeyword = asKeyword
+			_lastToken = asKeyword
+		if returnId
+			_returnIdentifier = returnId
+			_addChild(_returnIdentifier to !)
+			_lastToken = _returnIdentifier.lastToken
+	
+	def toCobraSource as String is override
+		return "TODO"
+
+class MethodSignature inherits SyntaxNode
+
+	get parameterDeclarations from var as IReadOnlyList<of ParameterDeclaration>
+	get asKeyword from var as Cobra.Compiler.IToken?
+	get returnTypeIdentifier from var as QualifiedIdentifier?
+
+	def parse(stream as ITokenStream) as MethodSignature is new, shared
+		params = List<of ParameterDeclaration>()
+		while stream.token.kind <> TokenKind.CloseParenthesis
+			if params.count <> 0, stream.expect(TokenKind.Comma)
+			params.add(ParameterDeclaration.parse(stream))
+		closeParens = stream.expect(TokenKind.CloseParenthesis)
+		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
+		if asKeyword, returnId = QualifiedIdentifier.parse(stream) to ?
+		return MethodSignature(params, closeParens, asKeyword, returnId)
+	
+	cue init(
+		params as IReadOnlyList<of ParameterDeclaration>,
+		closeParens as Cobra.Compiler.IToken,
+		asKeyword as Cobra.Compiler.IToken?,
+		returnTypeId as QualifiedIdentifier?
+	)
+		base.init
+		_parameterDeclarations = List<of ParameterDeclaration>(params)
+		if _parameterDeclarations.count <> 0
+			_firstToken = _parameterDeclarations[0].firstToken
+			for p in _parameterDeclarations, _addChild(p)
+		else
+			_firstToken = closeParens
+		_lastToken = closeParens
+		if asKeyword <> nil
+			_asKeyword = _lastToken = asKeyword
+		if returnTypeId <> nil
+			_returnTypeIdentifier = returnTypeId
+			_lastToken = returnTypeId.lastToken
+	
+	def toCobraSource as String is override
+		return "TODO"

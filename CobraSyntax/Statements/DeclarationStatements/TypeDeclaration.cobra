@@ -60,35 +60,46 @@ class TypeDeclaration
 	"""
 	var _typeMap as IReadOnlyDictionary<of String, Type> is readonly, shared = {
 		TokenKind.ClassKeyword : ClassDeclaration,
-		TokenKind.InterfaceKeyword : InterfaceDeclaration
+		TokenKind.InterfaceKeyword : InterfaceDeclaration,
+		TokenKind.StructKeyword : StructDeclaration,
+		TokenKind.EnumKeyword : EnumDeclaration,
+		TokenKind.MixinKeyword : MixinDeclaration
 	}
 
 	def parse(stream as ITokenStream) as TypeDeclaration is new, shared
 		require stream.token.kind in TokenKind.typeDeclarationKeywords
 		kw = stream.grabOneOf(TokenKind.typeDeclarationKeywords)
 		id = Identifier.parse(stream)
+		isSig = kw.kind == TokenKind.SigKeyword
+		if isSig and id.firstToken.kind == TokenKind.CallStart
+			signature = MethodSignature.parse(stream) to ?
+
 		specs = TypeSpecification.parse(stream)
 		if specs == nil or not specs.isIndented
-			indent = stream.expect(TokenKind.Indent)
+			indent = stream.grabOptional(TokenKind.Indent)
 			stream.skipBlankLines
+		didIndent = indent <> nil or if(specs, specs.isIndented, false)
 		
 		if stream.token.startsDocString
 			docString = DocString.parse(stream)
 			stream.skipBlankLines
 		
-		memberDecls = List<of TypeMemberDeclaration>()
+		if isSig
+			if didIndent, dedent = stream.expect(TokenKind.Dedent)
+			return SigDeclaration(kw, id, signature, specs, indent, docString, dedent, nil)
+		
 		if stream.token.kind == TokenKind.PassKeyword
 			stream.grab
 			stream.skipBlankLines
-
+		
+		memberDecls = List<of TypeMemberDeclaration>()
 		while stream.token.kind <> TokenKind.Dedent
 			decl = TypeMemberDeclaration.parse(stream)
 			memberDecls.add(decl)
 		
 		stream.skipBlankLines
 		dedent = stream.expect(TokenKind.Dedent)
-		typeName = _typeMap[kw.kind]
-		return typeName(kw, id, specs, indent, docString, dedent, memberDecls, nil)
+		return _typeMap[kw.kind](kw, id, specs, indent, docString, dedent, memberDecls, nil)
 	
 	var _memberDeclarations as IList<of TypeMemberDeclaration>
 	get memberDeclarations from var as IReadOnlyList<of TypeMemberDeclaration>
@@ -96,12 +107,17 @@ class TypeDeclaration
 		Member declarations made inside this type.  Will not include inherited
 		member declarations unless they are overriden in this type.
 		"""
+	
+	get indentToken from var as Cobra.Compiler.IToken?
+	get dedentToken from var as Cobra.Compiler.IToken?
 
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		specs as TypeSpecification?,
+		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
 		memberDecls as IReadOnlyList<of TypeMemberDeclaration>,
 		extraTokens as TokenList?
 	)
@@ -109,51 +125,32 @@ class TypeDeclaration
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 		body
 			base.init(keywordToken, identifier, docString, nil, extraTokens)
-			if docString <> nil, _lastToken = docString.lastToken
+			_indentToken = indentToken
+			_dedentToken = dedentToken
+			if dedentToken <> nil
+				_lastToken = dedentToken
+			else if docString <> nil
+				_lastToken = docString.lastToken
+			
 			_memberDeclarations = List<of TypeMemberDeclaration>(memberDecls)
 			for d in _memberDeclarations
 				_addChild(d)
 				if d.lastToken.charNum > _lastToken.charNum
 					_lastToken = d.lastToken
-
-class IndentedTypeDeclaration
-	inherits TypeDeclaration
-	is abstract
-	"""
-	All type declarations except sigs whose definition is not indented
-	"""
-	
-	cue init(
-		keywordToken as Cobra.Compiler.IToken,
-		identifier as Identifier,
-		specs as TypeSpecification?,
-		indentToken as Cobra.Compiler.IToken,
-		docString as DocString?,
-		dedentToken as Cobra.Compiler.IToken,
-		memberDecls as IReadOnlyList<of TypeMemberDeclaration>,
-		extraTokens as TokenList?
-	)
-		require
-			keywordToken.kind in TokenKind.typeDeclarationKeywords
-		body
-			base.init(keywordToken, identifier, specs, docString, memberDecls, extraTokens)
-			_lastToken = dedentToken
-			_indentToken = indentToken
-			_dedentToken = dedentToken
-	
-	get indentToken from var as Cobra.Compiler.IToken
-	get dedentToken from var as Cobra.Compiler.IToken
-
 	
 	def _toPrettyString as String is override
 		sb = StringBuilder(base._toPrettyString)
 		sb.append(" : [.childCount] child nodes ")
 		return sb.toString
+	
 
-class ClassDeclaration inherits IndentedTypeDeclaration
+
+
+class ClassDeclaration inherits TypeDeclaration
 	"""
 	This node repesents a class declaration.
 	"""
+
 	invariant
 		.keywordToken.kind == TokenKind.ClassKeyword
 	
@@ -188,7 +185,7 @@ class ClassDeclaration inherits IndentedTypeDeclaration
 		body
 			return TypeDeclaration.parse(stream) to ClassDeclaration
 
-class InterfaceDeclaration inherits IndentedTypeDeclaration
+class InterfaceDeclaration inherits TypeDeclaration
 	invariant
 		.keywordToken.kind == TokenKind.InterfaceKeyword
 	def parse(stream as ITokenStream) as InterfaceDeclaration is new, shared
@@ -204,3 +201,86 @@ class InterfaceDeclaration inherits IndentedTypeDeclaration
 			assert i.memberDeclarations.count == 0
 		body
 			return TypeDeclaration.parse(stream) to InterfaceDeclaration
+
+class MixinDeclaration inherits TypeDeclaration
+	invariant
+		.keywordToken.kind == TokenKind.MixinKeyword
+	def parse(stream as ITokenStream) as MixinDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.MixinKeyword
+		body
+			return TypeDeclaration.parse(stream) to MixinDeclaration
+
+class StructDeclaration inherits TypeDeclaration
+	invariant
+		.keywordToken.kind == TokenKind.StructKeyword
+	def parse(stream as ITokenStream) as StructDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.StructKeyword
+		body
+			return TypeDeclaration.parse(stream) to StructDeclaration
+
+class EnumDeclaration inherits TypeDeclaration
+	invariant
+		.keywordToken.kind == TokenKind.EnumKeyword
+	def parse(stream as ITokenStream) as EnumDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.EnumKeyword
+		body
+			return TypeDeclaration.parse(stream) to EnumDeclaration
+
+class SigDeclaration inherits TypeDeclaration
+	invariant
+		.keywordToken.kind == TokenKind.SigKeyword
+	def parse(stream as ITokenStream) as SigDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.SigKeyword
+		test
+			source = "sig Foo"
+			stream = TokenStream(source, "test.cobra")
+			s = SigDeclaration.parse(stream)
+			assert s.name == "Foo"
+			assert s.signature == nil
+			assert s.docString == nil
+			assert s.indentToken == s.dedentToken == nil
+			assert s.memberDeclarations.count == 0
+		test
+			source = 'sig BinOp(x as int, y as int) as int\n\t"""Does op on x and y"""'
+			stream = TokenStream(source, "test.cobra")
+			s = SigDeclaration.parse(stream)
+			assert s.name == "BinOp"
+			assert s.indentToken and s.dedentToken
+			assert s.indentToken <> s.dedentToken
+			assert s.lastToken == s.dedentToken
+			assert s.docString.content == "Does op on x and y"
+			assert s.signature.parameterDeclarations.count == 2
+			assert s.signature.asKeyword <> nil
+			assert s.signature.returnTypeIdentifier.name == "int"
+		body
+			return TypeDeclaration.parse(stream) to SigDeclaration
+	
+	get signature from var as MethodSignature?
+
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		signature as MethodSignature?,
+		specs as TypeSpecification?,
+		indentToken as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
+		extraTokens as TokenList?
+	)
+		require
+			keywordToken.kind in TokenKind.typeDeclarationKeywords
+			docString implies dedentToken
+		body
+			base.init(keywordToken, identifier, specs, indentToken, docString, dedentToken, List<of TypeMemberDeclaration>(), extraTokens)
+			if signature
+				_lastToken = signature.lastToken
+				_signature = signature
+				_addChild(signature)
+			_indentToken = indentToken
+			_dedentToken = dedentToken
+			if dedentToken <> nil
+				_lastToken = dedentToken

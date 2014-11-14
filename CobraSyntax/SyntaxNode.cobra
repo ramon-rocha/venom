@@ -129,7 +129,6 @@ class SyntaxNode
 				lastToken.charNum + lastToken.length >= children.last.endOffset
 		body
 			base.init
-			_fileName = firstToken.fileName
 			_firstToken = firstToken
 			_lastToken = lastToken
 			_children = NodeList(children.count)
@@ -139,10 +138,13 @@ class SyntaxNode
 			else
 				_extraTokens = TokenList()
 	
-	get fileName from var as String
+	var _fileName as String?
+	get fileName as String
 		"""
 		The name of the file where this node was created from.
 		"""
+		_fileName ?= _firstToken.fileName
+		return _fileName to !
 	
 	get firstToken from var as Cobra.Compiler.IToken
 		"""

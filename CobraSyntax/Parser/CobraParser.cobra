@@ -138,29 +138,7 @@ class CobraParser
 	def _makeClassDeclaration as ClassDeclaration
 		# todo
 		require _stream.token.kind == TokenKind.ClassKeyword
-
-		classKeyword = _stream.grab
-		branch _stream.token.kind
-			on TokenKind.Identifier, id = Identifier.parse(_stream to !)
-			on TokenKind.GenericIdentifierStart, print "TODO: Handle [_stream.grab]"
-			else, print "TODO: Handle [_stream.grab]"
-		
-		_stream.skipBlankLines
-		
-		skippedTokens = TokenList()
-		indentToken = _stream.expect(TokenKind.Indent)
-		
-		docString as DocString? = nil
-		if _stream.token.startsDocString
-			docString = DocString.parse(_stream to !)
-		
-		members = _makeClassMembers
-		
-		dedentToken = _stream.expect(TokenKind.Dedent)
-		
-		return ClassDeclaration(
-			classKeyword, id, indentToken, docString, nil, nil, nil, nil, dedentToken, members, skippedTokens
-		)
+		return ClassDeclaration.parse(_stream to !)
 	
 	def _makeClassMembers as NodeList
 		# TODO

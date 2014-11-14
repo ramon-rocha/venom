@@ -35,7 +35,11 @@ class MemberDeclaration
 	
 	get identifier from var as Identifier
 
-class FieldDeclaration inherits MemberDeclaration
+class TypeMemberDeclaration inherits MemberDeclaration
+	def parse(stream as ITokenStream) as TypeMemberDeclaration? is new, shared
+		return nil # TODO
+
+class FieldDeclaration inherits TypeMemberDeclaration
 	
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
@@ -60,7 +64,7 @@ class NamespaceDeclaration inherits MemberDeclaration
 		require keywordToken.which == TokenKind.NamespaceKeyword
 		base.init(keywordToken, identifier, nil, children, extraTokens)
 
-class MethodDeclaration inherits MemberDeclaration
+class MethodDeclaration inherits TypeMemberDeclaration
 	
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,

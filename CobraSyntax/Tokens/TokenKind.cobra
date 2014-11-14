@@ -145,6 +145,18 @@ class TokenKind
 			In addition to namespace member declarations, use directives are also included.
 			"""
 		
+		var typeDeclarationKeywords as IReadOnlyList<of String> = [
+			TokenKind.ClassKeyword,
+			TokenKind.MixinKeyword,
+			TokenKind.InterfaceKeyword,
+			TokenKind.SigKeyword,
+			TokenKind.StructKeyword,
+			TokenKind.EnumKeyword,
+		]
+			"""
+			These are keywords used to start a type declaration.
+			"""
+		
 		var modifierKeywords = @[
 			TokenKind.PublicKeyword,
 			TokenKind.ProtectedKeyword,

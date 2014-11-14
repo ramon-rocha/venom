@@ -4,7 +4,10 @@ namespace Venom.CobraSyntax
 
 mixin NamedBehavior
 
-	get name from var as String
+	# Compiler bug prevents using 'get name from var as String' syntax.
+	# Automatic backing variable is not accessible to subclasses.
+	var _name as String is protected
+	get name from var
 	
 	get isUnderscored as bool
 		return .name.startsWith('_')
@@ -15,14 +18,21 @@ mixin NamedBehavior
 	get isCamelCased as bool
 		return not .name.isCapitalized
 
+
 class Identifier inherits SyntaxNode
 	adds NamedBehavior
+	"""
+	An Identifier is a symbol that names entities such as variables,
+	types, namespaces, or methods.
+	"""
 	
 	shared, readonly
-		var validKinds as String[] = @[
+		var validKinds as IReadOnlyList<of String> = [
 			TokenKind.Identifier,
 			TokenKind.CallStart,
-			TokenKind.GenericIdentifierStart
+			TokenKind.GenericIdentifierStart,
+
+			TokenKind.Integer
 		]
 	
 	def parse(stream as ITokenStream) as Identifier is new, shared
@@ -32,7 +42,9 @@ class Identifier inherits SyntaxNode
 		body
 			if stream.token.kind == TokenKind.GenericIdentifierStart
 				return GenericIdentifier.parse(stream)
-			return Identifier(stream.grab)
+			token = stream.grabOneOf(.validKinds)
+			return Identifier(token)
+	
 	
 	cue init(token as Cobra.Compiler.IToken)
 		require
@@ -154,25 +166,44 @@ class QualifiedIdentifier inherits Identifier
 			source = "System"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
-			assert id.name == id.qualifiedName == "System"
+			assert id.left.name == id.name == id.qualifiedName == "System"
+			assert id.dot == nil
+			assert id.right == nil
 
 			source = "System.Collections"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
 			assert id.name == "Collections"
 			assert id.qualifiedName == "System.Collections"
+			assert id.left.name == "System"
+			assert id.right.name == "Collections"
 
 			source = "System.Collections.Generic"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
 			assert id.name == "Generic"
 			assert id.qualifiedName == "System.Collections.Generic"
+			assert id.left.name == "System"
+			assert id.right inherits QualifiedIdentifier
+			right = id.right to QualifiedIdentifier
+			assert right.left.name == "Collections"
+			assert right.right.name == "Generic"
 
 			source = "System.Collections.Generic.List<of int>"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
 			assert id.name == "List<of int>"
 			assert id.qualifiedName == "System.Collections.Generic.List<of int>"
+			assert id.left.name == "System"
+			assert id.right.name == "List<of int>"
+			assert id.right inherits QualifiedIdentifier
+			right = id.right to QualifiedIdentifier
+			assert right.left.name == "Collections"
+			assert right.right.name == "List<of int>"
+			assert right.right inherits QualifiedIdentifier
+			right = right.right to QualifiedIdentifier
+			assert right.left.name == "Generic"
+			assert right.right.name == "List<of int>"
 		body
 			left = Identifier.parse(stream)
 			
@@ -190,28 +221,24 @@ class QualifiedIdentifier inherits Identifier
 			return QualifiedIdentifier(left, dot, right)
 
 
-	var _left as Identifier
-	var _dot as Cobra.Compiler.IToken?
-	var _right as Identifier?
+	get left from var as Identifier
+	get dot from var as Cobra.Compiler.IToken?
+	get right from var as Identifier?
 	
 	cue init(identifier as Identifier)
-		base.init(identifier.firstToken)
-		_left, _dot, _right = identifier, nil, nil
+		.init(identifier, nil, nil)
 	
-	cue init(left as Identifier, dot as Cobra.Compiler.IToken, right as Identifier)
+	cue init(left as Identifier, dot as Cobra.Compiler.IToken?, right as Identifier?)
 		base.init(left.firstToken)
 		_left, _dot, _right = left, dot, right
-		_lastToken = right.lastToken
-
-	cue init(left as Identifier, dot as Cobra.Compiler.IToken, right as QualifiedIdentifier)
-		base.init(left.firstToken)
-		_left, _dot, _right = left, dot, right
-		_lastToken = right.lastToken
-	
-	get name as String is override
-		and ensure c'.' not in result
-		if _right, return _right.name
-		return _left.name
+		_addChild(left)
+		if right
+			_name = right.name
+			_lastToken = right.lastToken
+			_addChild(right)
+		else
+			_name = left.name
+			_lastToken = dot ? left.lastToken
 	
 	var _qualifiedName as String? = nil
 	get qualifiedName as String
@@ -222,12 +249,9 @@ class QualifiedIdentifier inherits Identifier
 				left = _left.name
 			
 			if _right == nil
-				_qualifiedName = _left.name
+				_qualifiedName = left
 			else if _right inherits QualifiedIdentifier
-				if _left inherits QualifiedIdentifier
-					_qualifiedName = "[left].[_right.qualifiedName]"
-				else
-					_qualifiedName = "[left].[_right.qualifiedName]"
+				_qualifiedName = "[left].[_right.qualifiedName]"
 			else
 				_qualifiedName = "[left].[_right.name]"
 		
@@ -255,6 +279,7 @@ class GenericIdentifier inherits Identifier
 	var _openIdentifier as Identifier
 	var _commas as IReadOnlyList<of Cobra.Compiler.IToken>
 	var _types as IReadOnlyList<of Identifier>
+	get types from var as IReadOnlyList<of Identifier>
 
 	def parse(stream as ITokenStream) as Identifier is new, shared
 		require
@@ -284,6 +309,11 @@ class GenericIdentifier inherits Identifier
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
+
+			source = "Tuple<of int, int, int, int, int, int>"
+			stream = TokenStream(source, "test.cobra")
+			id = GenericIdentifier.parse(stream)
+			assert id.name == "Tuple<of int, int, int, int, int, int>"
 		body
 			open = Identifier(stream.grab)
 			commas = List<of Cobra.Compiler.IToken>()
@@ -318,18 +348,22 @@ class GenericIdentifier inherits Identifier
 		body
 			base.init(open.firstToken)
 			_openIdentifier, _lastToken = open, close
+			_addChild(open)
+
 			_commas = List<of Cobra.Compiler.IToken>(commas)
 			_types = List<of Identifier>(types)
-	
-	get name as String is override
-		sb = StringBuilder(_openIdentifier.name)
-		sb.append("<of ")
-		typeNames = List<of String>(_types.count)
-		for t in _types
-			if t inherits QualifiedIdentifier
-				typeNames.add(t.qualifiedName)
-			else
-				typeNames.add(t.name)
-		sb.append(typeNames.join(', '))
-		sb.append(">")
-		return sb.toString
+
+			sb = StringBuilder(open.name)
+			sb.append("<of ")
+			typeNames = List<of String>(_types.count)
+			for t in _types
+				_addChild(t)
+				if t inherits QualifiedIdentifier
+					typeNames.add(t.qualifiedName)
+				else
+					typeNames.add(t.name)
+			sb.append(typeNames.join(', '))
+			sb.append(">")
+			_name = sb.toString
+
+

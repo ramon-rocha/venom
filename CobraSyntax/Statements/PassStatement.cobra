@@ -10,6 +10,7 @@ class PassStatement inherits Statement
 			stmt = PassStatement.parse(stream)
 			assert stmt.firstToken.text == "pass"
 			assert stmt.firstToken is stmt.lastToken
+			assert stmt.extraTokens.count == 0
 			assert stream.token.kind == TokenKind.PrintKeyword
 		test
 			source = "pass print 'hello!'"

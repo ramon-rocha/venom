@@ -75,12 +75,13 @@ class TokenKind
 	
 	#region Member Declarations
 	const CueKeyword = 'CUE'
-	const FieldKeyword = 'VAR'
-	const PropertyKeyword = 'PRO'
+	const MethodKeyword = 'DEF'
 	const GetterKeyword = 'GET'
 	const SetterKeyword = 'SET'
-	const MethodKeyword = 'DEF'
+	const PropertyKeyword = 'PRO'
+	const FieldKeyword = 'VAR'
 	const ConstKeyword = 'CONST'
+	const EventKeyword = 'EVENT'
 	#endregion
 	
 	#region Tests and Contracts
@@ -129,7 +130,7 @@ class TokenKind
 	#endregion
 
 	shared, readonly
-		var namespaceStatementKeywords = @[
+		var namespaceStatementKeywords as IReadOnlyList<of String> = [
 			TokenKind.NamespaceKeyword,
 			TokenKind.ClassKeyword,
 			TokenKind.MixinKeyword,
@@ -157,18 +158,22 @@ class TokenKind
 			These are keywords used to start a type declaration.
 			"""
 		
-		var modifierKeywords = @[
+		var modifierKeywords as IReadOnlyList<of String> = [
 			TokenKind.PublicKeyword,
 			TokenKind.ProtectedKeyword,
 			TokenKind.PrivateKeyword,
-			TokenKind.OverrideKeyword,
-			TokenKind.AbstractKeyword,
-			TokenKind.ReadOnlyKeyword,
-			TokenKind.SharedKeyword,
 			TokenKind.InternalKeyword,
-			TokenKind.ExternKeyword,
+
+			TokenKind.NewKeyword,
+			TokenKind.OverrideKeyword,
 			TokenKind.NonVirtualKeyword,
-			TokenKind.VirtualKeyword
+			TokenKind.VirtualKeyword,
+			TokenKind.SharedKeyword,
+			TokenKind.ExternKeyword,
+
+			TokenKind.AbstractKeyword,
+			TokenKind.PartialKeyword,
+			TokenKind.ReadOnlyKeyword,
 		]
 			"""
 			These are the different keywords for modifiers that can be applied to declarations.

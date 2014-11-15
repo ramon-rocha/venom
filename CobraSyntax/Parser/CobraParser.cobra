@@ -173,40 +173,8 @@ class CobraParser
 		return FieldDeclaration(_stream.grab, Identifier.parse(_stream to !), nil, nil, nil, nil, nil, nil, nil, _stream.skipToNextLine)
 	
 	def _makeMethodDeclaration as MethodDeclaration
-		# TODO
-		require _stream.token.kind == TokenKind.MethodKeyword or _stream.token.kind == TokenKind.CueKeyword
-		defKeyword = _stream.grab
-		
-		if _stream.token.kind in Identifier.validKinds and not _stream.token.isKeyword
-			id = Identifier.parse(_stream to !)
-		else
-			missingIdToken = _stream.expect(TokenKind.Identifier)
-			id = Identifier(missingIdToken)
-		if id.firstToken.kind <> TokenKind.CallStart and _stream.grabOptional(TokenKind.OpenParenthesis)
-			pass # parse params
-			_stream.expect(TokenKind.CloseParenthesis)
-		
-		if _stream.grabOptional(TokenKind.AsKeyword)
-			pass # get return type
-		else
-			pass # void return type
-		
-		_stream.skipBlankLines
-		
-		skippedTokens = TokenList()
-		indentToken = _stream.expect(TokenKind.Indent)
-		
-		docString as DocString? = nil
-		if _stream.token.startsDocString
-			docString = DocString.parse(_stream to !)
-		_stream.skipBlankLines
-		
-		bodySection = _makeMethodBody(indentToken)
-		_stream.skipBlankLines
-		
-		return MethodDeclaration(
-			defKeyword, id, nil, docString, nil, nil, nil, nil, nil, bodySection, skippedTokens
-		)
+		return MethodDeclaration.parse(_stream to !)
+
 	
 	def _makeMethodBody(indentToken as Cobra.Compiler.IToken) as ISyntaxNode
 		# TODO

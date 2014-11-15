@@ -94,8 +94,7 @@ class TypeDeclaration
 			return SigDeclaration(kw, id, signature, specs, indent, docString, dedent, nil)
 		
 		if stream.token.kind == TokenKind.PassKeyword
-			stream.grab
-			stream.skipBlankLines
+			PassStatement.parse(stream) # TODO: store this in the type decl
 		
 		memberDecls = List<of ITypeMemberDeclaration>()
 		while stream.token.kind <> TokenKind.Dedent
@@ -113,6 +112,8 @@ class TypeDeclaration
 		member declarations unless they are overriden in this type.
 		"""
 	
+	get specification from var as TypeSpecification?
+
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
@@ -127,6 +128,11 @@ class TypeDeclaration
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 		body
 			base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, extraTokens)
+
+			if specs <> nil
+				_specification = specs
+				_lastToken = specs.lastToken
+			
 			_memberDeclarations = List<of ITypeMemberDeclaration>(memberDecls)
 			for d in _memberDeclarations
 				_addChild(d)

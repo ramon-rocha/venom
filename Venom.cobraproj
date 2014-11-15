@@ -70,6 +70,8 @@
     <Compile Include="CobraSyntax\Statements\PrintStatement.cobra" />
     <Folder Include="TestData\" />
     <Compile Include="TestData\TestData.cobra" />
+    <Compile Include="CobraSyntax\Statements\StatementList.cobra" />
+    <Compile Include="CobraSyntax\Statements\PassStatement.cobra" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.NRefactory">
@@ -99,7 +101,6 @@
     <None Include="CobraSyntax\Statements\UsingStatement.cobra" />
     <None Include="CobraSyntax\Statements\WhileStatement.cobra" />
     <None Include="CobraSyntax\Statements\YieldStatement.cobra" />
-    <None Include="CobraSyntax\Statements\StatementList.cobra" />
     <None Include="CobraSyntax\Statements\ExpressionStatements\CallStatement.cobra" />
     <None Include="TestData\Notepad.cobra" />
     <None Include="TestData\grammar.txt" />

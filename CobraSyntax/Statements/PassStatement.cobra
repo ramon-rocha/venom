@@ -1,0 +1,30 @@
+﻿
+namespace Venom.CobraSyntax
+
+class PassStatement inherits Statement
+	
+	def parse(stream as ITokenStream) as PassStatement is new, shared
+		test
+			source = "pass\n\nprint 'hello!'"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PassStatement.parse(stream)
+			assert stmt.firstToken.text == "pass"
+			assert stmt.firstToken is stmt.lastToken
+			assert stream.token.kind == TokenKind.PrintKeyword
+		test
+			source = "pass print 'hello!'"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PassStatement.parse(stream)
+			assert stmt.firstToken.text == "pass"
+			assert stmt.firstToken is stmt.lastToken
+			assert stmt.extraTokens.count == 2
+			assert stream.token.isEOF
+		body
+			kw = stream.expect(TokenKind.PassKeyword)
+			skippedTokens = stream.skipToNextLine
+			stream.skipBlankLines
+			return PassStatement(kw, skippedTokens)
+	
+	cue init(passKeyword as Cobra.Compiler.IToken, skippedTokens as TokenList?)
+		require passKeyword.kind == TokenKind.PassKeyword
+		base.init(passKeyword, skippedTokens)

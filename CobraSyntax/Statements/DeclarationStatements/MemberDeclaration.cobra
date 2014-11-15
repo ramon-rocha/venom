@@ -30,7 +30,8 @@ class MemberDeclaration
 	)
 		require
 			keywordToken.isKeyword
-			not this inherits NamespaceDeclaration implies (docString implies indentToken and dedentToken)
+			not (this inherits NamespaceDeclaration) implies _
+				(docString implies (indentToken and dedentToken))
 		body
 			base.init(keywordToken, identifier.firstToken, extraTokens)
 			_identifier = identifier
@@ -63,28 +64,50 @@ interface ITypeMemberDeclaration inherits IMemberDeclaration
 class TypeMemberDeclaration
 	inherits MemberDeclaration
 	implements ITypeMemberDeclaration
+	is abstract
 	"""
 	A member declaration that appears inside a type declaration
 	"""
 	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
-		# TODO
 		stream.skipBlankLines
-
-		while not stream.token.isEOF
-			kind = stream.token.kind
-			if kind == TokenKind.Dedent
-				break
-			else if kind in TokenKind.typeDeclarationKeywords
-				return TypeDeclaration.parse(stream)
-			
-			stream.skipBlankLines
-			
+		kind = stream.token.kind
+		if kind in TokenKind.typeDeclarationKeywords
+			return TypeDeclaration.parse(stream)
+		else if kind in TokenKind.modifierKeywords
+			return ModifierBlock.parse(stream)
+		
+		branch kind
+			on TokenKind.CueKeyword
+				return nil # TODO
+			on TokenKind.MethodKeyword
+				return MethodDeclaration.parse(stream)
+			on TokenKind.GetterKeyword
+				return nil # TODO
+			on TokenKind.SetterKeyword
+				return nil # TODO
+			on TokenKind.PropertyKeyword
+				return nil # TODO
+			on TokenKind.FieldKeyword
+				return FieldDeclaration.parse(stream)
+			on TokenKind.ConstKeyword
+				return nil # TODO
+			on TokenKind.InvariantKeyord
+				return nil # TODO
+			on TokenKind.EventKeyword
+				return nil # TODO
+			on TokenKind.TestKeyword
+				return nil # TODO
+		
 		return nil # TODO
+
+
+class ModifierBlock inherits TypeMemberDeclaration
+	pass #TODO
 
 class FieldDeclaration inherits TypeMemberDeclaration
 	
 	cue init(
-		keywordToken as Cobra.Compiler.IToken,
+		varToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
@@ -95,29 +118,103 @@ class FieldDeclaration inherits TypeMemberDeclaration
 		attributes as NodeList?,
 		extraTokens as TokenList?
 	)
-		require keywordToken.which == TokenKind.FieldKeyword
-		base.init(keywordToken, identifier, indent, docString, dedent, nil, extraTokens)
+		require varToken.which == TokenKind.FieldKeyword
+		base.init(varToken, identifier, indent, docString, dedent, nil, extraTokens)
 		#TODO: initializer
+
+
+class MethodSpecification
+	inherits SyntaxNode
+	"""
+	Contains information about the access modifiers, implemented interfaces,
+	attributes, etc. that a method declaration adheres to.
+	"""
+
+	def parse(stream as ITokenStream) as MethodSpecification? is new, shared
+		# TODO
+		stream.skipBlankLines
+		return nil
+	
+	var _isNames as IList<of String>
+	get isNames from var as IReadOnlyList<of String>
+
+	var _attributes as IList<of String>
+	get attributes from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
+
+	var _interfaces as IList<of QualifiedIdentifier>
+	get interfaces from var as IReadOnlyList<of QualifiedIdentifier>
+
+	var _genericConstraints as IList<of ISyntaxNode>
+	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
+
+	get indentToken from var as Cobra.Compiler.IToken?
+	get isIndented as bool
+		return _indentToken <> nil
+	
+	cue init
+		# TODO
+		base.init
+		_isNames = List<of String>()
+		_attributes = List<of String>()
+		_interfaces = List<of QualifiedIdentifier>()
+		_genericConstraints = List<of ISyntaxNode>()
+	
+	def toCobraSource as String is override
+		return "TODO"
 
 class MethodDeclaration inherits TypeMemberDeclaration
 	
+	get signature from var as MethodSignature?
+	get specification from var as MethodSpecification?
+	var _statements as StatementList
+	get statements from var as IReadOnlyList<of IStatement>
+
+	def parse(stream as ITokenStream) as MethodDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.MethodKeyword
+		test
+			pass
+		body
+			defToken = stream.expect(TokenKind.MethodKeyword)
+			id = Identifier.parse(stream)
+			if id.firstToken.kind == TokenKind.CallStart
+				signature = MethodSignature.parse(stream) to ?
+			
+			specs = MethodSpecification.parse(stream)
+			if specs == nil or not specs.isIndented
+				indent = stream.grabOptional(TokenKind.Indent)
+				stream.skipBlankLines
+			
+			if stream.token.startsDocString
+				docString = DocString.parse(stream)
+				stream.skipBlankLines
+			
+			# TODO: method body
+	
+			stream.skipBlankLines
+			dedent = stream.expect(TokenKind.Dedent)
+			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, StatementList(), nil)
+
 	cue init(
-		keywordToken as Cobra.Compiler.IToken,
+		defToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
+		signature as MethodSignature?,
+		specs as MethodSpecification?,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
-		isToken as Cobra.Compiler.IToken?,
-		isValues as TokenList?,
-		hasToken as Cobra.Compiler.IToken?,
-		attributes as NodeList?,
-		bodySection as ISyntaxNode,
+		statements as StatementList,
 		extraTokens as TokenList?
 	)
-		require keywordToken.which == TokenKind.MethodKeyword
-		base.init(keywordToken, identifier, indent, docString, dedent, nil, extraTokens)
-		_lastToken = bodySection.lastToken
-		_addChild(bodySection)
+		require defToken.which == TokenKind.MethodKeyword
+		base.init(defToken, identifier, indent, docString, dedent, nil, extraTokens)
+		if specs <> nil, _specification = specs
+		if signature <> nil
+			_signature = signature
+			_addChild(signature)
+		_statements = StatementList(statements)
+		_lastToken = _statements.last.lastToken
+		for s in _statements, _addChild(s)
 	
 	/#
 	var _statements as IReadOnlyList<of IStatement>? = nil
@@ -144,10 +241,10 @@ class NamespaceDeclaration
 	"""
 	
 	cue init(
-		keywordToken as Cobra.Compiler.IToken,
+		nsToken as Cobra.Compiler.IToken,
 		identifier as QualifiedIdentifier,
 		children as NodeList?,
 		extraTokens as TokenList? = nil
 	)
-		require keywordToken.which == TokenKind.NamespaceKeyword
-		base.init(keywordToken, identifier, nil, nil, nil, children, extraTokens) # TODO
+		require nsToken.which == TokenKind.NamespaceKeyword
+		base.init(nsToken, identifier, nil, nil, nil, children, extraTokens) # TODO

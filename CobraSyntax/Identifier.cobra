@@ -2,6 +2,13 @@ use ICSharpCode
 
 namespace Venom.CobraSyntax
 
+interface INamedNode inherits ISyntaxNode
+	get name as String
+	get isUnderscored as bool
+	get isPascalCased as bool
+	get isCamelCased as bool
+
+
 mixin NamedBehavior
 
 	# Compiler bug prevents using 'get name from var as String' syntax.
@@ -10,16 +17,18 @@ mixin NamedBehavior
 	get name from var
 	
 	get isUnderscored as bool
-		return .name.startsWith('_')
+		return _name.startsWith('_')
 
 	get isPascalCased as bool
-		return .name.isCapitalized
+		return _name.isCapitalized
 	
 	get isCamelCased as bool
-		return not .name.isCapitalized
+		return not _name.isCapitalized
 
 
-class Identifier inherits SyntaxNode
+class Identifier
+	inherits SyntaxNode
+	implements INamedNode
 	adds NamedBehavior
 	"""
 	An Identifier is a symbol that names entities such as variables,

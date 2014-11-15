@@ -1,6 +1,9 @@
 
 namespace Venom.CobraSyntax
 
+interface IDocumentable
+	get docString as DocString?
+
 mixin DocumentationBehavior
 	"""
 	Add this mixin to declarations that are allowed to have doc strings.

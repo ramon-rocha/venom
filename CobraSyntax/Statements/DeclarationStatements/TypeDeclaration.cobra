@@ -49,10 +49,15 @@ class TypeSpecification
 	def toCobraSource as String is override
 		return "TODO"
 
-
+interface ITypeDeclaration inherits IMemberDeclaration
+	"""
+	A type declaration statement
+	"""
+	pass
 
 class TypeDeclaration
 	inherits MemberDeclaration
+	implements ITypeDeclaration, ITypeMemberDeclaration, INamespaceMemberDeclaration
 	is abstract
 	"""
 	This is the base class for member declarations of type definitions
@@ -92,7 +97,7 @@ class TypeDeclaration
 			stream.grab
 			stream.skipBlankLines
 		
-		memberDecls = List<of TypeMemberDeclaration>()
+		memberDecls = List<of ITypeMemberDeclaration>()
 		while stream.token.kind <> TokenKind.Dedent
 			decl = TypeMemberDeclaration.parse(stream)
 			memberDecls.add(decl)
@@ -101,16 +106,13 @@ class TypeDeclaration
 		dedent = stream.expect(TokenKind.Dedent)
 		return _typeMap[kw.kind](kw, id, specs, indent, docString, dedent, memberDecls, nil)
 	
-	var _memberDeclarations as IList<of TypeMemberDeclaration>
-	get memberDeclarations from var as IReadOnlyList<of TypeMemberDeclaration>
+	var _memberDeclarations as IList<of ITypeMemberDeclaration>
+	get memberDeclarations from var as IReadOnlyList<of ITypeMemberDeclaration>
 		"""
 		Member declarations made inside this type.  Will not include inherited
 		member declarations unless they are overriden in this type.
 		"""
 	
-	get indentToken from var as Cobra.Compiler.IToken?
-	get dedentToken from var as Cobra.Compiler.IToken?
-
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
@@ -118,21 +120,14 @@ class TypeDeclaration
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedentToken as Cobra.Compiler.IToken?,
-		memberDecls as IReadOnlyList<of TypeMemberDeclaration>,
+		memberDecls as IReadOnlyList<of ITypeMemberDeclaration>,
 		extraTokens as TokenList?
 	)
 		require
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 		body
-			base.init(keywordToken, identifier, docString, nil, extraTokens)
-			_indentToken = indentToken
-			_dedentToken = dedentToken
-			if dedentToken <> nil
-				_lastToken = dedentToken
-			else if docString <> nil
-				_lastToken = docString.lastToken
-			
-			_memberDeclarations = List<of TypeMemberDeclaration>(memberDecls)
+			base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, extraTokens)
+			_memberDeclarations = List<of ITypeMemberDeclaration>(memberDecls)
 			for d in _memberDeclarations
 				_addChild(d)
 				if d.lastToken.charNum > _lastToken.charNum
@@ -275,7 +270,7 @@ class SigDeclaration inherits TypeDeclaration
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 			docString implies dedentToken
 		body
-			base.init(keywordToken, identifier, specs, indentToken, docString, dedentToken, List<of TypeMemberDeclaration>(), extraTokens)
+			base.init(keywordToken, identifier, specs, indentToken, docString, dedentToken, List<of ITypeMemberDeclaration>(), extraTokens)
 			if signature
 				_lastToken = signature.lastToken
 				_signature = signature

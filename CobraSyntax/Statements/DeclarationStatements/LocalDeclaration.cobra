@@ -1,18 +1,51 @@
 
 namespace Venom.CobraSyntax
 
-class LocalDeclaration
-	inherits SyntaxNode
-	is abstract
+interface ILocalDeclaration
 	"""
 	A declaration with only local scope.
 	Can be an AnonmyousMethodDeclaration, LocalVariableDeclaration, or ParameterDeclaration
 	"""
 	pass
 
-class ParameterDeclaration inherits LocalDeclaration
-	
+class LocalDeclaration
+	inherits SyntaxNode
+	implements ILocalDeclaration
+	is abstract
+	"""
+	The base class for a declaration with only local scope.
+	Can be an AnonmyousMethodDeclaration, LocalVariableDeclaration, or ParameterDeclaration
+	"""
+	pass
+
+interface INamedLocalDeclaration
+	inherits ILocalDeclaration, INamedNode
+	"""
+	A declaration with only local scope that can be identified by a name.
+	Can be an LocalVariableDeclaration, or ParameterDeclaration
+	"""
+
+class NamedLocalDeclaration
+	inherits LocalDeclaration
+	implements INamedLocalDeclaration
+	adds NamedBehavior
+	is abstract
+	"""
+	The base class for a declaration with only local scope that can be identified by name.
+	Can be a LocalVariableDeclaration or ParameterDeclaration
+	"""
 	get identifier from var as Identifier
+
+	cue init(id as Identifier)
+		base.init(id, nil)
+		_identifier = id
+		_name = id.name
+
+
+class ParameterDeclaration inherits NamedLocalDeclaration
+	"""
+	Declares a local parameter for a method
+	"""
 	get asKeyword from var as Cobra.Compiler.IToken?
 	get returnIdentifier from var as QualifiedIdentifier?
 	get defaultValue from var as Expression?
@@ -27,7 +60,7 @@ class ParameterDeclaration inherits LocalDeclaration
 		return ParameterDeclaration(id, asKeyword, returnId)
 	
 	cue init(id as Identifier, asKeyword as Cobra.Compiler.IToken?, returnId as QualifiedIdentifier?)
-		base.init(id, nil)
+		base.init(id)
 		_identifier = id
 		if asKeyword
 			_asKeyword = asKeyword
@@ -41,7 +74,9 @@ class ParameterDeclaration inherits LocalDeclaration
 		return "TODO"
 
 class MethodSignature inherits SyntaxNode
-
+	"""
+	A method signature defines the parameters and return type for a method.
+	"""
 	get parameterDeclarations from var as IReadOnlyList<of ParameterDeclaration>
 	get asKeyword from var as Cobra.Compiler.IToken?
 	get returnTypeIdentifier from var as QualifiedIdentifier?

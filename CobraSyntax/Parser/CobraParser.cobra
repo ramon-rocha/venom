@@ -170,7 +170,7 @@ class CobraParser
 	def _makeFieldDeclaration as FieldDeclaration
 		# TODO
 		require _stream.token.kind == TokenKind.FieldKeyword
-		return FieldDeclaration(_stream.grab, Identifier.parse(_stream to !), nil, nil, nil, nil, nil, _stream.skipToNextLine)
+		return FieldDeclaration(_stream.grab, Identifier.parse(_stream to !), nil, nil, nil, nil, nil, nil, nil, _stream.skipToNextLine)
 	
 	def _makeMethodDeclaration as MethodDeclaration
 		# TODO
@@ -205,7 +205,7 @@ class CobraParser
 		_stream.skipBlankLines
 		
 		return MethodDeclaration(
-			defKeyword, id, docString, nil, nil, nil, nil, bodySection, skippedTokens
+			defKeyword, id, nil, docString, nil, nil, nil, nil, nil, bodySection, skippedTokens
 		)
 	
 	def _makeMethodBody(indentToken as Cobra.Compiler.IToken) as ISyntaxNode

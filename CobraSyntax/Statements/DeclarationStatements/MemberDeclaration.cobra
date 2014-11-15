@@ -1,8 +1,16 @@
 
 namespace Venom.CobraSyntax
 
+interface IMemberDeclaration
+	inherits IStatement, INamedNode, IDocumentable
+	"""
+	A statement that declares a member of a type or namespace
+	"""
+	pass
+
 class MemberDeclaration
 	inherits Statement
+	implements IMemberDeclaration
 	adds NamedBehavior, DocumentationBehavior
 	is abstract
 	"""
@@ -14,29 +22,63 @@ class MemberDeclaration
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
+		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
 		children as NodeList?,
 		extraTokens as TokenList?
 	)
-		require keywordToken.isKeyword
-		base.init(keywordToken, identifier.firstToken, extraTokens)
-		
-		_identifier = identifier
-		_name = identifier.name
-		_addChild(identifier)
-		if docString <> nil
-			_addChild(docString)
-			_docString = docString
-		if children <> nil
-			_addChildren(children)
+		require
+			keywordToken.isKeyword
+			not this inherits NamespaceDeclaration implies (docString implies indentToken and dedentToken)
+		body
+			base.init(keywordToken, identifier.firstToken, extraTokens)
+			_identifier = identifier
+			_name = identifier.name
+			_addChild(identifier)
+			_indentToken, _dedentToken = indentToken, _dedentToken = dedentToken
+			if docString <> nil
+				_lastToken = docString.lastToken
+				_addChild(docString)
+				_docString = docString
+			if children <> nil
+				_addChildren(children)
+			if dedentToken <> nil
+				_lastToken = dedentToken
 	
 	get keywordToken as Cobra.Compiler.IToken
 		return _firstToken
 	
 	get identifier from var as Identifier
+	get indentToken from var as Cobra.Compiler.IToken?
+	get dedentToken from var as Cobra.Compiler.IToken?
 
-class TypeMemberDeclaration inherits MemberDeclaration
-	def parse(stream as ITokenStream) as TypeMemberDeclaration? is new, shared
+
+interface ITypeMemberDeclaration inherits IMemberDeclaration
+	"""
+	A declaration statement for a member of a type
+	"""
+	pass
+
+class TypeMemberDeclaration
+	inherits MemberDeclaration
+	implements ITypeMemberDeclaration
+	"""
+	A member declaration that appears inside a type declaration
+	"""
+	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
+		# TODO
+		stream.skipBlankLines
+
+		while not stream.token.isEOF
+			kind = stream.token.kind
+			if kind == TokenKind.Dedent
+				break
+			else if kind in TokenKind.typeDeclarationKeywords
+				return TypeDeclaration.parse(stream)
+			
+			stream.skipBlankLines
+			
 		return nil # TODO
 
 class FieldDeclaration inherits TypeMemberDeclaration
@@ -44,7 +86,9 @@ class FieldDeclaration inherits TypeMemberDeclaration
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
+		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
 		isToken as Cobra.Compiler.IToken?,
 		isValues as TokenList?,
 		hasToken as Cobra.Compiler.IToken?,
@@ -52,24 +96,17 @@ class FieldDeclaration inherits TypeMemberDeclaration
 		extraTokens as TokenList?
 	)
 		require keywordToken.which == TokenKind.FieldKeyword
-		base.init(keywordToken, identifier, docString, nil, extraTokens)
+		base.init(keywordToken, identifier, indent, docString, dedent, nil, extraTokens)
 		#TODO: initializer
-	
-class NamespaceDeclaration inherits MemberDeclaration
-	"""
-	This node repesents a namespace declaration
-	"""
-	
-	cue init(keywordToken as Cobra.Compiler.IToken, identifier as QualifiedIdentifier, children as NodeList?, extraTokens as TokenList? = nil)
-		require keywordToken.which == TokenKind.NamespaceKeyword
-		base.init(keywordToken, identifier, nil, children, extraTokens)
 
 class MethodDeclaration inherits TypeMemberDeclaration
 	
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
+		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
 		isToken as Cobra.Compiler.IToken?,
 		isValues as TokenList?,
 		hasToken as Cobra.Compiler.IToken?,
@@ -78,7 +115,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 		extraTokens as TokenList?
 	)
 		require keywordToken.which == TokenKind.MethodKeyword
-		base.init(keywordToken, identifier, docString, nil, extraTokens)
+		base.init(keywordToken, identifier, indent, docString, dedent, nil, extraTokens)
 		_lastToken = bodySection.lastToken
 		_addChild(bodySection)
 	
@@ -92,3 +129,25 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			_statements = stmts
 		return _statements to !
 	#/
+
+interface INamespaceMemberDeclaration inherits IMemberDeclaration
+	"""
+	A declaration statement for a member of a namespace
+	"""
+	pass
+
+class NamespaceDeclaration
+	inherits MemberDeclaration
+	implements INamespaceMemberDeclaration
+	"""
+	This node repesents a namespace declaration
+	"""
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as QualifiedIdentifier,
+		children as NodeList?,
+		extraTokens as TokenList? = nil
+	)
+		require keywordToken.which == TokenKind.NamespaceKeyword
+		base.init(keywordToken, identifier, nil, nil, nil, children, extraTokens) # TODO

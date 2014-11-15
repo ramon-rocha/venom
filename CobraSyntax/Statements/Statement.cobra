@@ -18,6 +18,14 @@ class Statement
 	
 	If possible, do not put an implementation in this class.  Put it in StatementBehavior.
 	"""
+	def parse(stream as ITokenStream) as IStatement? is new, shared
+		# TODO
+		kind = stream.token.kind
+		branch kind
+			on TokenKind.PassKeyword
+				return PassStatement.parse(stream)
+		
+		return nil # TODO
 	
 	def toCobraSource as String is override
 		return "TODO"

@@ -82,7 +82,6 @@ class UseDirective inherits Statement
 			if fromKeyword <> nil
 				_fromKeyword, _libraryName = fromKeyword, libraryName
 				_addChild(_libraryName to !)
-				_lastToken = libraryName.lastToken
 	
 	get alias from var as Identifier?
 	get qualifiedId from var as QualifiedIdentifier
@@ -119,9 +118,8 @@ class LibraryName
 	cue init(libName as QualifiedIdentifier, skippedTokens as TokenList?)
 		base.init(libName.firstToken, skippedTokens)
 		_namespaceId = libName
-		_lastToken = libName.lastToken
-		_libraryFileName = libName.qualifiedName
-		_name = _libraryFileName
+		_addChild(libName)
+		_name = _libraryFileName = libName.qualifiedName
 	
 	get libraryFileName from var as String
 

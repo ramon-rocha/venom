@@ -94,7 +94,7 @@ class TypeDeclaration
 			return SigDeclaration(kw, id, signature, specs, indent, docString, dedent, nil)
 		
 		if stream.token.kind == TokenKind.PassKeyword
-			PassStatement.parse(stream) # TODO: store this in the type decl
+			passStmt = PassStatement.parse(stream) to ?
 		
 		memberDecls = List<of ITypeMemberDeclaration>()
 		while stream.token.kind <> TokenKind.Dedent
@@ -103,7 +103,7 @@ class TypeDeclaration
 		
 		stream.skipBlankLines
 		dedent = stream.expect(TokenKind.Dedent)
-		return _typeMap[kw.kind](kw, id, specs, indent, docString, dedent, memberDecls, nil)
+		return _typeMap[kw.kind](kw, id, specs, indent, docString, passStmt, dedent, memberDecls)
 	
 	var _memberDeclarations as IList<of ITypeMemberDeclaration>
 	get memberDeclarations from var as IReadOnlyList<of ITypeMemberDeclaration>
@@ -113,6 +113,7 @@ class TypeDeclaration
 		"""
 	
 	get specification from var as TypeSpecification?
+	get passStatement from var as PassStatement?
 
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
@@ -120,24 +121,26 @@ class TypeDeclaration
 		specs as TypeSpecification?,
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
+		passStmt as PassStatement?,
 		dedentToken as Cobra.Compiler.IToken?,
-		memberDecls as IReadOnlyList<of ITypeMemberDeclaration>,
-		extraTokens as TokenList?
+		memberDecls as IReadOnlyList<of ITypeMemberDeclaration>
 	)
 		require
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 		body
-			base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, extraTokens)
+			base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, nil)
 
 			if specs <> nil
 				_specification = specs
-				_lastToken = specs.lastToken
+				_addChild(specs)
 			
+			if passStmt <> nil
+				_passStatement = passStmt
+				_addChild(passStmt)
+
 			_memberDeclarations = List<of ITypeMemberDeclaration>(memberDecls)
 			for d in _memberDeclarations
 				_addChild(d)
-				if d.lastToken.charNum > _lastToken.charNum
-					_lastToken = d.lastToken
 	
 	def _toPrettyString as String is override
 		sb = StringBuilder(base._toPrettyString)
@@ -164,6 +167,8 @@ class ClassDeclaration inherits TypeDeclaration
 			c = ClassDeclaration.parse(stream)
 			assert c.name == "Foo"
 			assert c.dedentToken.charNum > c.indentToken.charNum
+			assert c.passStatement <> nil
+			assert c.passStatement.firstToken.lineNum == c.firstToken.lineNum + 1
 			assert c.docString == nil
 			assert c.memberDeclarations.count == 0
 		test
@@ -183,6 +188,8 @@ class ClassDeclaration inherits TypeDeclaration
 			assert c.dedentToken.lineNum > c.indentToken.lineNum
 			assert c.memberDeclarations.count == 0
 			assert c.docString.content == "\tThis is a doc string!\n"
+			assert c.passStatement <> nil
+			assert c.passStatement.firstToken.lineNum == c.docString.lastToken.lineNum + 1
 		body
 			return TypeDeclaration.parse(stream) to ClassDeclaration
 
@@ -276,9 +283,8 @@ class SigDeclaration inherits TypeDeclaration
 			keywordToken.kind in TokenKind.typeDeclarationKeywords
 			docString implies dedentToken
 		body
-			base.init(keywordToken, identifier, specs, indentToken, docString, dedentToken, List<of ITypeMemberDeclaration>(), extraTokens)
+			base.init(keywordToken, identifier, specs, indentToken, docString, nil, dedentToken, List<of ITypeMemberDeclaration>())
 			if signature
-				_lastToken = signature.lastToken
 				_signature = signature
 				_addChild(signature)
 			_indentToken = indentToken

@@ -39,7 +39,6 @@ class MemberDeclaration
 			_addChild(identifier)
 			_indentToken, _dedentToken = indentToken, _dedentToken = dedentToken
 			if docString <> nil
-				_lastToken = docString.lastToken
 				_addChild(docString)
 				_docString = docString
 			if children <> nil
@@ -173,7 +172,27 @@ class MethodDeclaration inherits TypeMemberDeclaration
 		require
 			stream.token.kind == TokenKind.MethodKeyword
 		test
-			pass
+			source = "def foo\n\tpass\n"
+			stream = TokenStream(source, "test.cobra")
+			m = MethodDeclaration.parse(stream)
+			assert m.name == "foo"
+			assert m.signature == nil
+			assert m.dedentToken.charNum > m.indentToken.charNum
+			assert m.statements.count == 1
+			assert m.statements.first inherits PassStatement
+			assert m.docString == nil
+		test
+			source = 'def binOp(x as int, y as int) as int\n\t"""Does op on x and y"""'
+			stream = TokenStream(source, "test.cobra")
+			m = MethodDeclaration.parse(stream)
+			assert m.name == "binOp"
+			assert m.indentToken and m.dedentToken
+			assert m.indentToken <> m.dedentToken
+			assert m.lastToken == m.dedentToken
+			assert m.docString.content == "Does op on x and y"
+			assert m.signature.parameterDeclarations.count == 2
+			assert m.signature.asKeyword <> nil
+			assert m.signature.returnTypeIdentifier.name == "int"
 		body
 			defToken = stream.expect(TokenKind.MethodKeyword)
 			id = Identifier.parse(stream)
@@ -189,11 +208,14 @@ class MethodDeclaration inherits TypeMemberDeclaration
 				docString = DocString.parse(stream)
 				stream.skipBlankLines
 			
-			# TODO: method body
+			statements = StatementList()
+			while stream.token.kind <> TokenKind.Dedent
+				stmt = Statement.parse(stream)
+				statements.add(stmt)
 	
 			stream.skipBlankLines
 			dedent = stream.expect(TokenKind.Dedent)
-			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, StatementList(), nil)
+			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, statements, nil)
 
 	cue init(
 		defToken as Cobra.Compiler.IToken,
@@ -213,8 +235,8 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			_signature = signature
 			_addChild(signature)
 		_statements = StatementList(statements)
-		_lastToken = _statements.last.lastToken
-		for s in _statements, _addChild(s)
+		for s in _statements
+			_addChild(s)
 	
 	/#
 	var _statements as IReadOnlyList<of IStatement>? = nil

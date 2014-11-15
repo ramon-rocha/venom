@@ -67,8 +67,7 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 			_lastToken = asKeyword
 		if returnId
 			_returnIdentifier = returnId
-			_addChild(_returnIdentifier to !)
-			_lastToken = _returnIdentifier.lastToken
+			_addChild(returnId)
 	
 	def toCobraSource as String is override
 		return "TODO"
@@ -109,7 +108,7 @@ class MethodSignature inherits SyntaxNode
 			_asKeyword = _lastToken = asKeyword
 		if returnTypeId <> nil
 			_returnTypeIdentifier = returnTypeId
-			_lastToken = returnTypeId.lastToken
+			_addChild(returnTypeId)
 	
 	def toCobraSource as String is override
 		return "TODO"

@@ -250,6 +250,8 @@ class SyntaxNode
 		require child.parent == nil
 		ensure child.parent is this
 		_children.add(child)
+		if child.lastToken.charNum > _lastToken.charNum
+			_lastToken = child.lastToken
 		child.parent = this
 	
 	def _addChildren(children as IList<of ISyntaxNode>)

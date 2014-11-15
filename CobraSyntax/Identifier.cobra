@@ -243,7 +243,6 @@ class QualifiedIdentifier inherits Identifier
 		_addChild(left)
 		if right
 			_name = right.name
-			_lastToken = right.lastToken
 			_addChild(right)
 		else
 			_name = left.name

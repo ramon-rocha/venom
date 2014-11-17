@@ -21,6 +21,15 @@ class Expression
 	
 	If possible, do not put an implementation in this class.  Put it in ExpressionBehavior.
 	"""	
-	
+
+	def parse(stream as ITokenStream) as IExpression? is new, shared
+		kind = stream.token.kind
+		branch kind
+			on TokenKind.SingleQuotedString or TokenKind.DoubleQuotedString # TODO: more cases
+				return StringLiteral(stream.grab) # TODO: return StringLiteral.parse(stream)
+			else
+				trace stream.grab  # TODO
+		return nil # TODO
+
 	def toCobraSource as String is override
 		return "TODO"

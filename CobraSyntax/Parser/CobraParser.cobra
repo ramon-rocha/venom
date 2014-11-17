@@ -211,23 +211,7 @@ class CobraParser
 	def _makePrintStatement as PrintStatement
 		# TODO
 		require _stream.token.kind == TokenKind.PrintKeyword
-		printKeyword = _stream.grab
-		toKeyword = _stream.grabOptional(TokenKind.ToKeyword)
-		skippedTokens = TokenList()
-		if toKeyword <> nil
-			printDestination = _makeExpression
-			kind = _stream.token.kind
-			if kind == TokenKind.Comma
-				_stream.grab
-			else if kind == TokenKind.EndOfLine
-				pass # BLOCK
-			else
-				skippedTokens.addRange(_stream.skipToNextLine)
-		exp = _makeExpression
-		experssions = ExpressionList()
-		experssions.add(exp)
-		stopKeyword = _stream.grabOptional(TokenKind.StopKeyword)
-		return PrintStatement(printKeyword, toKeyword, printDestination, stopKeyword, experssions, _stream.skipToNextLine)
+		return PrintStatement.parse(_stream to !)
 	
 	def _makeAssignmentStatement as AssignmentStatement
 		# todo
@@ -247,8 +231,7 @@ class CobraParser
 		# TODO
 		branch _stream.token.kind
 			on TokenKind.SingleQuotedString or TokenKind.SingleQuotedStringStart
-				# todo make string expression
-				return StringLiteral(_stream.grab, _stream.skipToNextLine)
+				return StringLiteral(_stream.grab)
 			on TokenKind.Identifier or TokenKind.CallStart
 				return _makeIdentifierExpression
 			on TokenKind.OpenBracket

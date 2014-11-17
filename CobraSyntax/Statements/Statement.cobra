@@ -24,6 +24,8 @@ class Statement
 		branch kind
 			on TokenKind.PassKeyword
 				return PassStatement.parse(stream)
+			on TokenKind.PrintKeyword
+				return PrintStatement.parse(stream)
 		
 		return nil # TODO
 	

@@ -11,6 +11,9 @@ class ListLiteral inherits LiteralExpression
 	
 class StringLiteral inherits LiteralExpression
 
+	cue init(token as Cobra.Compiler.IToken)
+		base.init(token, nil)
+
 	def _toPrettyString as String is override
 		sb = StringBuilder(base._toPrettyString)
 		sb.append(" : [.firstToken.text] : [_firstToken.which]")

@@ -2,28 +2,67 @@
 namespace Venom.CobraSyntax
 
 class PrintStatement inherits Statement
+
+	var _endsPrintStatement as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.EndOfLine,
+		TokenKind.StopKeyword,
+		TokenKind.EndOfFile
+	]
 	
+	def parse(stream as ITokenStream) as PrintStatement is new, shared
+		test
+			source = "print 'Hello, World!'"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.firstToken.text == "print"
+			assert stmt.extraTokens.count == 0
+		test
+			source = "print arg"
+			source = "print a, b, c"
+			source = "print to sw, a, b"
+			source = "print to sw, a, b stop"
+			source = "print a, b, c stop"
+			source = "print to sw\n\tbody"
+		body
+			isIndented = false
+			printKeyword = stream.expect(TokenKind.PrintKeyword)
+			toKeyword = stream.grabOptional(TokenKind.ToKeyword)
+			if toKeyword
+				destination = Expression.parse(stream)
+				stream.skipBlankLines
+				isIndented = stream.grabOptional(TokenKind.Indent) <> nil
+			
+			expressions = ExpressionList()
+			if isIndented
+				while stream.token.kind <> TokenKind.Dedent
+					if expressions.count <> 0, stream.skipBlankLines
+					expressions.add(Expression.parse(stream))
+				lastToken = stream.expect(TokenKind.Dedent)
+
+			else
+				stream.grabOptional(TokenKind.Comma)
+				while stream.token.kind not in _endsPrintStatement
+					if expressions.count <> 0, stream.expect(TokenKind.Comma)
+					expressions.add(Expression.parse(stream))
+				lastToken = stream.grabOneOf(_endsPrintStatement)
+			
+			return PrintStatement(printKeyword, toKeyword, destination, expressions, lastToken)
+
 	cue init(
 		printKeyword as Cobra.Compiler.IToken,
 		toKeyword as Cobra.Compiler.IToken?,
 		destination as IExpression?,
-		stopKeyword as Cobra.Compiler.IToken?,
 		expressions as ExpressionList,
-		skippedTokens as TokenList?
+		lastToken as Cobra.Compiler.IToken
 	)
 		require
-			toKeyword implies destination
 			destination implies toKeyword
 		body
-			base.init(printKeyword, skippedTokens)
-			if stopKeyword <> nil, _lastToken = stopKeyword
-			_printKeyword = printKeyword
-			exps = List<of IExpression>(expressions)
-			_expressions = exps
-			_toKeyword, _destination, _stopKeyword = toKeyword, destination, stopKeyword
+			base.init(printKeyword, nil)
+			_printKeyword, _toKeyword, _destination, _lastToken = printKeyword, toKeyword, destination, lastToken
+			_expressions = ExpressionList(expressions)
 			if destination, _addChild(destination)
-			# TODO: Add expression list as single node
-			for e in exps, _addChild(e)
+			for e in _expressions, _addChild(e) # TODO? Add expression list as single node
 	
 	get printKeyword from var as Cobra.Compiler.IToken
 		"""
@@ -40,10 +79,11 @@ class PrintStatement inherits Statement
 		Optional TextWriter to print to.  nil when printing to Console.
 		"""
 	
-	get stopKeyword from var as Cobra.Compiler.IToken?
+	get stopKeyword as Cobra.Compiler.IToken?
 		"""
 		Optional token for the 'stop' keyword.  nil when not present.
 		"""
+		return if(_lastToken.kind == TokenKind.StopKeyword, _lastToken, nil)
 	
 	get expressions from var as IReadOnlyList<of IExpression>
 		"""

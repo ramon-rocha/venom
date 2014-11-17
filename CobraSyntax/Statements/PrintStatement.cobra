@@ -6,7 +6,7 @@ class PrintStatement inherits Statement
 	var _endsPrintStatement as IReadOnlyList<of String> is shared, readonly = [
 		TokenKind.EndOfLine,
 		TokenKind.StopKeyword,
-		TokenKind.EndOfFile
+		TokenKind.EndOfFile,
 	]
 	
 	def parse(stream as ITokenStream) as PrintStatement is new, shared
@@ -15,14 +15,55 @@ class PrintStatement inherits Statement
 			stream = TokenStream(source, "test.cobra")
 			stmt = PrintStatement.parse(stream)
 			assert stmt.firstToken.text == "print"
+			assert stmt.toKeyword == nil
+			assert stmt.destination == nil
 			assert stmt.extraTokens.count == 0
+			assert stmt.expressions.count == 1
+			assert stmt.lastToken.kind == TokenKind.EndOfLine
+			assert stmt.stopKeyword == nil
+
+			source += " stop"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.lastToken.kind == TokenKind.StopKeyword
+			assert stmt.stopKeyword <> nil
+
+			source += ", unexpected(foo)"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.lastToken.kind == TokenKind.StopKeyword
+			assert stmt.extraTokens.count == 4
+			assert stream.token.isEOF
 		test
-			source = "print arg"
-			source = "print a, b, c"
+			source = "print a, b"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.expressions.count == 2
+		test
 			source = "print to sw, a, b"
-			source = "print to sw, a, b stop"
-			source = "print a, b, c stop"
-			source = "print to sw\n\tbody"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.toKeyword <> nil
+			assert stmt.destination <> nil
+			assert stmt.expressions.count == 2
+			assert stmt.destination.firstToken.lineNum _
+				== stmt.expressions[0].firstToken.lineNum _
+				== stmt.expressions[1].firstToken.lineNum
+		test
+			source = "print to sw \n\tline1 \n\tline2"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.toKeyword <> nil
+			assert stmt.destination <> nil
+			assert stmt.expressions.count == 2
+			assert stmt.expressions[0].firstToken.lineNum == stmt.destination.firstToken.lineNum + 1
+			assert stmt.expressions[1].firstToken.lineNum == stmt.destination.firstToken.lineNum + 2
+
+			source += "\n\n\n\n\tline6"
+			stream = TokenStream(source, "test.cobra")
+			stmt = PrintStatement.parse(stream)
+			assert stmt.expressions.count == 3
+			assert stmt.expressions[2].firstToken.lineNum == stmt.destination.firstToken.lineNum + 6
 		body
 			isIndented = false
 			printKeyword = stream.expect(TokenKind.PrintKeyword)
@@ -34,9 +75,11 @@ class PrintStatement inherits Statement
 			
 			expressions = ExpressionList()
 			if isIndented
+				stream.skipBlankLines
 				while stream.token.kind <> TokenKind.Dedent
-					if expressions.count <> 0, stream.skipBlankLines
 					expressions.add(Expression.parse(stream))
+					stream.skipBlankLines
+				
 				lastToken = stream.expect(TokenKind.Dedent)
 
 			else
@@ -44,21 +87,25 @@ class PrintStatement inherits Statement
 				while stream.token.kind not in _endsPrintStatement
 					if expressions.count <> 0, stream.expect(TokenKind.Comma)
 					expressions.add(Expression.parse(stream))
+				
 				lastToken = stream.grabOneOf(_endsPrintStatement)
+				if lastToken.kind == TokenKind.StopKeyword
+					skipped = stream.skipToNextLine to ?
 			
-			return PrintStatement(printKeyword, toKeyword, destination, expressions, lastToken)
+			return PrintStatement(printKeyword, toKeyword, destination, expressions, lastToken, skipped)
 
 	cue init(
 		printKeyword as Cobra.Compiler.IToken,
 		toKeyword as Cobra.Compiler.IToken?,
 		destination as IExpression?,
 		expressions as ExpressionList,
-		lastToken as Cobra.Compiler.IToken
+		lastToken as Cobra.Compiler.IToken,
+		skipped as TokenList? = nil
 	)
 		require
 			destination implies toKeyword
 		body
-			base.init(printKeyword, nil)
+			base.init(printKeyword, skipped)
 			_printKeyword, _toKeyword, _destination, _lastToken = printKeyword, toKeyword, destination, lastToken
 			_expressions = ExpressionList(expressions)
 			if destination, _addChild(destination)

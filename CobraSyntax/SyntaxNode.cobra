@@ -96,7 +96,7 @@ class SyntaxNode
 		.init(Cobra.Compiler.Token.empty, extraTokens)
 	
 	cue init(child as ISyntaxNode, extraTokens as TokenList?)
-		.init(extraTokens)
+		.init(child.firstToken, child.lastToken, extraTokens)
 		_addChild(child)
 	
 	cue init(token as Cobra.Compiler.IToken, extraTokens as TokenList?)
@@ -279,7 +279,7 @@ class SyntaxNode
 
 	def _toPrettyString as String
 		ensure result.count('\n') == 0
-		return .toString
+		return .toString.replace("Venom.CobraSyntax", "")
 	
 	def _appendIndent(sb as StringBuilder, count as int)
 		for i in count

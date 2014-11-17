@@ -27,8 +27,10 @@ class Expression
 		branch kind
 			on TokenKind.SingleQuotedString or TokenKind.DoubleQuotedString # TODO: more cases
 				return StringLiteral(stream.grab) # TODO: return StringLiteral.parse(stream)
+			on TokenKind.Identifier #TODO: more cases
+				return IdentifierExpression(Identifier.parse(stream)) #TODO: what about 'Foo(' ?
 			else
-				trace stream.grab  # TODO
+				trace stream.token  # TODO
 		return nil # TODO
 
 	def toCobraSource as String is override

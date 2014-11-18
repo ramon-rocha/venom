@@ -52,6 +52,11 @@ interface ITokenStream
 		"""
 		Returns the current token and advances the stream to the next token.
 		"""
+	
+	def replace(token as ICobraToken)
+		"""
+		Replace the current token with the given one.
+		"""
 
 	def grabOptional(kind as String) as ICobraToken?
 		"""
@@ -194,6 +199,28 @@ class TokenStream
 			t = .token
 			_currentIndex += 1
 			return t
+	
+	def replace(token as ICobraToken)
+		ensure
+			.token is token
+		test
+			source = ".expect.kind"
+			stream = TokenStream(source, "test.cobra")
+			stream.grab
+
+			token = stream.token
+			assert token.text == "expect"
+			assert token.kind == TokenKind.ExpectKeyword
+			assert token.isKeyword
+
+			stream.replace(token.copy(TokenKind.Identifier))
+			token = stream.token
+			assert token.text == "expect"
+			assert token.kind == TokenKind.Identifier
+			assert not token.isKeyword
+		body
+			tokens = _tokens to TokenList
+			tokens[_currentIndex] = token
 
 	def grabOptional(kind as String) as ICobraToken?
 		if .token.kind == kind

@@ -2,6 +2,7 @@ cp lib/ICSharpCode.NRefactory.dll .
 cp lib/Mono.Cecil.dll .
 
 cobra -test \
+-color \
 -lib:lib \
 -lib:bin/Debug \
 -reference:ICSharpCode.NRefactory.dll \

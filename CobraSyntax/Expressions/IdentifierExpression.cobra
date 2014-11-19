@@ -21,3 +21,6 @@ class IdentifierExpression inherits Expression
 		sb = StringBuilder(base._toPrettyString)
 		sb.append(" : [_identifier.name] : [_firstToken.which]")
 		return sb.toString
+	
+	def toCobraSource as String is override
+		return _identifier.toCobraSource

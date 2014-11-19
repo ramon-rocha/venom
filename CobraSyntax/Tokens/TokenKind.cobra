@@ -253,6 +253,8 @@ class TokenKind
 	const DoubleQuotedStringPart = 'STRING_PART_DOUBLE'
 	const DoubleQuotedStringEnd = 'STRING_STOP_DOUBLE'
 
+	const StringPartFormat = 'STRING_PART_FORMAT'
+
 	const SingleQuotedCharacter = 'CHAR_LIT_SINGLE'
 	const DoubleQuotedCharacter = 'CHAR_LIT_DOUBLE'
 	#endregion

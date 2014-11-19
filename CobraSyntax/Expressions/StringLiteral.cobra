@@ -16,14 +16,27 @@ class StringLiteral inherits LiteralExpression
 	
 
 	def parse(stream as ITokenStream) as StringLiteral is new, shared
-		require stream.token.kind in .validKinds
-		kind = stream.token.kind
-		branch kind
-			on TokenKind.SingleQuotedString or TokenKind.DoubleQuotedString
+		require
+			stream.token.kind in .validKinds
+		test
+			source = '"Hello, world!"'
+			stream = TokenStream(source, 'test.cobra')
+			string = StringLiteral.parse(stream)
+			assert string.firstToken.text == source
+			assert string.firstToken.value.toString == 'Hello, world!'
+			assert string.toCobraSource == '"Hello, world!"'
+		test
+			source = 'r"Hello, world!"'
+			stream = TokenStream(source, 'test.cobra')
+			string = StringLiteral.parse(stream)
+			assert string.firstToken.text == source
+			assert string.firstToken.value.toString == 'Hello, world!'
+			assert string.toCobraSource == 'r"Hello, world!"'
+		body
+			kind = stream.token.kind
+			if kind == TokenKind.SingleQuotedString or kind == TokenKind.DoubleQuotedString
 				return StringLiteral(stream.grab)
-			else # TODO
-				trace stream.grab
-		return StringLiteral(Cobra.Compiler.Token.empty) # TODO
+			return InterpolatedStringLiteral.parse(stream)
 
 	cue init(token as Cobra.Compiler.IToken)
 		base.init(token, nil)
@@ -34,4 +47,93 @@ class StringLiteral inherits LiteralExpression
 		return sb.toString
 	
 	def toCobraSource as String is override
-		return "TODO"
+		return _firstToken.text
+	
+
+class InterpolatedStringLiteral inherits StringLiteral
+	"""
+	A string literal containing expressions to be replaced with their actual values at run-time
+	Example: 'Hello, my name is [user.name]'
+	"""
+	var _startKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.SingleQuotedStringStart,
+		TokenKind.DoubleQuotedStringStart
+	]
+
+	var _stopKinds as IReadOnlyDictionary<of String, String> is shared, readonly = {
+		TokenKind.SingleQuotedStringStart : TokenKind.SingleQuotedStringEnd,
+		TokenKind.DoubleQuotedStringStart : TokenKind.DoubleQuotedStringEnd
+	}
+
+	var _partKinds as IReadOnlyDictionary<of String, String> is shared, readonly = {
+		TokenKind.SingleQuotedStringStart : TokenKind.SingleQuotedStringPart,
+		TokenKind.DoubleQuotedStringStart : TokenKind.DoubleQuotedStringPart
+	}
+	
+	def parse(stream as ITokenStream) as InterpolatedStringLiteral is new, shared
+		require
+			stream.token.kind in _startKinds
+		test
+			source = ns'"Hello, my name is [name] and I am [age] years old."'
+			stream = TokenStream(source, 'test.cobra')
+			string = InterpolatedStringLiteral.parse(stream)
+			assert string.parts.count == 5
+			assert string.parts[0] inherits StringLiteral
+			assert string.parts[1] inherits IdentifierExpression
+			assert string.parts[2] inherits StringLiteral
+			assert string.parts[3] inherits IdentifierExpression
+			assert string.parts[4] inherits StringLiteral
+			assert string.firstToken.kind == TokenKind.DoubleQuotedStringStart
+			assert string.lastToken.kind == TokenKind.DoubleQuotedStringEnd
+		body
+			parts = ExpressionList()
+			start = stream.grabOneOf(_startKinds)
+			parts.add(StringLiteral(start))
+
+			startKind = start.kind
+			partKind = _partKinds[startKind]
+
+			while true
+				expr = Expression.parse(stream)
+				format = stream.grabOptional(TokenKind.StringPartFormat)
+				if format, expr = FormattedExpression(expr, format)
+				parts.add(expr)
+				if stream.token.kind <> partKind
+					break
+				parts.add(StringLiteral(stream.grab))
+			
+			stopKind = _stopKinds[startKind]
+			expr = StringLiteral(stream.expect(stopKind))
+			parts.add(expr)
+			return InterpolatedStringLiteral(parts)
+	
+	cue init(parts as ExpressionList)
+		require
+			parts.count >= 3
+			parts.first inherits StringLiteral
+			parts.last inherits StringLiteral
+		body
+			base.init(parts[0].firstToken)
+			_parts = ExpressionList(parts)
+			for p in parts, _addChild(p)
+
+	get parts from var as IReadOnlyList<of IExpression>
+
+
+class FormattedExpression inherits Expression
+	"""
+	This is used exclusively for string substitutions that have formatting:
+		'[someExpression:N]'
+	"""
+	cue init(expression as IExpression, formatToken as Cobra.Compiler.IToken)
+		base.init(expression, nil)
+		_lastToken = formatToken
+		_expression = expression
+	
+	var _format as String? = nil
+	get format as String
+		if _format == nil
+			_format = _lastToken.text.substring(1)
+		return _format to !
+	
+	get expression from var as IExpression

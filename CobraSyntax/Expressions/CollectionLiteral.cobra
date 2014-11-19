@@ -14,14 +14,23 @@ class CollectionLiteral
 	]
 
 	def parse(stream as ITokenStream) as CollectionLiteral is new, shared
-		require stream.token.kind in .validKinds
-
-		startToken = stream.grab
-		while stream.token.kind not in @[TokenKind.ListEnd, TokenKind.SetEnd]
-			trace stream.grab
-		endToken = stream.grab
-
-		return ListLiteral(startToken, ExpressionList(), endToken) # TODO
+		require
+			stream.token.kind in .validKinds
+		test emptyList
+			source = r'[]'
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list inherits ListLiteral
+			assert list.elements.count == 0
+			assert list.firstToken.kind == TokenKind.ListStart
+			assert list.lastToken.kind == TokenKind.ListEnd
+		body
+			startToken = stream.grab
+			while stream.token.kind not in @[TokenKind.ListEnd, TokenKind.SetEnd]
+				trace stream.grab
+			endToken = stream.grab
+	
+			return ListLiteral(startToken, ExpressionList(), endToken) # TODO
 
 	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
 		base.init(startToken, endToken, nil)
@@ -44,7 +53,7 @@ class ListLiteral inherits CollectionLiteral
 	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
 		require
 			startToken.kind == TokenKind.ListStart
-			endToken.kind == TokenKind.ListenKeyword
+			endToken.kind == TokenKind.ListEnd
 		body
 			base.init(startToken, elements, endToken)
 

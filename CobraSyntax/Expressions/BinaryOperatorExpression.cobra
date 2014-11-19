@@ -2,22 +2,22 @@
 namespace Venom.CobraSyntax
 
 class BinaryOperatorExpression inherits Expression
-	
-	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression, skippedTokens as TokenList?)
-		base.init(left.firstToken, right.lastToken, skippedTokens)
-		_leftExpression = left
-		_operatorToken = op
-		_rightExpression = right
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		base.init(left.firstToken, right.lastToken, nil)
+		_leftExpression, _operatorToken, _rightExpression = left, op, right
 		_addChild(left)
 		_addChild(right)
 	
 	get operatorToken from var as Cobra.Compiler.IToken
-	
 	get leftExpression from var as IExpression
-	
 	get rightExpression from var as IExpression
 
 	def _toPrettyString as String is override
 		sb = StringBuilder(base._toPrettyString)
 		sb.append("([_operatorToken.text])")
 		return sb.toString
+
+class MemberAccessExpression inherits BinaryOperatorExpression
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.MemberAccessOperator
+		base.init(left, op, right)

@@ -1,0 +1,77 @@
+﻿
+namespace Venom.CobraSyntax
+
+class UnaryOperatorExpression inherits Expression
+	
+	var _unaryTypeMap as IReadOnlyDictionary<of String, Type> is readonly, shared = {
+		TokenKind.LogicalAllOperator : AllExpression,
+		TokenKind.LogicalAnyOperator : AnyExpression,
+		TokenKind.OldValueOperator : OldExpression,
+		TokenKind.MethodReferenceOperator : MethodReferenceExpression,
+		TokenKind.CompilerDirective : CompilerDirectiveExpression
+	}
+
+	def parse(stream as ITokenStream) as UnaryOperatorExpression is new, shared
+		op = stream.grab
+		kind = op.kind
+		prec = TokenKind.unaryOperatorPrecedence[kind]
+		expr = _parse(stream, prec, nil)
+		return _unaryTypeMap[kind](op, expr)
+
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		base.init(op, nil)
+		_operator, _expression = op, expr
+		_addChild(expr)
+	
+	get operator from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append("([_operator.text])")
+		return sb.toString
+
+class AllExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.LogicalAllOperator
+		base.init(op, expr)
+	
+	def parse(stream as ITokenStream) as AllExpression is new, shared
+		require stream.token.kind == TokenKind.LogicalAllOperator
+		return UnaryOperatorExpression.parse(stream) to AllExpression
+
+class AnyExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.LogicalAnyOperator
+		base.init(op, expr)
+
+	def parse(stream as ITokenStream) as AnyExpression is new, shared
+		require stream.token.kind == TokenKind.LogicalAnyOperator
+		return UnaryOperatorExpression.parse(stream) to AnyExpression
+
+class OldExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.OldValueOperator
+		base.init(op, expr)
+	
+	def parse(stream as ITokenStream) as OldExpression is new, shared
+		require stream.token.kind == TokenKind.OldValueOperator
+		return UnaryOperatorExpression.parse(stream) to OldExpression
+
+class MethodReferenceExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.MethodReferenceOperator
+		base.init(op, expr)
+
+	def parse(stream as ITokenStream) as MethodReferenceExpression is new, shared
+		require stream.token.kind == TokenKind.MethodReferenceOperator
+		return UnaryOperatorExpression.parse(stream) to MethodReferenceExpression 
+
+class CompilerDirectiveExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.CompilerDirective
+		base.init(op, expr)
+
+	def parse(stream as ITokenStream) as CompilerDirectiveExpression is new, shared
+		require stream.token.kind == TokenKind.CompilerDirective
+		return UnaryOperatorExpression.parse(stream) to CompilerDirectiveExpression

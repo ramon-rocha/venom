@@ -1,20 +1,89 @@
 
 namespace Venom.CobraSyntax
 
-class LiteralExpression inherits Expression is abstract
-	
+class LiteralExpression
+	inherits Expression
+	is abstract
+	"""
+	The base class for all literal expressions
+	"""
 	def toCobraSource as String is override
 		return _firstToken.text
 
-class ListLiteral inherits LiteralExpression
-	pass
-	
-class StringLiteral inherits LiteralExpression
+class NilLiteral inherits LiteralExpression
+	cue init(keyword as Cobra.Compiler.IToken)
+		require
+			keyword.isKeyword
+			keyword.kind == TokenKind.NilKeyword
+		body
+			base.init(keyword, nil)
 
+class BooleanLiteral inherits LiteralExpression
+	cue init(keyword as Cobra.Compiler.IToken)
+		require
+			keyword.isKeyword
+			keyword.kind == TokenKind.TrueKeyword or keyword.kind == TokenKind.FalseKeyword
+		body
+			base.init(keyword, nil)
+
+class CharacterLiteral inherits LiteralExpression
 	cue init(token as Cobra.Compiler.IToken)
-		base.init(token, nil)
+		require
+			not token.isKeyword
+			token.kind == TokenKind.SingleQuotedCharacter or token.kind == TokenKind.DoubleQuotedCharacter
+		body
+			base.init(token, nil)
 
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [.firstToken.text] : [_firstToken.which]")
-		return sb.toString
+class IntegerLiteral inherits LiteralExpression
+	cue init(token as Cobra.Compiler.IToken)
+		require
+			not token.isKeyword
+			token.kind == TokenKind.IntegerLiteral
+		body
+			base.init(token, nil)
+
+class DecimalLiteral inherits LiteralExpression
+	cue init(token as Cobra.Compiler.IToken)
+		require
+			not token.isKeyword
+			token.kind == TokenKind.DecimalLiteral
+		body
+			base.init(token, nil)
+
+class FractionLiteral inherits LiteralExpression
+	cue init(token as Cobra.Compiler.IToken)
+		require
+			not token.isKeyword
+			token.kind == TokenKind.FractionLiteral
+		body
+			base.init(token, nil)
+
+class FloatLiteral inherits LiteralExpression
+	cue init(token as Cobra.Compiler.IToken)
+		require
+			not token.isKeyword
+			token.kind == TokenKind.FloatLiteral
+		body
+			base.init(token, nil)
+
+class BaseLiteral inherits LiteralExpression
+	"""
+	A literal 'base' expression such as in 'base.init'
+	"""
+	cue init(keyword as Cobra.Compiler.IToken)
+		require keyword.kind == TokenKind.BaseKeyword
+		base.init(keyword, nil)
+
+class ThisLiteral inherits LiteralExpression
+	"""
+	An explicit or implicit literal referring to 'this'
+	"""
+	cue init(keyword as Cobra.Compiler.IToken)
+		require keyword.kind == TokenKind.ThisKeyword
+		base.init(keyword, nil)
+	
+	get isImplicit as bool
+		"""
+		True when ommitted as part of a member access expression such as '.foo'
+		"""
+		return _firstToken.isEmpty

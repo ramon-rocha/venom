@@ -1,1 +1,6 @@
 
+namespace Venom.CobraSyntax
+
+class BranchStatement inherits Statement
+	pass
+

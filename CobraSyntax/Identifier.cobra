@@ -41,7 +41,7 @@ class Identifier
 			TokenKind.CallStart,
 			TokenKind.GenericIdentifierStart,
 
-			TokenKind.Integer
+			TokenKind.IntegerType # TODO: shouldn't be here
 		]
 	
 	def parse(stream as ITokenStream) as Identifier is new, shared
@@ -161,7 +161,7 @@ class QualifiedIdentifier inherits Identifier
 		
 		dot = Cobra.Compiler.Token(fn, 1, 27, 27, TokenKind.Dot, ".", nil)
 		open = Cobra.Compiler.Token(fn, 1, 28, 28, TokenKind.GenericIdentifierStart, "List<of", nil)
-		intType = Cobra.Compiler.Token(fn, 1, 35, 35, TokenKind.Integer, "int", nil)
+		intType = Cobra.Compiler.Token(fn, 1, 35, 35, TokenKind.IntegerType, "int", nil)
 		close = Cobra.Compiler.Token(fn, 1, 39, 39, TokenKind.GenericIdentifierEnd, ">", nil)
 		listId = GenericIdentifier(Identifier(open), List<of Cobra.Compiler.IToken>(), [Identifier(intType)], close)
 		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(listId))

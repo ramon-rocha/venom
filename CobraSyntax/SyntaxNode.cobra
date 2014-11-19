@@ -65,6 +65,11 @@ interface ISyntaxNode
 		A list of tokens that were expected but were missing from the source code when this node was constructed.
 		"""
 	
+	def toCobraSource as String
+		"""
+		Generates Cobra source code for this node and its children
+		"""
+
 	def toPrettyString as String is nonvirtual
 		"""
 		A human-readable representation of this node

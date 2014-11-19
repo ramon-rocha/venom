@@ -1,0 +1,23 @@
+﻿
+namespace Venom.CobraSyntax
+
+class ParenthesizedExpression inherits Expression
+	
+	def parse(stream as ITokenStream) as IExpression? is new, shared
+		test
+			pass # TODO
+		body
+			openParen = stream.expect(TokenKind.OpenParenthesis)
+			# TODO space agnostic
+			expr = Expression.parse(stream)
+			closeParen = stream.expect(TokenKind.CloseParenthesis)
+			return ParenthesizedExpression(openParen, expr, closeParen)
+
+	cue init(openParen as Cobra.Compiler.IToken, expression as IExpression, closeParen as Cobra.Compiler.IToken)
+		base.init(openParen, closeParen, nil)
+		_openParenthesis, _expression, _closeParenthesis = openParen, expression, closeParen
+		_addChild(expression)
+	
+	get openParenthesis from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+	get closeParenthesis from var as Cobra.Compiler.IToken

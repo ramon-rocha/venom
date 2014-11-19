@@ -1,1 +1,5 @@
 
+namespace Venom.CobraSyntax
+
+class ContinueStatement inherits Statement
+	pass

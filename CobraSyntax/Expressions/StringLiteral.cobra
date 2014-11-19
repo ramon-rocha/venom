@@ -1,0 +1,37 @@
+﻿
+namespace Venom.CobraSyntax
+
+class StringLiteral inherits LiteralExpression
+	"""
+	A string expression literal and its interpolated values
+	"""
+
+	var validKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.SingleQuotedString,
+		TokenKind.DoubleQuotedString,
+		TokenKind.SingleQuotedStringStart,
+		TokenKind.DoubleQuotedStringStart
+	]
+		"""The kinds of tokens that start a string literal expression"""
+	
+
+	def parse(stream as ITokenStream) as StringLiteral is new, shared
+		require stream.token.kind in .validKinds
+		kind = stream.token.kind
+		branch kind
+			on TokenKind.SingleQuotedString or TokenKind.DoubleQuotedString
+				return StringLiteral(stream.grab)
+			else # TODO
+				trace stream.grab
+		return StringLiteral(Cobra.Compiler.Token.empty) # TODO
+
+	cue init(token as Cobra.Compiler.IToken)
+		base.init(token, nil)
+
+	def _toPrettyString as String is override
+		sb = StringBuilder(base._toPrettyString)
+		sb.append(" : [.firstToken.text] : [_firstToken.which]")
+		return sb.toString
+	
+	def toCobraSource as String is override
+		return "TODO"

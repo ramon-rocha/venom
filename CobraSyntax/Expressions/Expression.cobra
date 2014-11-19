@@ -1,11 +1,8 @@
 
-use ICSharpCode
-
 namespace Venom.CobraSyntax
 
 interface IExpression
 	inherits ISyntaxNode
-	
 	pass
 
 mixin ExpressionBehavior
@@ -20,18 +17,90 @@ class Expression
 	An abstract syntax node for an expression.
 	
 	If possible, do not put an implementation in this class.  Put it in ExpressionBehavior.
-	"""	
-
+	"""
 	def parse(stream as ITokenStream) as IExpression? is new, shared
+		return _parse(stream, 0, nil)
+
+	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression? is shared
+		left = leftExpr ? _parse(stream)
+		# TODO
+		return left
+
+	def _parse(stream as ITokenStream) as IExpression? is shared
+		
 		kind = stream.token.kind
+
+		if TokenKind.unaryOperatorPrecedence.containsKey(kind)
+			return UnaryOperatorExpression.parse(stream)
+		
+		else if kind in CollectionLiteral.validKinds
+			return CollectionLiteral.parse(stream)
+		
+		else if kind in StringLiteral.validKinds
+			return StringLiteral.parse(stream)
+		
 		branch kind
-			on TokenKind.SingleQuotedString or TokenKind.DoubleQuotedString # TODO: more cases
-				return StringLiteral(stream.grab) # TODO: return StringLiteral.parse(stream)
-			on TokenKind.Identifier #TODO: more cases
-				return IdentifierExpression(Identifier.parse(stream)) #TODO: what about 'Foo(' ?
+			on TokenKind.OpenParenthesis
+				return ParenthesizedExpression.parse(stream)
+			
+			on TokenKind.MemberAccessOperator
+				# leading dot
+				dot = stream.grab
+				token = stream.token
+				if token.isKeyword
+					token = token.copy(TokenKind.Identifier)
+					stream.replace(token)
+				kind = token.kind
+				#.opStack.push(kind)
+				if kind in Identifier.validKinds
+					memberExpression = IdentifierExpression.parse(stream)
+				#.opStack.pop
+				implicitThis = ThisLiteral(stream.expect(TokenKind.ThisKeyword))
+				return MemberAccessExpression(implicitThis, dot, memberExpression)
+			
+			on TokenKind.NilKeyword, return NilLiteral(stream.grab)
+			on TokenKind.TrueKeyword or TokenKind.FalseKeyword, return BooleanLiteral(stream.grab)
+			on TokenKind.ThisKeyword, return ThisLiteral(stream.grab)
+			on TokenKind.BaseKeyword, return BaseLiteral(stream.grab)
+
+			on TokenKind.FieldKeyword
+				# TODO, shouldn't be here, right?  this is for things such as 'get foo from var'
+				return nil
+
+			on TokenKind.SingleQuotedCharacter or TokenKind.DoubleQuotedCharacter
+				return CharacterLiteral(stream.grab)
+			
+			on TokenKind.IntegerLiteral, return IntegerLiteral(stream.grab)
+			on TokenKind.FractionLiteral, return FractionLiteral(stream.grab)
+			on TokenKind.DecimalLiteral, return DecimalLiteral(stream.grab)
+			on TokenKind.FloatLiteral, return FloatLiteral(stream.grab)
+			
+			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
+				return nil # TODO
+			
+			on TokenKind.IfExpressionStart
+				return nil # TODO
+
+			on TokenKind.ForKeyword
+				return nil # TODO
+			
+			on TokenKind.TryKeyword
+				return nil # TODO
+			
+			on TokenKind.CallStart
+				return nil # TODO
+
+			on TokenKind.GenericIdentifierStart
+				return nil # TODO
+
+			on TokenKind.Identifier
+				return IdentifierExpression(Identifier.parse(stream))
+
 			else
-				trace stream.token  # TODO
-		return nil # TODO
+				trace stream.token  # TODO : see CobraParser line 3109
+		return nil
 
 	def toCobraSource as String is override
 		return "TODO"
+
+

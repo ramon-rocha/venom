@@ -1,1 +1,5 @@
 
+namespace Venom.CobraSyntax
+
+class TraceStatement inherits Statement
+	pass

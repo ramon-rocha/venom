@@ -1,1 +1,5 @@
 
+namespace Venom.CobraSyntax
+
+class ThrowStatement inherits Statement
+	pass

@@ -1,1 +1,5 @@
 
+namespace Venom.CobraSyntax
+
+class ForStatement inherits Statement
+	pass

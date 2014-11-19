@@ -72,6 +72,34 @@
     <Compile Include="TestData\TestData.cobra" />
     <Compile Include="CobraSyntax\Statements\StatementList.cobra" />
     <Compile Include="CobraSyntax\Statements\PassStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\AssertStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\BranchStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ContinueStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ExpectStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ForStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\BreakStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\IfStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\IgnoreStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ListenStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\LockStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\RaiseStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ReturnStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ThrowStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\TraceStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\TryCatchBlock.cobra" />
+    <Compile Include="CobraSyntax\Statements\UsingStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\WhileStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\YieldStatement.cobra" />
+    <Compile Include="CobraSyntax\Statements\ExpressionStatements\CallStatement.cobra" />
+    <Compile Include="CobraSyntax\Expressions\UnaryOperatorExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\ParenthesizedExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\CollectionLiteral.cobra" />
+    <Compile Include="CobraSyntax\Expressions\StringLiteral.cobra" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
+  <ItemGroup>
+    <None Include="TestData\Notepad.cobra" />
+    <None Include="TestData\grammar.txt" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="ICSharpCode.NRefactory">
@@ -80,29 +108,5 @@
     <Reference Include="Mono.Cecil">
       <HintPath>lib\Mono.Cecil.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
-  <ItemGroup>
-    <None Include="CobraSyntax\Statements\AssertStatement.cobra" />
-    <None Include="CobraSyntax\Statements\BranchStatement.cobra" />
-    <None Include="CobraSyntax\Statements\BreakStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ContinueStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ExpectStatement.cobra" />
-    <None Include="CobraSyntax\Statements\LockStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ForStatement.cobra" />
-    <None Include="CobraSyntax\Statements\IfStatement.cobra" />
-    <None Include="CobraSyntax\Statements\IgnoreStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ListenStatement.cobra" />
-    <None Include="CobraSyntax\Statements\RaiseStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ReturnStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ThrowStatement.cobra" />
-    <None Include="CobraSyntax\Statements\TraceStatement.cobra" />
-    <None Include="CobraSyntax\Statements\TryCatchBlock.cobra" />
-    <None Include="CobraSyntax\Statements\UsingStatement.cobra" />
-    <None Include="CobraSyntax\Statements\WhileStatement.cobra" />
-    <None Include="CobraSyntax\Statements\YieldStatement.cobra" />
-    <None Include="CobraSyntax\Statements\ExpressionStatements\CallStatement.cobra" />
-    <None Include="TestData\Notepad.cobra" />
-    <None Include="TestData\grammar.txt" />
   </ItemGroup>
 </Project>

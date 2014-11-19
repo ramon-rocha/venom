@@ -18,16 +18,29 @@ class Statement
 	
 	If possible, do not put an implementation in this class.  Put it in StatementBehavior.
 	"""
-	def parse(stream as ITokenStream) as IStatement? is new, shared
-		# TODO
-		kind = stream.token.kind
-		branch kind
-			on TokenKind.PassKeyword
-				return PassStatement.parse(stream)
-			on TokenKind.PrintKeyword
-				return PrintStatement.parse(stream)
+	def parse(stream as ITokenStream) as IStatement is new, shared
+		branch stream.token.kind
+			on TokenKind.AssertKeyword, return AssertStatement.parse(stream)
+			on TokenKind.BranchKeyword, return BranchStatement.parse(stream)
+			on TokenKind.BreakKeyword, return BreakStatement.parse(stream)
+			on TokenKind.ContinueKeyword, return ContinueStatement.parse(stream)
+			on TokenKind.ExpectKeyword, return ExpectStatement.parse(stream)
+			on TokenKind.ForKeyword, return ForStatement.parse(stream)
+			on TokenKind.IfKeyword, return IfStatement.parse(stream)
+			on TokenKind.IgnoreKeyword, return IgnoreStatement.parse(stream)
+			on TokenKind.ListenKeyword, return ListenStatement.parse(stream)
+			on TokenKind.LockKeyword, return LockStatement.parse(stream) 
+			on TokenKind.PassKeyword, return PassStatement.parse(stream)
+			on TokenKind.PrintKeyword, return PrintStatement.parse(stream)
+			on TokenKind.RaiseKeyword, return RaiseStatement.parse(stream)
+			on TokenKind.ReturnKeyword, return ReturnStatement.parse(stream)
+			on TokenKind.ThrowKeyword, return ThrowStatement.parse(stream)
+			on TokenKind.TraceKeyword, return TraceStatement.parse(stream)
+			on TokenKind.TryKeyword, return TryCatchBlock.parse(stream)
+			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
+			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
 		
-		return nil # TODO
+		throw FallThroughException("Unsupported token kind: [stream.token.kind]")
 	
 	def toCobraSource as String is override
 		return "TODO"

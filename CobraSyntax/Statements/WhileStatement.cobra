@@ -1,2 +1,7 @@
 
 # includes PostStatement
+
+namespace Venom.CobraSyntax
+
+class WhileStatement inherits Statement
+	pass

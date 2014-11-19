@@ -223,7 +223,7 @@ class CobraParser
 			opToken = _stream.grab
 			exp = _makeExpression
 			return AssignmentStatement(
-				BinaryOperatorExpression(id, opToken, exp, nil),
+				BinaryOperatorExpression(id, opToken, exp),
 				_stream.skipToNextLine
 			)
 	
@@ -247,4 +247,4 @@ class CobraParser
 		skippedTokens = _stream.skipTo(TokenKind.CloseBracket)
 		closeBracket = skippedTokens.last
 		skippedTokens.remove(skippedTokens.last)
-		return ListLiteral(openBracket, closeBracket, NodeList(), skippedTokens)
+		return ListLiteral(openBracket, ExpressionList(), closeBracket)

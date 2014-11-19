@@ -3,7 +3,14 @@ namespace Venom.CobraSyntax
 class IdentifierExpression inherits Expression
 	adds ExpressionBehavior
 	implements IExpression
+
+	def parse(stream as ITokenStream) as IdentifierExpression is new, shared
+		kind = stream.token.kind
+		if kind == TokenKind.CallStart or kind == TokenKind.GenericIdentifierStart
+			return IdentifierExpression(Identifier.parse(stream)) # TODO
+		return IdentifierExpression(Identifier.parse(stream))
 	
+
 	cue init(id as Identifier)
 		base.init(id, nil)
 		_identifier = id

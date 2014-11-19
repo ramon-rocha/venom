@@ -19,6 +19,7 @@ class PrintStatement inherits Statement
 			assert stmt.destination == nil
 			assert stmt.extraTokens.count == 0
 			assert stmt.expressions.count == 1
+			assert stmt.expressions[0] inherits StringLiteral
 			assert stmt.lastToken.kind == TokenKind.EndOfLine
 			assert stmt.stopKeyword == nil
 
@@ -83,7 +84,7 @@ class PrintStatement inherits Statement
 				lastToken = stream.expect(TokenKind.Dedent)
 
 			else
-				stream.grabOptional(TokenKind.Comma)
+				stream.grabOptional(TokenKind.Comma) # TODO store these, they are grabbed as optional but it's actually a syntax error if they are missing
 				while stream.token.kind not in _endsPrintStatement
 					if expressions.count <> 0, stream.expect(TokenKind.Comma)
 					expressions.add(Expression.parse(stream))

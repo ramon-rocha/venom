@@ -1,1 +1,5 @@
 
+namespace Venom.CobraSyntax
+
+class LockStatement inherits Statement
+	pass

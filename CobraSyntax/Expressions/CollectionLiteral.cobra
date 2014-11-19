@@ -1,0 +1,60 @@
+﻿
+namespace Venom.CobraSyntax
+
+class CollectionLiteral
+	inherits LiteralExpression
+	is abstract
+	"""
+	The base class for list, dictionary, and other collection-like literals
+	"""
+	var validKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.ListStart,
+		TokenKind.ArrayStart,
+		TokenKind.SetStart,
+	]
+
+	def parse(stream as ITokenStream) as CollectionLiteral is new, shared
+		require stream.token.kind in .validKinds
+
+		startToken = stream.grab
+		while stream.token.kind not in @[TokenKind.ListEnd, TokenKind.SetEnd]
+			trace stream.grab
+		endToken = stream.grab
+
+		return ListLiteral(startToken, ExpressionList(), endToken) # TODO
+
+	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+		base.init(startToken, endToken, nil)
+		_elements = ExpressionList(elements)
+	
+	get elements from var as IReadOnlyList<of IExpression>
+
+	def toCobraSource as String is override
+		sb = StringBuilder()
+		for e in _elements
+			if sb.length <> 0, sb.append(', ')
+			sb.append(e.toCobraSource)
+		return "[_firstToken.text][sb.toString][_lastToken.text]"
+
+
+class ListLiteral inherits CollectionLiteral
+	"""
+	A literal list expression such as [1, 2, 3]
+	"""
+	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+		require
+			startToken.kind == TokenKind.ListStart
+			endToken.kind == TokenKind.ListenKeyword
+		body
+			base.init(startToken, elements, endToken)
+
+class ArrayLiteral inherits CollectionLiteral
+	"""
+	A literal array expression such as @[1, 2, 3]
+	"""
+	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+		require
+			startToken.kind == TokenKind.ArrayStart
+			endToken.kind == TokenKind.ArrayEnd
+		body
+			base.init(startToken, elements, endToken)

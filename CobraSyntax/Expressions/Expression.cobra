@@ -44,7 +44,7 @@ class Expression
 				return ParenthesizedExpression.parse(stream)
 			
 			on TokenKind.MemberAccessOperator
-				# leading dot
+				# leading dot, TODO: Don't grab it but just return implicit ThisLiteral?
 				dot = stream.grab
 				token = stream.token
 				if token.isKeyword
@@ -52,7 +52,7 @@ class Expression
 					stream.replace(token)
 				kind = token.kind
 				#.opStack.push(kind)
-				if kind in Identifier.validKinds
+				if kind in Identifier.validKinds # TODO: See CobraParser line 3032
 					memberExpression = IdentifierExpression.parse(stream)
 				#.opStack.pop
 				implicitThis = ThisLiteral(stream.expect(TokenKind.ThisKeyword))

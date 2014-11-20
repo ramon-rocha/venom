@@ -96,6 +96,7 @@
     <Compile Include="CobraSyntax\Expressions\CollectionLiteral.cobra" />
     <Compile Include="CobraSyntax\Expressions\StringLiteral.cobra" />
     <Compile Include="CobraSyntax\Expressions\IndexerExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\TypeExpression.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

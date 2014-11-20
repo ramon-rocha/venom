@@ -47,7 +47,7 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 	Declares a local parameter for a method
 	"""
 	get asKeyword from var as Cobra.Compiler.IToken?
-	get returnIdentifier from var as QualifiedIdentifier?
+	get returnIdentifier from var as TypeIdentifier?
 	get defaultValue from var as Expression?
 	get isOutputOnly from var as bool
 	get isInputAndOutput from var as bool
@@ -55,11 +55,11 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 	def parse(stream as ITokenStream) as ParameterDeclaration? is new, shared
 		id = Identifier.parse(stream)
 		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
-		if asKeyword, returnId = QualifiedIdentifier.parse(stream) to ?
+		if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
 		# TODO: in, inout, ref, vari, and =
 		return ParameterDeclaration(id, asKeyword, returnId)
 	
-	cue init(id as Identifier, asKeyword as Cobra.Compiler.IToken?, returnId as QualifiedIdentifier?)
+	cue init(id as Identifier, asKeyword as Cobra.Compiler.IToken?, returnId as TypeIdentifier?)
 		base.init(id)
 		_identifier = id
 		if asKeyword
@@ -78,7 +78,7 @@ class MethodSignature inherits SyntaxNode
 	"""
 	get parameterDeclarations from var as IReadOnlyList<of ParameterDeclaration>
 	get asKeyword from var as Cobra.Compiler.IToken?
-	get returnTypeIdentifier from var as QualifiedIdentifier?
+	get returnTypeIdentifier from var as TypeIdentifier?
 
 	def parse(stream as ITokenStream) as MethodSignature is new, shared
 		params = List<of ParameterDeclaration>()
@@ -87,14 +87,14 @@ class MethodSignature inherits SyntaxNode
 			params.add(ParameterDeclaration.parse(stream))
 		closeParens = stream.expect(TokenKind.CloseParenthesis)
 		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
-		if asKeyword, returnId = QualifiedIdentifier.parse(stream) to ?
+		if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
 		return MethodSignature(params, closeParens, asKeyword, returnId)
 	
 	cue init(
 		params as IReadOnlyList<of ParameterDeclaration>,
 		closeParens as Cobra.Compiler.IToken,
 		asKeyword as Cobra.Compiler.IToken?,
-		returnTypeId as QualifiedIdentifier?
+		returnTypeId as TypeIdentifier?
 	)
 		base.init
 		_parameterDeclarations = List<of ParameterDeclaration>(params)

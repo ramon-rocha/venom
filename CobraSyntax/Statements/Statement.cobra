@@ -18,6 +18,7 @@ class Statement
 	
 	If possible, do not put an implementation in this class.  Put it in StatementBehavior.
 	"""
+
 	def parse(stream as ITokenStream) as IStatement is new, shared
 		branch stream.token.kind
 			on TokenKind.AssertKeyword, return AssertStatement.parse(stream)
@@ -39,6 +40,14 @@ class Statement
 			on TokenKind.TryKeyword, return TryCatchBlock.parse(stream)
 			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
 			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
+			else
+				# TODO return ExpressionStatement.parse(stream)
+				expr = Expression.parse(stream)
+				skipped = stream.skipToNextLine
+				if expr inherits BinaryOperatorExpression
+					if expr.operatorToken.kind == TokenKind.AssignmentOperator
+						return AssignmentStatement(expr, skipped)
+				
 		
 		throw FallThroughException("Unsupported token kind: [stream.token.kind]")
 	

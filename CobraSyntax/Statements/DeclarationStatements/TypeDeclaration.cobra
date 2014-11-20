@@ -20,14 +20,14 @@ class TypeSpecification
 	var _attributes as IList<of String>
 	get attributes from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
 
-	var _baseTypes as IList<of QualifiedIdentifier>
-	get baseTypes from var as IReadOnlyList<of QualifiedIdentifier>
+	var _baseTypes as IList<of TypeIdentifier>
+	get baseTypes from var as IReadOnlyList<of TypeIdentifier>
 
-	var _interfaces as IList<of QualifiedIdentifier>
-	get interfaces from var as IReadOnlyList<of QualifiedIdentifier>
+	var _interfaces as IList<of TypeIdentifier>
+	get interfaces from var as IReadOnlyList<of TypeIdentifier>
 
-	var _mixins as IList<of QualifiedIdentifier>
-	get mixins from var as IReadOnlyList<of QualifiedIdentifier>
+	var _mixins as IList<of TypeIdentifier>
+	get mixins from var as IReadOnlyList<of TypeIdentifier>
 
 	var _genericConstraints as IList<of ISyntaxNode>
 	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
@@ -41,9 +41,9 @@ class TypeSpecification
 		base.init
 		_isNames = List<of String>()
 		_attributes = List<of String>()
-		_baseTypes = List<of QualifiedIdentifier>()
-		_interfaces = List<of QualifiedIdentifier>()
-		_mixins = List<of QualifiedIdentifier>()
+		_baseTypes = List<of TypeIdentifier>()
+		_interfaces = List<of TypeIdentifier>()
+		_mixins = List<of TypeIdentifier>()
 		_genericConstraints = List<of ISyntaxNode>()
 	
 	def toCobraSource as String is override
@@ -74,7 +74,7 @@ class TypeDeclaration
 	def parse(stream as ITokenStream) as TypeDeclaration is new, shared
 		require stream.token.kind in TokenKind.typeDeclarationKeywords
 		kw = stream.grabOneOf(TokenKind.typeDeclarationKeywords)
-		id = Identifier.parse(stream)
+		id = Identifier.parse(stream) # don't use TypeIdentifier.parse here because this is not allowed to be qualified
 		isSig = kw.kind == TokenKind.SigKeyword
 		if isSig and id.firstToken.kind == TokenKind.CallStart
 			signature = MethodSignature.parse(stream) to ?

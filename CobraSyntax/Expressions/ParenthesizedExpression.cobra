@@ -3,7 +3,7 @@ namespace Venom.CobraSyntax
 
 class ParenthesizedExpression inherits Expression
 	
-	def parse(stream as ITokenStream) as IExpression? is new, shared
+	def parse(stream as ITokenStream) as IExpression is new, shared
 		test
 			pass # TODO
 		body

@@ -1,0 +1,5 @@
+﻿
+namespace Venom.CobraSyntax
+
+class TypeExpression inherits Expression
+	pass

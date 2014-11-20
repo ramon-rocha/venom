@@ -18,25 +18,24 @@ class Expression
 	
 	If possible, do not put an implementation in this class.  Put it in ExpressionBehavior.
 	"""
-	def parse(stream as ITokenStream) as IExpression? is new, shared
+	def parse(stream as ITokenStream) as IExpression is new, shared
 		return _parse(stream, 0, nil)
 
-	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression? is shared
+	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression is shared
 		left = leftExpr ? _parse(stream)
 		# TODO
 
 		while true
 			
 			opKind = stream.token.kind
-			nextKind = stream.peek.kind
 
 			if opKind == TokenKind.ReferenceEqualityOperator _
-			and nextKind == TokenKind.LogicalNotOperator
+			and stream.peek.kind == TokenKind.LogicalNotOperator
 				prev = stream.grab
 				stream.replace(prev.copy(TokenKind.NonReferenceEqualityOperator, "is not"))
 				opKind = stream.token.kind
 			else if opKind == TokenKind.LogicalNotOperator _
-			and nextKind == TokenKind.MembershipCheckOperator
+			and stream.peek.kind == TokenKind.MembershipCheckOperator
 				prev = stream.grab
 				stream.replace(prev.copy(TokenKind.NonMembershipCheckOperator, "not in"))
 				opKind = stream.token.kind
@@ -50,23 +49,31 @@ class Expression
 				indexer = IndexerExpression.parse(stream)
 				return _parse(stream, precedence, IndexedExpression(left, indexer))
 
-			else if opKind == TokenKind.CallStart
+			else if opKind == TokenKind.OpenParenthesis
 				# TODO see CobraParser line 2921
-				return nil
+				return left
 			
-			#_leftStack.push(left)
-			#.opStack.push(opKind)
-			try
-				# TODO: See Cobra Parser 2946
-				pass
-			finally
-				#.opStack.pop
-				#_leftStack.pop
-				pass
+			opToken = stream.grab
+			assert opKind == opToken.kind
+			assert TokenKind.binaryOperatorPrecedence.containsKey(opKind)
+			precedence = binaryOpPrecedence
+			if Cobra.Compiler.OperatorSpecs.rightAssoc.containsKey(opKind) # TODO: move into Venom
+				precedence += 1
+			
+			right as IExpression? = nil
+			if opKind == TokenKind.TypeCastOperator or opKind == TokenKind.NilCoalescingCastOperator
+				right = TypeExpression.parse(stream)
+			else if opKind == TokenKind.MemberAccessOperator and stream.token.isKeyword
+				stream.replace(stream.token.copy(TokenKind.Identifier))
+				right = IdentifierExpression.parse(stream) # TODO: MemberExpression.parse(stream)
+			else
+				right = _parse(stream, precedence, nil)
+			
+			left = BinaryOperatorExpression(left, opToken, right) # TODO return subclass based on opKind
 
 		return left
 
-	def _parse(stream as ITokenStream) as IExpression? is shared
+	def _parse(stream as ITokenStream) as IExpression is shared
 		
 		kind = stream.token.kind
 
@@ -84,10 +91,10 @@ class Expression
 			on TokenKind.Identifier, return IdentifierExpression.parse(stream)
 			
 			on TokenKind.CallStart
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 			on TokenKind.GenericIdentifierStart
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 			on TokenKind.OpenParenthesis
 				return ParenthesizedExpression.parse(stream)
@@ -104,7 +111,7 @@ class Expression
 
 			on TokenKind.FieldKeyword
 				# TODO, shouldn't be here, right?  this is for things such as 'get foo from var'
-				return nil
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 			on TokenKind.SingleQuotedCharacter or TokenKind.DoubleQuotedCharacter
 				return CharacterLiteral(stream.grab)
@@ -115,20 +122,21 @@ class Expression
 			on TokenKind.FloatLiteral, return FloatLiteral(stream.grab)
 			
 			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 			
 			on TokenKind.IfExpressionStart
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 			on TokenKind.ForKeyword
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 			
 			on TokenKind.TryKeyword
-				return nil # TODO
+				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 			else
 				trace stream.token  # TODO : see CobraParser line 3109
-		return nil
+		
+		return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
 	def toCobraSource as String is override
 		return "TODO"

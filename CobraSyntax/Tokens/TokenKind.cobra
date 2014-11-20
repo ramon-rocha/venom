@@ -12,11 +12,32 @@ class TokenKind
 	
 	#region Cobra Types
 	const IntegerType = 'INT'
+	const IntegerSizeType = 'INT_SIZE'
+	const UnsignedIntegerType = 'UINT'
+	const UnsignedIntegerSizeType = 'UINT_SIZE'
+	const BooleanType = 'BOOL'
+	const CharacterType = 'CHAR'
+	const DecimalType = 'DECIMAL'
+	const FloatType = 'FLOAT'
+	const FloatSizeType = 'FLOAT_SIZE'
+	const NumberType = 'NUMBER'
+	const PassthroughType = 'PASSTHROUGH'
+	const DynamicType = 'DYNAMIC'
 
-	shared, readonly
-		var cobraTypes = @[
-			.IntegerType
-		]
+	var cobraTypes as IReadOnlyList<of String> is shared, readonly = [
+		.IntegerType,
+		.IntegerSizeType,
+		.UnsignedIntegerType,
+		.UnsignedIntegerSizeType,
+		.BooleanType,
+		.CharacterType,
+		.DecimalType,
+		.FloatType,
+		.FloatSizeType,
+		.NumberType,
+		.PassthroughType,
+		.DynamicType
+	]
 	#endregion
 
 	#region Numeric Literals
@@ -90,7 +111,7 @@ class TokenKind
 	const NonNilCoalescingOperator = .ExclamationPoint
 
 	const TypeCastOperator = .ToKeyword
-	const NilableCastOperator = 'TOQ'
+	const NilCoalescingCastOperator = 'TOQ'
 
 	const MultiplicationOperator = 'STAR'
 	const DivisionOperator = 'SLASH'
@@ -164,7 +185,7 @@ class TokenKind
 			.NonNilCoalescingOperator: 68,
 			
 			.TypeCastOperator: 65,
-			.NilableCastOperator: 65,
+			.NilCoalescingCastOperator: 65,
 			
 			.MultiplicationOperator: 60,
 			.DivisionOperator: 60,

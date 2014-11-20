@@ -4,5 +4,6 @@ namespace Venom.CobraSyntax
 class AssignmentStatement
 	inherits ExpressionStatement
 	
-	cue init(exp as BinaryOperatorExpression, extraTokens as TokenList?)
-		base.init(exp, extraTokens)
+	cue init(expr as BinaryOperatorExpression, extraTokens as TokenList?)
+		require expr.operatorToken.kind == TokenKind.AssignmentOperator
+		base.init(expr, extraTokens)

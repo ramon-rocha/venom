@@ -140,8 +140,8 @@ class MethodSpecification
 	var _attributes as IList<of String>
 	get attributes from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
 
-	var _interfaces as IList<of QualifiedIdentifier>
-	get interfaces from var as IReadOnlyList<of QualifiedIdentifier>
+	var _interfaces as IList<of TypeIdentifier>
+	get interfaces from var as IReadOnlyList<of TypeIdentifier>
 
 	var _genericConstraints as IList<of ISyntaxNode>
 	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
@@ -155,7 +155,7 @@ class MethodSpecification
 		base.init
 		_isNames = List<of String>()
 		_attributes = List<of String>()
-		_interfaces = List<of QualifiedIdentifier>()
+		_interfaces = List<of TypeIdentifier>()
 		_genericConstraints = List<of ISyntaxNode>()
 	
 	def toCobraSource as String is override

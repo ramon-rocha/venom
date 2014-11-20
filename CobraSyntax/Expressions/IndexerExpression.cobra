@@ -1,0 +1,113 @@
+﻿
+namespace Venom.CobraSyntax
+
+class IndexedExpression inherits BinaryOperatorExpression
+
+	def parse(stream as ITokenStream) as IndexedExpression is new, shared
+		test
+			source = r'list[index]'
+			stream = TokenStream(source, 'test.cobra')
+			expr = IndexedExpression.parse(stream)
+			assert expr.leftExpression inherits IdentifierExpression
+			assert expr.indexer is expr.rightExpression
+			assert expr.indexer.expressions.count == 1
+			assert expr.indexer.expressions[0] inherits IdentifierExpression
+			assert expr.toCobraSource == source
+		test
+			source = r'list[1:2:10]'
+			stream = TokenStream(source, 'test.cobra')
+			expr = IndexedExpression.parse(stream)
+			assert expr.leftExpression inherits IdentifierExpression
+			assert expr.indexer is expr.rightExpression
+			assert expr.indexer.expressions.count == 3
+			assert all for e in expr.indexer.expressions get e inherits IntegerLiteral
+			assert expr.toCobraSource == source
+		body
+			return Expression.parse(stream) to IndexedExpression
+
+	cue init(left as IExpression, right as IndexerExpression)
+		base.init(left, right.firstToken, right)
+	
+	get indexer as IndexerExpression
+		return _rightExpression to IndexerExpression
+	
+	def toCobraSource as String is override
+		return _leftExpression.toCobraSource + _rightExpression.toCobraSource
+
+class IndexerExpression inherits Expression
+	"""
+	The index portion of an indexed expression.
+	For example in 'foo[i]' the IndexerExpression is '[i]'.
+	Can also be used when slicing such as 'foo[i:j:k]'.
+	"""
+	
+	var _validSeparators as IReadOnlyList<of String> is readonly, shared = [
+		TokenKind.Colon,
+		TokenKind.Comma
+	]
+
+	def parse(stream as ITokenStream) as IndexerExpression is new, shared
+		require stream.token.kind == TokenKind.IndexerStart
+		startToken = stream.expect(TokenKind.IndexerStart)
+		expressions = List<of IExpression?>()
+		separators = TokenList()
+		separatorKind as String? = nil
+		while true
+			if stream.token.kind == TokenKind.IndexerEnd
+				break
+			
+			if expressions.count <> 0
+				if separatorKind <> nil
+					separators.add(stream.expect(separatorKind))
+				else
+					assert separators.count == 0
+					separators.add(stream.grabOneOf(_validSeparators))
+					separatorKind = separators[0].kind
+			
+			if stream.token.kind == TokenKind.Colon
+				expressions.add(nil)
+				separators.add(stream.grab)
+				separatorKind ?= TokenKind.Colon
+				continue
+			
+			if stream.token.kind == TokenKind.IndexerEnd
+				break
+			
+			# TODO .newOpStack
+			try
+				expressions.add(Expression.parse(stream))
+			finally
+				pass # TODO .delOpStack
+		
+		endToken = stream.expect(TokenKind.IndexerEnd)
+		return IndexerExpression(startToken, expressions, separators, endToken)
+
+	cue init(startBracket as Cobra.Compiler.IToken, expressions as IExpression?*, separators as IReadOnlyList<of Cobra.Compiler.IToken>, endBracket as Cobra.Compiler.IToken)
+		ensure
+			_expressions.count > .childCount implies nil in _expressions
+		body
+			base.init(startBracket, endBracket, nil)
+			for e in expressions
+				if e <> nil, _addChild(e)
+			_expressions = List<of IExpression?>(expressions)
+			_separators = TokenList(separators)
+	
+	get expressions from var as IReadOnlyList<of IExpression?>
+	get separators from var as IReadOnlyList<of Cobra.Compiler.IToken>
+
+	def toCobraSource as String is override
+		sb = StringBuilder(_firstToken.text)
+		exprIndex = sepIndex = 0
+		while exprIndex < _expressions.count or sepIndex < _separators.count
+			
+			if exprIndex < _expressions.count
+				e = _expressions[exprIndex]
+				if e <> nil, sb.append(e.toCobraSource)
+				exprIndex += 1
+
+			if sepIndex < _separators.count
+				sb.append(_separators[sepIndex].text)
+				sepIndex += 1
+
+		sb.append(_lastToken.text)
+		return sb.toString

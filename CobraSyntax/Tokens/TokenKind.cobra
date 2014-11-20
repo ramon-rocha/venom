@@ -56,6 +56,7 @@ class TokenKind
 	
 	#region Operators and Delimiters
 	const Comma = 'COMMA'
+	const Colon = 'COLON'
 	const Dot = 'DOT'
 	const QuestionMark = 'QUESTION'
 	const ExclamationPoint = 'BANG'

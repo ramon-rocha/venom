@@ -24,6 +24,46 @@ class Expression
 	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression? is shared
 		left = leftExpr ? _parse(stream)
 		# TODO
+
+		while true
+			
+			opKind = stream.token.kind
+			nextKind = stream.peek.kind
+
+			if opKind == TokenKind.ReferenceEqualityOperator _
+			and nextKind == TokenKind.LogicalNotOperator
+				prev = stream.grab
+				stream.replace(prev.copy(TokenKind.NonReferenceEqualityOperator, "is not"))
+				opKind = stream.token.kind
+			else if opKind == TokenKind.LogicalNotOperator _
+			and nextKind == TokenKind.MembershipCheckOperator
+				prev = stream.grab
+				stream.replace(prev.copy(TokenKind.NonMembershipCheckOperator, "not in"))
+				opKind = stream.token.kind
+			
+			binaryOpPrecedence as int
+			if not TokenKind.binaryOperatorPrecedence.tryGetValue(opKind, out binaryOpPrecedence) _
+			or binaryOpPrecedence < precedence
+				return left
+			
+			if opKind == TokenKind.IndexerStart
+				indexer = IndexerExpression.parse(stream)
+				return _parse(stream, precedence, IndexedExpression(left, indexer))
+
+			else if opKind == TokenKind.CallStart
+				# TODO see CobraParser line 2921
+				return nil
+			
+			#_leftStack.push(left)
+			#.opStack.push(opKind)
+			try
+				# TODO: See Cobra Parser 2946
+				pass
+			finally
+				#.opStack.pop
+				#_leftStack.pop
+				pass
+
 		return left
 
 	def _parse(stream as ITokenStream) as IExpression? is shared
@@ -40,23 +80,22 @@ class Expression
 			return StringLiteral.parse(stream)
 		
 		branch kind
+
+			on TokenKind.Identifier, return IdentifierExpression.parse(stream)
+			
+			on TokenKind.CallStart
+				return nil # TODO
+
+			on TokenKind.GenericIdentifierStart
+				return nil # TODO
+
 			on TokenKind.OpenParenthesis
 				return ParenthesizedExpression.parse(stream)
 			
 			on TokenKind.MemberAccessOperator
-				# leading dot, TODO: Don't grab it but just return implicit ThisLiteral?
-				dot = stream.grab
-				token = stream.token
-				if token.isKeyword
-					token = token.copy(TokenKind.Identifier)
-					stream.replace(token)
-				kind = token.kind
-				#.opStack.push(kind)
-				if kind in Identifier.validKinds # TODO: See CobraParser line 3032
-					memberExpression = IdentifierExpression.parse(stream)
-				#.opStack.pop
+				# leading dot such as in '.foo'
 				implicitThis = ThisLiteral(stream.expect(TokenKind.ThisKeyword))
-				return MemberAccessExpression(implicitThis, dot, memberExpression)
+				return implicitThis
 			
 			on TokenKind.NilKeyword, return NilLiteral(stream.grab)
 			on TokenKind.TrueKeyword or TokenKind.FalseKeyword, return BooleanLiteral(stream.grab)
@@ -86,15 +125,6 @@ class Expression
 			
 			on TokenKind.TryKeyword
 				return nil # TODO
-			
-			on TokenKind.CallStart
-				return nil # TODO
-
-			on TokenKind.GenericIdentifierStart
-				return nil # TODO
-
-			on TokenKind.Identifier
-				return IdentifierExpression(Identifier.parse(stream))
 
 			else
 				trace stream.token  # TODO : see CobraParser line 3109

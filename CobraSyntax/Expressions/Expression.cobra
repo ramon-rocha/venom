@@ -69,7 +69,8 @@ class Expression
 			else
 				right = _parse(stream, precedence, nil)
 			
-			left = BinaryOperatorExpression(left, opToken, right) # TODO return subclass based on opKind
+			binOpType = BinaryOperatorExpression.typeMap[opKind]
+			left =  binOpType(left, opToken, right)
 
 		return left
 

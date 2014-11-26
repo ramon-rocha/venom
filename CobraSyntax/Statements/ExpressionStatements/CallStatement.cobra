@@ -1,8 +1,0 @@
-
-namespace Venom.CobraSyntax
-
-class CallStatement
-	inherits ExpressionStatement
-
-	cue init(expr as BinaryOperatorExpression, extraTokens as TokenList?)
-		base.init(expr, extraTokens)

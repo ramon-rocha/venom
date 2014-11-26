@@ -223,7 +223,7 @@ class CobraParser
 			opToken = _stream.grab
 			exp = _makeExpression
 			return AssignmentStatement(
-				BinaryOperatorExpression(id, opToken, exp),
+				AssignmentExpression(id, opToken, exp),
 				_stream.skipToNextLine
 			)
 	

@@ -15,7 +15,6 @@ CobraSyntax/Tokens/*.cobra \
 CobraSyntax/Expressions/*.cobra \
 CobraSyntax/Statements/*.cobra \
 CobraSyntax/Statements/DeclarationStatements/*.cobra \
-CobraSyntax/Statements/ExpressionStatements/*.cobra \
 TestData/TestData.cobra
 
 rm test-*

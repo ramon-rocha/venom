@@ -38,7 +38,6 @@
     <Folder Include="CobraSyntax\Statements\" />
     <Folder Include="CobraSyntax\Expressions\" />
     <Folder Include="CobraSyntax\Parser\" />
-    <Folder Include="CobraSyntax\Statements\ExpressionStatements\" />
     <Compile Include="TypeSystem\CobraProjectContent.cobra" />
     <Compile Include="TypeSystem\CobraAssembly.cobra" />
     <Compile Include="TypeSystem\CobraTypeResolveContext.cobra" />
@@ -51,8 +50,6 @@
     <Compile Include="CobraSyntax\AccessModifiers.cobra" />
     <Compile Include="CobraSyntax\Expressions\LiteralExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\BinaryOperatorExpression.cobra" />
-    <Compile Include="CobraSyntax\Statements\ExpressionStatements\AssignmentStatement.cobra" />
-    <Compile Include="CobraSyntax\Statements\ExpressionStatements\ExpressionStatement.cobra" />
     <Compile Include="CobraSyntax\Identifier.cobra" />
     <Compile Include="CobraSyntax\Expressions\IdentifierExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\ExpressionList.cobra" />
@@ -90,13 +87,13 @@
     <Compile Include="CobraSyntax\Statements\UsingStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\WhileStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\YieldStatement.cobra" />
-    <Compile Include="CobraSyntax\Statements\ExpressionStatements\CallStatement.cobra" />
     <Compile Include="CobraSyntax\Expressions\UnaryOperatorExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\ParenthesizedExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\CollectionLiteral.cobra" />
     <Compile Include="CobraSyntax\Expressions\StringLiteral.cobra" />
     <Compile Include="CobraSyntax\Expressions\IndexerExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\TypeExpression.cobra" />
+    <Compile Include="CobraSyntax\Statements\ExpressionStatement.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

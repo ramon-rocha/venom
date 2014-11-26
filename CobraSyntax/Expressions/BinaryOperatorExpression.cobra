@@ -2,6 +2,13 @@
 namespace Venom.CobraSyntax
 
 class BinaryOperatorExpression inherits Expression
+	is abstract
+
+	var typeMap as IReadOnlyDictionary<of String, Type> is shared, readonly = {
+		TokenKind.AssignmentOperator: AssignmentExpression,
+		TokenKind.MemberAccessOperator: MemberAccessExpression
+	}
+
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
 		base.init(left.firstToken, right.lastToken, nil)
 		_leftExpression, _operatorToken, _rightExpression = left, op, right
@@ -16,6 +23,11 @@ class BinaryOperatorExpression inherits Expression
 		sb = StringBuilder(base._toPrettyString)
 		sb.append("([_operatorToken.text])")
 		return sb.toString
+
+class AssignmentExpression inherits BinaryOperatorExpression
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.AssignmentOperator
+		base.init(left, op, right)
 
 class MemberAccessExpression inherits BinaryOperatorExpression
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)

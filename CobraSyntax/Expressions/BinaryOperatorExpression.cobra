@@ -3,10 +3,57 @@ namespace Venom.CobraSyntax
 
 class BinaryOperatorExpression inherits Expression
 	is abstract
+	"""
+	A binary operation expression consists of two expressions separated by one token
+	such as 'x + y'.
+	"""
 
 	var typeMap as IReadOnlyDictionary<of String, Type> is shared, readonly = {
 		TokenKind.AssignmentOperator: AssignmentExpression,
-		TokenKind.MemberAccessOperator: MemberAccessExpression
+		TokenKind.MemberAccessOperator: MemberAccessExpression,
+		TokenKind.TypeCastOperator: TypeCastExpression,
+		TokenKind.NilCoalescingCastOperator: NilCoalescingCastExpression,
+		TokenKind.NilCoalescingOperator: NilCoalescingExpression,
+		TokenKind.NilCoalesceAndAssignOperator: NilCoalesceAndAssignExpression,
+		TokenKind.NonNilCoalescingOperator: NonNilCoalescingExpression,
+		TokenKind.NonNilCoalesceAndAssignOperator: NonNilCoalesceAndAssignExpression,
+		TokenKind.InheritanceCheckOperator: InheritanceCheckExpression,
+		TokenKind.ImplementationCheckOperator: ImplementationCheckExpression,
+		TokenKind.MembershipCheckOperator: MembershipCheckExpression,
+		TokenKind.NonMembershipCheckOperator: NonMembershipExpression,
+		TokenKind.ReferenceEqualityOperator: ReferenceEqualityExpression,
+		TokenKind.NonReferenceEqualityOperator: NonReferenceEqualityExpression,
+		TokenKind.EqualityComparisonOperator: EqualityComparisonExpression,
+		TokenKind.InequalityComparisonOperator: InequalityComparisonExpression,
+		TokenKind.LessThanOperator: LessThanExpression,
+		TokenKind.LessThanEqualToOperator: LessThanEqualToExpression,
+		TokenKind.GreaterThanOperator: GreaterThanExpression,
+		TokenKind.GreaterThanEqualToOperator: GreaterThanEqualToExpression,
+		TokenKind.LogicalAndOperator: LogicalAndExpression,
+		TokenKind.LogicalOrOperator: LogicalOrExpression,
+		TokenKind.ImplicationOperator: ImplicationExpression,
+		TokenKind.AdditionOperator: AdditionExpression,
+		TokenKind.AddAndAssignOperator: AddAndAssignExpression,
+		TokenKind.SubtractionOperator: SubtractionExpression,
+		TokenKind.SubtractAndAssignOperator: SubtractAndAssignExpression,
+		TokenKind.MultiplicationOperator: MultiplicationExpression,
+		TokenKind.MultiplyAndAssignOperator: MultiplyAndAssignExpression,
+		TokenKind.ExponentiationOperator: ExponentiationExpression,
+		TokenKind.ExponentAndAssignOperator: ExponentAndAssignExpression,
+		TokenKind.DivisionOperator: DivisionExpression,
+		TokenKind.DivideAndAssignOperator: DivideAndAssignExpression,
+		TokenKind.IntegerDivisionOperator: IntegerDivisionExpression,
+		TokenKind.IntegerDivideAndAssignOperator: IntegerDivideAndAssignExpression,
+		TokenKind.BitwiseAndOperator: BitwiseAndExpression,
+		TokenKind.BitwiseAndAndAssignOperator: BitwiseAndAndAssignExpression,
+		TokenKind.BitwiseOrOperator: BitwiseOrExpression,
+		TokenKind.BitwiseOrAndAssignOperator: BitwiseOrAndAssignExpression,
+		TokenKind.BitwiseXorOperator: BitwiseXorExpression,
+		TokenKind.BitwiseXorAndAssignOperator: BitwiseXorAndAssignExpression,
+		TokenKind.BitwiseShiftLeftOperator: BitwiseShiftLeftExpression,
+		TokenKind.BitShiftLeftAndAssignOperator: BitShiftLeftAndAssignExpression,
+		TokenKind.BitwiseShiftRightOperator: BitwiseShiftRightExpression,
+		TokenKind.BitShiftRightAndAssignOperator: BitShiftRightAndAssignExpression
 	}
 
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
@@ -25,11 +72,271 @@ class BinaryOperatorExpression inherits Expression
 		return sb.toString
 
 class AssignmentExpression inherits BinaryOperatorExpression
+	"""foo = bar"""
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
 		require op.kind == TokenKind.AssignmentOperator
 		base.init(left, op, right)
 
 class MemberAccessExpression inherits BinaryOperatorExpression
+	"""foo.bar"""
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
 		require op.kind == TokenKind.MemberAccessOperator
+		base.init(left, op, right)
+
+class TypeCastExpression inherits BinaryOperatorExpression
+	"""foo to Bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.TypeCastOperator
+		base.init(left, op, right)
+
+class NilCoalescingCastExpression inherits BinaryOperatorExpression
+	"""foo to? Bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NilCoalescingCastOperator
+		base.init(left, op, right)
+
+class NilCoalescingExpression inherits BinaryOperatorExpression
+	"""foo ? bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NilCoalescingOperator
+		base.init(left, op, right)
+
+class NonNilCoalescingExpression inherits BinaryOperatorExpression
+	"""foo ! bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NonNilCoalescingOperator
+		base.init(left, op, right)
+
+class NilCoalesceAndAssignExpression inherits BinaryOperatorExpression
+	"""foo ?= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NilCoalesceAndAssignOperator
+		base.init(left, op, right)
+
+class NonNilCoalesceAndAssignExpression inherits BinaryOperatorExpression
+	"""foo != bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NonNilCoalesceAndAssignOperator
+		base.init(left, op, right)
+
+class InheritanceCheckExpression inherits BinaryOperatorExpression
+	"""foo inherits Bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.InheritanceCheckOperator
+		base.init(left, op, right)
+
+class ImplementationCheckExpression inherits BinaryOperatorExpression
+	"""foo implements IBar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ImplementationCheckOperator
+		base.init(left, op, right)
+
+class MembershipCheckExpression inherits BinaryOperatorExpression
+	"""foo in bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.MembershipCheckOperator
+		base.init(left, op, right)
+
+class NonMembershipExpression inherits BinaryOperatorExpression
+	"""foo not in bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NonMembershipCheckOperator
+		base.init(left, op, right)
+
+class ReferenceEqualityExpression inherits BinaryOperatorExpression
+	"""foo is bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ReferenceEqualityOperator
+		base.init(left, op, right)
+
+class NonReferenceEqualityExpression inherits BinaryOperatorExpression
+	"""foo is not bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NonReferenceEqualityOperator
+		base.init(left, op, right)
+
+class EqualityComparisonExpression inherits BinaryOperatorExpression
+	"""foo == bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.EqualityComparisonOperator
+		base.init(left, op, right)
+
+class InequalityComparisonExpression inherits BinaryOperatorExpression
+	"""foo <> bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.InequalityComparisonOperator
+		base.init(left, op, right)
+
+class LessThanExpression inherits BinaryOperatorExpression
+	"""foo < bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.LessThanOperator
+		base.init(left, op, right)
+
+class LessThanEqualToExpression inherits BinaryOperatorExpression
+	"""foo <= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.LessThanEqualToOperator
+		base.init(left, op, right)
+
+class GreaterThanExpression inherits BinaryOperatorExpression
+	"""foo > bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.NilCoalesceAndAssignOperator
+		base.init(left, op, right)
+
+class GreaterThanEqualToExpression inherits BinaryOperatorExpression
+	"""foo >= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.GreaterThanEqualToOperator
+		base.init(left, op, right)
+
+class LogicalAndExpression inherits BinaryOperatorExpression
+	"""foo and bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.LogicalAndOperator
+		base.init(left, op, right)
+
+class LogicalOrExpression inherits BinaryOperatorExpression
+	"""foo or bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.LogicalOrOperator
+		base.init(left, op, right)
+
+class ImplicationExpression inherits BinaryOperatorExpression
+	"""foo implies bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ImplicationOperator
+		base.init(left, op, right)
+
+class AdditionExpression inherits BinaryOperatorExpression
+	"""foo + bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.AdditionOperator
+		base.init(left, op, right)
+
+class SubtractionExpression inherits BinaryOperatorExpression
+	"""foo - bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.SubtractionOperator
+		base.init(left, op, right)
+
+class AddAndAssignExpression inherits BinaryOperatorExpression
+	"""foo += bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.AddAndAssignOperator
+		base.init(left, op, right)
+
+class SubtractAndAssignExpression inherits BinaryOperatorExpression
+	"""foo -= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.SubtractAndAssignOperator
+		base.init(left, op, right)
+
+class MultiplicationExpression inherits BinaryOperatorExpression
+	"""foo * bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.MultiplicationOperator
+		base.init(left, op, right)
+
+class MultiplyAndAssignExpression inherits BinaryOperatorExpression
+	"""foo *= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.MultiplyAndAssignOperator
+		base.init(left, op, right)
+
+class ExponentiationExpression inherits BinaryOperatorExpression
+	"""foo ** bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ExponentiationOperator
+		base.init(left, op, right)
+
+class ExponentAndAssignExpression inherits BinaryOperatorExpression
+	"""foo **= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ExponentAndAssignOperator
+		base.init(left, op, right)
+
+class DivisionExpression inherits BinaryOperatorExpression
+	"""foo / bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.DivisionOperator
+		base.init(left, op, right)
+
+class DivideAndAssignExpression inherits BinaryOperatorExpression
+	"""foo /= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.DivideAndAssignOperator
+		base.init(left, op, right)
+
+class IntegerDivisionExpression inherits BinaryOperatorExpression
+	"""foo // bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.IntegerDivisionOperator
+		base.init(left, op, right)
+
+class IntegerDivideAndAssignExpression inherits BinaryOperatorExpression
+	"""foo //= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.IntegerDivideAndAssignOperator
+		base.init(left, op, right)
+
+class BitwiseAndExpression inherits BinaryOperatorExpression
+	"""foo & bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseAndOperator
+		base.init(left, op, right)
+
+class BitwiseAndAndAssignExpression inherits BinaryOperatorExpression
+	"""foo &= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseAndAndAssignOperator
+		base.init(left, op, right)
+
+class BitwiseOrExpression inherits BinaryOperatorExpression
+	"""foo | bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseOrOperator
+		base.init(left, op, right)
+
+class BitwiseOrAndAssignExpression inherits BinaryOperatorExpression
+	"""foo |= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseOrAndAssignOperator
+		base.init(left, op, right)
+
+class BitwiseXorExpression inherits BinaryOperatorExpression
+	"""foo ^ bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseXorOperator
+		base.init(left, op, right)
+
+class BitwiseXorAndAssignExpression inherits BinaryOperatorExpression
+	"""foo ^= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseXorAndAssignOperator
+		base.init(left, op, right)
+
+class BitwiseShiftLeftExpression inherits BinaryOperatorExpression
+	"""foo << bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseShiftLeftOperator
+		base.init(left, op, right)
+
+class BitShiftLeftAndAssignExpression inherits BinaryOperatorExpression
+	"""foo <<= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitShiftLeftAndAssignOperator
+		base.init(left, op, right)
+
+class BitwiseShiftRightExpression inherits BinaryOperatorExpression
+	"""foo >> bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitwiseShiftRightOperator
+		base.init(left, op, right)
+
+class BitShiftRightAndAssignExpression inherits BinaryOperatorExpression
+	"""foo >>= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.BitShiftRightAndAssignOperator
 		base.init(left, op, right)

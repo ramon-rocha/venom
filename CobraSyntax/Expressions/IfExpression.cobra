@@ -1,0 +1,44 @@
+﻿
+namespace Venom.CobraSyntax
+
+class IfExpression inherits Expression
+	
+	def parse(stream as ITokenStream) as IfExpression is new, shared
+		test
+			source = 'if(x, 1, 2)'
+			stream = TokenStream(source, 'test.cobra')
+			ifExpr = IfExpression.parse(stream)
+			assert ifExpr.condition inherits IdentifierExpression
+			assert ifExpr.trueExpression inherits IntegerLiteral
+			assert ifExpr.falseExpression inherits IntegerLiteral
+		body
+			ifToken = stream.expect(TokenKind.IfExpressionStart)
+			condExpr = Expression.parse(stream)
+			comma1 = stream.expect(TokenKind.Comma)
+			trueExpr = Expression.parse(stream)
+			comma2 = stream.expect(TokenKind.Comma)
+			falseExpr = Expression.parse(stream)
+			rightParen = stream.expect(TokenKind.IfExpressionEnd)
+			return IfExpression(ifToken, condExpr, comma1, trueExpr, comma2, falseExpr, rightParen)
+
+	cue init(
+		ifToken as Cobra.Compiler.IToken,
+		condition as IExpression,
+		comma1 as Cobra.Compiler.IToken,
+		trueExpression as IExpression,
+		comma2 as Cobra.Compiler.IToken,
+		falseExpression as IExpression,
+		rightParen as Cobra.Compiler.IToken
+	)
+		base.init(ifToken, rightParen, nil)
+		_condition, _trueExpression, _falseExpression = condition, trueExpression, falseExpression
+		_comma1, _comma2 = comma1, comma2
+		_addChild(condition)
+		_addChild(trueExpression)
+		_addChild(falseExpression)
+	
+	get condition from var as IExpression
+	get comma1 from var as Cobra.Compiler.IToken
+	get trueExpression from var as IExpression
+	get comma2 from var as Cobra.Compiler.IToken
+	get falseExpression from var as IExpression

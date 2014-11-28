@@ -152,11 +152,8 @@ class Expression
 			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
 				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 			
-			on TokenKind.IfExpressionStart
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
-
-			on TokenKind.ForKeyword
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
+			on TokenKind.IfExpressionStart, return IfExpression.parse(stream)
+			on TokenKind.ForKeyword, return ForExpression.parse(stream)
 			
 			on TokenKind.TryKeyword
 				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO

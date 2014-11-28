@@ -1,0 +1,126 @@
+﻿
+namespace Venom.CobraSyntax
+
+class ForExpression inherits Expression
+	
+	def parse(stream as ITokenStream) as ForExpression is new, shared
+		test
+			source = 'for i in 10 get i'
+			stream = TokenStream(source, 'test.cobra')
+			forExpr = ForExpression.parse(stream)
+			assert forExpr.elementIdentifier.identifier.name == 'i'
+			assert forExpr.iterableExpression inherits IntegerLiteral
+			assert forExpr.colon1 == forExpr.colon2 == forExpr.whereToken == nil
+			assert forExpr.whereExpression == nil
+			assert forExpr.getExpression inherits IdentifierExpression
+		test
+			source = 'for child in node.children get child.name'
+			stream = TokenStream(source, 'test.cobra')
+			forExpr = ForExpression.parse(stream)
+			iterExpr = forExpr.iterableExpression to MemberAccessExpression
+			left = iterExpr.leftExpression to IdentifierExpression
+			assert left.identifier.name == 'node'
+			right = iterExpr.rightExpression to IdentifierExpression
+			assert right.identifier.name == 'children'
+		test
+			source = 'for i in 0:100:3 where i % 2 == 0'
+			stream = TokenStream(source, 'test.cobra')
+			forExpr = ForExpression.parse(stream)
+			assert forExpr.elementIdentifier.identifier.name == 'i'
+			assert forExpr.iterableExpression inherits IntegerLiteral
+			assert forExpr.colon1 <> nil
+			assert forExpr.stepExpression inherits IntegerLiteral
+			assert forExpr.colon2 <> nil
+			assert forExpr.stopExpression inherits IntegerLiteral
+			assert forExpr.whereToken <> nil
+			assert forExpr.whereExpression inherits EqualityComparisonExpression
+			assert forExpr.getToken == nil
+			assert forExpr.getExpression == nil
+		test
+			source = 'for i in 0:100:3 where i % 2 == 0 get i**i'
+			stream = TokenStream(source, 'test.cobra')
+			forExpr = ForExpression.parse(stream)
+			assert forExpr.getToken <> nil
+			assert forExpr.getExpression inherits ExponentiationExpression
+		body
+			forToken = stream.expect(TokenKind.ForKeyword)
+			elementId = IdentifierExpression.parse(stream)
+			inToken = stream.expect(TokenKind.InKeyword)
+			iterableExpr = Expression.parse(stream)
+
+			colon1 as Cobra.Compiler.IToken? = nil
+			stopExr as IExpression? = nil
+			colon2 as Cobra.Compiler.IToken? = nil
+			stepExpr as IExpression? = nil
+			whereToken as Cobra.Compiler.IToken? = nil
+			getToken as Cobra.Compiler.IToken? = nil
+			getExpr as IExpression? = nil
+
+			colon1 = stream.grabOptional(TokenKind.Colon)
+			if colon1 <> nil
+				stopExr = Expression.parse(stream)
+				colon2 = stream.grabOptional(TokenKind.Colon)
+				if colon2 <> nil, stepExpr = Expression.parse(stream)
+			whereToken = stream.grabOptional(TokenKind.WhereKeyword)
+			if whereToken <> nil
+				whereExpr as IExpression? = Expression.parse(stream)
+				getToken = stream.grabOptional(TokenKind.GetKeyword)
+				if getToken <> nil, getExpr = Expression.parse(stream)
+			else
+				getToken = stream.expect(TokenKind.GetKeyword)
+				getExpr = Expression.parse(stream)
+			
+			return ForExpression(
+				forToken, elementId, inToken, iterableExpr,
+				colon1, stopExr, colon2, stepExpr,
+				whereToken, whereExpr, getToken, getExpr
+			)
+
+	cue init(
+		forToken as Cobra.Compiler.IToken,
+		elementId as IdentifierExpression,
+		inToken as Cobra.Compiler.IToken,
+		iterableExpr as IExpression,
+		colon1 as Cobra.Compiler.IToken?,
+		stopExpr as IExpression?,
+		colon2 as Cobra.Compiler.IToken?,
+		stepExpr as IExpression?,
+		whereToken as Cobra.Compiler.IToken?,
+		whereExpr as IExpression?,
+		getToken as Cobra.Compiler.IToken?,
+		getExpr as IExpression?
+	)
+		base.init(forToken, iterableExpr.lastToken, nil)
+		_forToken, _elementIdentifier, _inToken, _iterableExpression = forToken, elementId, inToken, iterableExpr
+		_colon1, _stopExpression, _colon2, _stepExpression = colon1, stopExpr, colon2, stepExpr
+		_whereToken, _whereExpression, _getToken, _getExpression = whereToken, whereExpr, getToken, getExpr
+		_addChild(elementId)
+		_addChild(iterableExpr)
+		if stopExpr, _addChild(stopExpr)
+		if stepExpr, _addChild(stepExpr)
+		if whereExpr, _addChild(whereExpr)
+		if getExpr, _addChild(getExpr)
+	
+	get forToken from var as Cobra.Compiler.IToken
+
+	get elementIdentifier from var as IdentifierExpression
+
+	get inToken from var as Cobra.Compiler.IToken
+
+	get iterableExpression from var as IExpression
+
+	get colon1 from var as Cobra.Compiler.IToken?
+
+	get stopExpression from var as IExpression?
+
+	get colon2 from var as Cobra.Compiler.IToken?
+
+	get stepExpression from var as IExpression?
+
+	get whereToken from var as Cobra.Compiler.IToken?
+
+	get whereExpression from var as IExpression?
+
+	get getToken from var as Cobra.Compiler.IToken?
+
+	get getExpression from var as IExpression?

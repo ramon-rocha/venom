@@ -44,6 +44,8 @@ class BinaryOperatorExpression inherits Expression
 		TokenKind.DivideAndAssignOperator: DivideAndAssignExpression,
 		TokenKind.IntegerDivisionOperator: IntegerDivisionExpression,
 		TokenKind.IntegerDivideAndAssignOperator: IntegerDivideAndAssignExpression,
+		TokenKind.ModulusOperator: ModuloExpression,
+		TokenKind.ModulusAndAssignOperator: ModulusAndAssignExpression,
 		TokenKind.BitwiseAndOperator: BitwiseAndExpression,
 		TokenKind.BitwiseAndAndAssignOperator: BitwiseAndAndAssignExpression,
 		TokenKind.BitwiseOrOperator: BitwiseOrExpression,
@@ -280,6 +282,19 @@ class IntegerDivideAndAssignExpression inherits BinaryOperatorExpression
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
 		require op.kind == TokenKind.IntegerDivideAndAssignOperator
 		base.init(left, op, right)
+
+class ModuloExpression inherits BinaryOperatorExpression
+	"""foo % bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ModulusOperator
+		base.init(left, op, right)
+
+class ModulusAndAssignExpression inherits BinaryOperatorExpression
+	"""foo %= bar"""
+	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
+		require op.kind == TokenKind.ModulusAndAssignOperator
+		base.init(left, op, right)
+
 
 class BitwiseAndExpression inherits BinaryOperatorExpression
 	"""foo & bar"""

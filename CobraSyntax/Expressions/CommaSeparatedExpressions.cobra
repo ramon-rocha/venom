@@ -1,0 +1,19 @@
+﻿
+namespace Venom.CobraSyntax
+
+class CommaSeparatedExpressions
+	"""
+	Not an actual syntax node, only for convenience.
+	"""
+
+	get expressions from var as IReadOnlyList<of IExpression> = ExpressionList()
+	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+
+	def parse(stream as ITokenStream, stopKind = TokenKind.CloseParenthesis) as CommaSeparatedExpressions is shared
+		list = CommaSeparatedExpressions()
+		exprs = list.expressions to ExpressionList
+		commas = list.commas to TokenList
+		while stream.token.kind <> stopKind
+			if exprs.count <> 0, commas.add(stream.expect(TokenKind.Comma))
+			exprs.add(Expression.parse(stream))
+		return list

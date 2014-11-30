@@ -99,6 +99,7 @@
     <Compile Include="CobraSyntax\Expressions\TryCatchExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\AnonymousMethodExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\CallExpression.cobra" />
+    <Compile Include="CobraSyntax\Expressions\CommaSeparatedExpressions.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

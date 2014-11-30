@@ -26,6 +26,15 @@ class CallExpression inherits Expression
 			argExpr = call.arguments[0] to IdentifierExpression
 			assert argExpr.identifier.name == 'bar'
 		test
+			source = 'Foo()'
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.identifier.name == 'Foo'
+			assert call.commas.count == 0
+			assert call.openingParenthesis <> nil
+			assert call.closingParenthesis <> nil
+			assert call.arguments.count == 0
+		test
 			source = 'foo(bar, 1 + 2, nil)'
 			stream = TokenStream(source, 'test.cobra')
 			call = CallExpression.parse(stream)
@@ -60,34 +69,34 @@ class CallExpression inherits Expression
 				# TODO: split id.firstToken into two tokens instead?
 				openParen = stream.token.copy(TokenKind.OpenParenthesis, "(")
 			
-			args = List<of IExpression>()
-			commas = List<of Cobra.Compiler.IToken>()
-			while stream.token.kind <> TokenKind.CallEnd
-				if args.count <> 0
-					commas.add(stream.expect(TokenKind.Comma))
-				args.add(Expression.parse(stream))
-	
+			args = CommaSeparatedExpressions.parse(stream)
 			closeParen = stream.expect(TokenKind.CallEnd)
-			return CallExpression(id, openParen, args, commas, closeParen)
+			return CallExpression(id, openParen, args, closeParen)
 
 
-	get openingParenthesis from var as Cobra.Compiler.IToken?
-	get closingParenthesis from var as Cobra.Compiler.IToken?
 	get identifier from var as Identifier
+		"""The name of the method being invoked"""
+	
+	get openingParenthesis from var as Cobra.Compiler.IToken?
+
 	get arguments from var as IReadOnlyList<of IExpression>
 	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
 
+	get closingParenthesis from var as Cobra.Compiler.IToken?
+
 	cue init(id as Identifier)
-		.init(id, nil, List<of IExpression>(), List<of Cobra.Compiler.IToken>(), nil)
+		.init(id, nil, CommaSeparatedExpressions(), nil)
 
 	cue init(
-		id as Identifier, openParen as Cobra.Compiler.IToken?, args as IReadOnlyList<of IExpression>,
-		commas as IReadOnlyList<of Cobra.Compiler.IToken>, closeParen as Cobra.Compiler.IToken?
+		id as Identifier,
+		openParen as Cobra.Compiler.IToken?,
+		args as CommaSeparatedExpressions,
+		closeParen as Cobra.Compiler.IToken?
 	)
 		require
 			openParen implies openParen.text == "("
 			closeParen implies closeParen.text == ")"
-			all for c in commas get c.text == ","
+			all for c in args.commas get c.text == ","
 		body
 			base.init(id.firstToken, nil)
 			_identifier = id
@@ -95,12 +104,66 @@ class CallExpression inherits Expression
 	
 			_openingParenthesis = openParen
 	
-			_arguments = args
-			for a in args, _addChild(a)
+			_arguments = args.expressions
+			for a in args.expressions, _addChild(a)
 	
-			_commas = List<of Cobra.Compiler.IToken>(commas)
+			_commas = TokenList(args.commas)
 	
 			if closeParen <> nil
 				_closingParenthesis = closeParen
 				_lastToken = closeParen
-	
+
+class ImplicitCallExpression
+	inherits CallExpression
+	"""
+	A call expression where the method name is not explicit in the invocation such as:
+		obj[i]('x')
+		String[](10)
+		Foo.Bar.Baz[](0)
+	"""
+
+	def parse(stream as ITokenStream) as ImplicitCallExpression is new, shared
+		test
+			source = ns"obj[i]('x')"
+			stream = TokenStream(source, 'test.cobra')
+			call = ImplicitCallExpression.parse(stream)
+			assert call.identifier.name == ''
+			obj = call.expression to IndexedExpression
+			assert obj.leftExpression inherits IdentifierExpression
+			assert obj.indexer.expressions.count == 1
+			assert obj.indexer.expressions[0] inherits IdentifierExpression
+			assert call.arguments.count == 1
+			assert call.arguments[0] inherits StringLiteral
+		test
+			source = ns"String[](10)"
+			stream = TokenStream(source, 'test.cobra')
+			call = ImplicitCallExpression.parse(stream)
+			obj = call.expression to IndexedExpression
+			assert obj.indexer.expressions.count == 0
+			assert call.arguments[0] inherits IntegerLiteral
+		test
+			source = ns"Foo.Bar.Baz[](0)"
+			stream = TokenStream(source, 'test.cobra')
+			call = ImplicitCallExpression.parse(stream)
+			assert call.identifier.name == ''
+			obj = call.expression to IndexedExpression
+			assert obj.leftExpression inherits MemberAccessExpression
+			assert obj.indexer.expressions.count == 0
+			assert call.arguments[0] inherits IntegerLiteral
+		body
+			return Expression.parse(stream) to ImplicitCallExpression
+
+	def _makeEmptyIdentifier as Identifier is shared
+		return Identifier(Cobra.Compiler.Token.empty.copy(TokenKind.Identifier))
+
+	get expression from var as IExpression
+
+	cue init(
+		expression as IExpression,
+		openParen as Cobra.Compiler.IToken?,
+		args as CommaSeparatedExpressions,
+		closeParen as Cobra.Compiler.IToken?
+	)
+		base.init(_makeEmptyIdentifier, openParen, args, closeParen)
+		_expression = expression
+		_addChild(_expression)

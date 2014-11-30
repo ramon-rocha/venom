@@ -92,8 +92,10 @@ class Expression
 				return _parse(stream, precedence, IndexedExpression(left, indexer))
 
 			else if opKind == TokenKind.OpenParenthesis
-				# TODO see CobraParser line 2921
-				return left
+				openParen = stream.grab
+				args = CommaSeparatedExpressions.parse(stream)
+				closeParen = stream.expect(TokenKind.CloseParenthesis)
+				return _parse(stream, precedence, ImplicitCallExpression(left, openParen, args, closeParen))
 			
 			opToken = stream.grab
 			assert opKind == opToken.kind

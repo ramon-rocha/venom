@@ -73,11 +73,7 @@ class IndexerExpression inherits Expression
 			if stream.token.kind == TokenKind.IndexerEnd
 				break
 			
-			# TODO .newOpStack
-			try
-				expressions.add(Expression.parse(stream))
-			finally
-				pass # TODO .delOpStack
+			expressions.add(Expression.parse(stream))
 		
 		endToken = stream.expect(TokenKind.IndexerEnd)
 		return IndexerExpression(startToken, expressions, separators, endToken)

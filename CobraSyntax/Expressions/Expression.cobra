@@ -94,7 +94,7 @@ class Expression
 			
 			opToken = stream.grab
 			assert opKind == opToken.kind
-			assert TokenKind.binaryOperatorPrecedence.containsKey(opKind)
+			assert _precedenceMap.containsKey(opKind)
 
 			right as IExpression? = nil
 			if opKind == TokenKind.TypeCastOperator or opKind == TokenKind.NilCoalescingCastOperator

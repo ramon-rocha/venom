@@ -70,6 +70,9 @@ class Expression
 		
 		return opKind
 
+	var _precedenceMap as IReadOnlyDictionary<of String, int>
+		is readonly, shared = TokenKind.binaryOperatorPrecedence
+
 	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression is shared
 		
 		left = leftExpr ? _parse(stream)
@@ -77,8 +80,7 @@ class Expression
 		while true
 			
 			opKind = _operatorKind(stream)
-			precMap = TokenKind.binaryOperatorPrecedence
-			binaryOpPrecedence = try precMap[opKind] catch get -1
+			binaryOpPrecedence = try _precedenceMap[opKind] catch get -1
 			if binaryOpPrecedence < precedence
 				return left
 			

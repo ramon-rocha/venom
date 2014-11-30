@@ -1,0 +1,106 @@
+﻿
+namespace Venom.CobraSyntax
+
+class CallExpression inherits Expression
+	"""
+	A method invocation such as foo(bar) or foo<of T>(bar)
+	"""
+
+	var _validKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.CallStart,
+		TokenKind.GenericIdentifierStart
+	]
+
+	def parse(stream as ITokenStream) as CallExpression is new, shared
+		require
+			stream.token.kind in _validKinds
+		test
+			source = 'foo(bar)'
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.identifier.name == 'foo'
+			assert call.commas.count == 0
+			assert call.openingParenthesis <> nil
+			assert call.closingParenthesis <> nil
+			assert call.arguments.count == 1
+			argExpr = call.arguments[0] to IdentifierExpression
+			assert argExpr.identifier.name == 'bar'
+		test
+			source = 'foo(bar, 1 + 2, nil)'
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.arguments.count == 3
+			assert call.commas.count == 2
+			assert call.arguments[0] inherits IdentifierExpression
+			assert call.arguments[1] inherits AdditionExpression
+			assert call.arguments[2] inherits NilLiteral
+		test
+			source = 'foo<of String>'
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.identifier.name == 'foo<of String>'
+			assert call.commas.count == call.arguments.count == 0
+			assert call.openingParenthesis == call.closingParenthesis == nil
+		test
+			source = 'foo<of String>(bar, 1 + 2, nil)'
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.identifier.name == 'foo<of String>'
+			assert call.arguments.count == 3
+			assert call.commas.count == 2
+			assert call.arguments[0] inherits IdentifierExpression
+			assert call.arguments[1] inherits AdditionExpression
+			assert call.arguments[2] inherits NilLiteral
+		body
+			id = Identifier.parse(stream)
+			if id.firstToken.kind == TokenKind.GenericIdentifierStart
+				openParen = stream.grabOptional(TokenKind.OpenParenthesis)
+				if openParen == nil, return CallExpression(id)
+			else
+				# TODO: split id.firstToken into two tokens instead?
+				openParen = stream.token.copy(TokenKind.OpenParenthesis, "(")
+			
+			args = List<of IExpression>()
+			commas = List<of Cobra.Compiler.IToken>()
+			while stream.token.kind <> TokenKind.CallEnd
+				if args.count <> 0
+					commas.add(stream.expect(TokenKind.Comma))
+				args.add(Expression.parse(stream))
+	
+			closeParen = stream.expect(TokenKind.CallEnd)
+			return CallExpression(id, openParen, args, commas, closeParen)
+
+
+	get openingParenthesis from var as Cobra.Compiler.IToken?
+	get closingParenthesis from var as Cobra.Compiler.IToken?
+	get identifier from var as Identifier
+	get arguments from var as IReadOnlyList<of IExpression>
+	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+
+	cue init(id as Identifier)
+		.init(id, nil, List<of IExpression>(), List<of Cobra.Compiler.IToken>(), nil)
+
+	cue init(
+		id as Identifier, openParen as Cobra.Compiler.IToken?, args as IReadOnlyList<of IExpression>,
+		commas as IReadOnlyList<of Cobra.Compiler.IToken>, closeParen as Cobra.Compiler.IToken?
+	)
+		require
+			openParen implies openParen.text == "("
+			closeParen implies closeParen.text == ")"
+			all for c in commas get c.text == ","
+		body
+			base.init(id.firstToken, nil)
+			_identifier = id
+			_addChild(id)
+	
+			_openingParenthesis = openParen
+	
+			_arguments = args
+			for a in args, _addChild(a)
+	
+			_commas = List<of Cobra.Compiler.IToken>(commas)
+	
+			if closeParen <> nil
+				_closingParenthesis = closeParen
+				_lastToken = closeParen
+	

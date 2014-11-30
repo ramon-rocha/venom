@@ -1,0 +1,6 @@
+﻿
+namespace Venom.CobraSyntax
+
+class AnonymousMethodExpression inherits Expression
+	pass
+

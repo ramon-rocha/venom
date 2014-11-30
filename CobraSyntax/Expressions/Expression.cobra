@@ -74,7 +74,10 @@ class Expression
 		is readonly, shared = TokenKind.binaryOperatorPrecedence
 
 	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression is shared
-		
+		"""
+		Uses the precedence climbing algorithm to parse expressions.
+		See: http://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
+		"""
 		left = leftExpr ? _parse(stream)
 
 		while true
@@ -113,7 +116,9 @@ class Expression
 		return left
 
 	def _parse(stream as ITokenStream) as IExpression is shared
-		
+		"""
+		Parses expression operands
+		"""
 		kind = stream.token.kind
 
 		if TokenKind.unaryOperatorPrecedence.containsKey(kind)
@@ -128,16 +133,10 @@ class Expression
 		branch kind
 
 			on TokenKind.Identifier, return IdentifierExpression.parse(stream)
-			
-			on TokenKind.CallStart
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
 
-			on TokenKind.GenericIdentifierStart
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
+			on TokenKind.CallStart or TokenKind.GenericIdentifierStart
+				return CallExpression.parse(stream)
 
-			on TokenKind.OpenParenthesis
-				return ParenthesizedExpression.parse(stream)
-			
 			on TokenKind.MemberAccessOperator
 				# leading dot such as in '.foo'
 				implicitThis = ThisLiteral(stream.expect(TokenKind.ThisKeyword))
@@ -148,26 +147,22 @@ class Expression
 			on TokenKind.ThisKeyword, return ThisLiteral(stream.grab)
 			on TokenKind.BaseKeyword, return BaseLiteral(stream.grab)
 
-			on TokenKind.FieldKeyword
-				# TODO, shouldn't be here, right?  this is for things such as 'get foo from var'
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
-
-			on TokenKind.SingleQuotedCharacter or TokenKind.DoubleQuotedCharacter
-				return CharacterLiteral(stream.grab)
-			
 			on TokenKind.IntegerLiteral, return IntegerLiteral(stream.grab)
 			on TokenKind.FractionLiteral, return FractionLiteral(stream.grab)
 			on TokenKind.DecimalLiteral, return DecimalLiteral(stream.grab)
 			on TokenKind.FloatLiteral, return FloatLiteral(stream.grab)
-			
-			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
+
+			on TokenKind.SingleQuotedCharacter or TokenKind.DoubleQuotedCharacter
+				return CharacterLiteral(stream.grab)
 			
 			on TokenKind.IfExpressionStart, return IfExpression.parse(stream)
 			on TokenKind.ForKeyword, return ForExpression.parse(stream)
+			on TokenKind.TryKeyword, return TryCatchExpression.parse(stream)
+
+			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
+				return AnonymousMethodExpression.parse(stream)
 			
-			on TokenKind.TryKeyword
-				return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
+			on TokenKind.OpenParenthesis, return ParenthesizedExpression.parse(stream)
 
 			else
 				trace stream.token  # TODO : see CobraParser line 3109

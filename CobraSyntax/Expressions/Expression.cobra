@@ -45,6 +45,30 @@ class Expression
 			assert addExpr.rightExpression inherits MultiplicationExpression
 		body
 			return _parse(stream, 0, nil)
+	
+	def _operatorKind(stream as ITokenStream) as String is shared
+		"""
+		A helper function that returns the current kind of token for the given
+		token stream.  The stream is potentially modified to turn two tokens
+		into a single operator token.
+		"""
+		opKind = stream.token.kind
+
+		text as String? = nil
+		if opKind == TokenKind.ReferenceEqualityOperator _
+		and stream.peek.kind == TokenKind.LogicalNotOperator
+			text = "is not"
+			opKind = TokenKind.NonReferenceEqualityOperator
+		else if opKind == TokenKind.LogicalNotOperator _
+		and stream.peek.kind == TokenKind.MembershipCheckOperator
+			text = "not in"
+			opKind = TokenKind.NonMembershipCheckOperator
+		
+		if text <> nil
+			newToken = stream.grab.copy(opKind, text)
+			stream.replace(newToken)
+		
+		return opKind
 
 	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression is shared
 		
@@ -52,22 +76,7 @@ class Expression
 
 		while true
 			
-			opKind = stream.token.kind
-
-			text as String? = nil
-			if opKind == TokenKind.ReferenceEqualityOperator _
-			and stream.peek.kind == TokenKind.LogicalNotOperator
-				text = "is not"
-				opKind = TokenKind.NonReferenceEqualityOperator
-			else if opKind == TokenKind.LogicalNotOperator _
-			and stream.peek.kind == TokenKind.MembershipCheckOperator
-				text = "not in"
-				opKind = TokenKind.NonMembershipCheckOperator
-			
-			if text <> nil
-				newToken = stream.grab.copy(opKind, text)
-				stream.replace(newToken)
-			
+			opKind = _operatorKind(stream)
 			precMap = TokenKind.binaryOperatorPrecedence
 			binaryOpPrecedence = try precMap[opKind] catch get -1
 			if binaryOpPrecedence < precedence

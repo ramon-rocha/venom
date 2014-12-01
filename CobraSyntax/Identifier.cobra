@@ -147,36 +147,6 @@ class QualifiedIdentifier inherits Identifier
 	System.Collections.Generic.List<of int>
 	"""
 
-	test
-		fn = "test.cobra"
-		sysId = Identifier(Cobra.Compiler.Token(fn, 1, 1, 1, TokenKind.Identifier, "System", nil))
-		ns = QualifiedIdentifier(sysId)
-		assert ns.name == "System"
-		assert ns.qualifiedName == "System"
-
-		dot = Cobra.Compiler.Token(fn, 1, 7, 7, TokenKind.Dot, ".", nil)
-		colId = Identifier(Cobra.Compiler.Token(fn, 1, 8, 8, TokenKind.Identifier, "Collections", nil))
-		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(colId))
-		assert ns.name == "Collections"
-		assert ns.qualifiedName == "System.Collections"
-
-		dot = Cobra.Compiler.Token(fn, 1, 20, 20, TokenKind.Dot, ".", nil)
-		genId = Identifier(Cobra.Compiler.Token(fn, 1, 21, 21, TokenKind.Identifier, "Generic", nil))
-		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(genId))
-		assert ns.name == "Generic"
-		assert ns.qualifiedName == "System.Collections.Generic"
-		
-		dot = Cobra.Compiler.Token(fn, 1, 27, 27, TokenKind.Dot, ".", nil)
-		open = Cobra.Compiler.Token(fn, 1, 28, 28, TokenKind.GenericIdentifierStart, "List<of", nil)
-		intType = Cobra.Compiler.Token(fn, 1, 35, 35, TokenKind.IntegerType, "int", nil)
-		close = Cobra.Compiler.Token(fn, 1, 39, 39, TokenKind.GenericIdentifierEnd, ">", nil)
-		types = [TypeIdentifier(Identifier(intType))]
-		listId = GenericIdentifier(Identifier(open), List<of Cobra.Compiler.IToken>(), types, close)
-		ns = QualifiedIdentifier(ns, dot, QualifiedIdentifier(listId))
-		assert ns.name == "List<of int>"
-		assert ns.qualifiedName == "System.Collections.Generic.List<of int>"
-
-	
 	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
 		require
 			stream.token.kind in .validKinds _
@@ -188,7 +158,7 @@ class QualifiedIdentifier inherits Identifier
 			assert id.left.name == id.name == id.qualifiedName == "System"
 			assert id.dot == nil
 			assert id.right == nil
-
+		test
 			source = "System.Collections"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
@@ -196,18 +166,17 @@ class QualifiedIdentifier inherits Identifier
 			assert id.qualifiedName == "System.Collections"
 			assert id.left.name == "System"
 			assert id.right.name == "Collections"
-
+		test
 			source = "System.Collections.Generic"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
 			assert id.name == "Generic"
 			assert id.qualifiedName == "System.Collections.Generic"
 			assert id.left.name == "System"
-			assert id.right inherits QualifiedIdentifier
 			right = id.right to QualifiedIdentifier
 			assert right.left.name == "Collections"
 			assert right.right.name == "Generic"
-
+		test
 			source = "System.Collections.Generic.List<of int>"
 			stream = TokenStream(source, "test.cobra")
 			id = QualifiedIdentifier.parse(stream)
@@ -215,11 +184,9 @@ class QualifiedIdentifier inherits Identifier
 			assert id.qualifiedName == "System.Collections.Generic.List<of int>"
 			assert id.left.name == "System"
 			assert id.right.name == "List<of int>"
-			assert id.right inherits QualifiedIdentifier
 			right = id.right to QualifiedIdentifier
 			assert right.left.name == "Collections"
 			assert right.right.name == "List<of int>"
-			assert right.right inherits QualifiedIdentifier
 			right = right.right to QualifiedIdentifier
 			assert right.left.name == "Generic"
 			assert right.right.name == "List<of int>"
@@ -298,7 +265,7 @@ class GenericIdentifier inherits Identifier
 	var _commas as IReadOnlyList<of Cobra.Compiler.IToken>
 	get types from var as IReadOnlyList<of TypeIdentifier>
 
-	def parse(stream as ITokenStream) as Identifier is new, shared
+	def parse(stream as ITokenStream) as GenericIdentifier is new, shared
 		require
 			stream.token.kind == TokenKind.GenericIdentifierStart
 		test
@@ -306,31 +273,38 @@ class GenericIdentifier inherits Identifier
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "List<of int>"
-
+			assert id.types.count == 1
+			assert id.types[0].name == 'int'
+		test
 			source = "List<of List<of int>>"
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "List<of List<of int>>"
-
+			typeId1 = id.types[0].left to QualifiedIdentifier
+			assert typeId1.left inherits GenericIdentifier
+		test
 			source = "Dictionary<of String, int>"
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "Dictionary<of String, int>"
-
+			assert id.types.count == 2
+		test
 			source = "Dictionary<of System.String, int>"
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "Dictionary<of System.String, int>"
-
+		test
 			source = "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
-
+			assert id.types.count == 2
+		test
 			source = "Tuple<of int, int, int, int, int, int>"
 			stream = TokenStream(source, "test.cobra")
 			id = GenericIdentifier.parse(stream)
 			assert id.name == "Tuple<of int, int, int, int, int, int>"
+			assert id.types.count == 6
 		body
 			open = TypeIdentifier(Identifier(stream.grab))
 			commas = List<of Cobra.Compiler.IToken>()

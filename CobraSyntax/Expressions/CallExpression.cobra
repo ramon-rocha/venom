@@ -127,6 +127,7 @@ class ImplicitCallExpression
 			source = ns"obj[i]('x')"
 			stream = TokenStream(source, 'test.cobra')
 			call = ImplicitCallExpression.parse(stream)
+			assert call.firstToken == call.expression.firstToken
 			assert call.identifier.name == ''
 			obj = call.expression to IndexedExpression
 			assert obj.leftExpression inherits IdentifierExpression
@@ -160,10 +161,11 @@ class ImplicitCallExpression
 
 	cue init(
 		expression as IExpression,
-		openParen as Cobra.Compiler.IToken?,
+		openParen as Cobra.Compiler.IToken,
 		args as CommaSeparatedExpressions,
-		closeParen as Cobra.Compiler.IToken?
+		closeParen as Cobra.Compiler.IToken
 	)
 		base.init(_makeEmptyIdentifier, openParen, args, closeParen)
+		_firstToken = _expression.firstToken
 		_expression = expression
 		_addChild(_expression)

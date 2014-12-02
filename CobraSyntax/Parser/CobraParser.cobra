@@ -179,14 +179,10 @@ class CobraParser
 	def _makeMethodBody(indentToken as Cobra.Compiler.IToken) as ISyntaxNode
 		# TODO
 		statements = NodeList()
-		skippedTokens = TokenList()
-		
+
 		while not _stream.token.endsBlock
 			stmt = _makeStatement
-			if stmt == nil
-				skippedTokens.addRange(_stream.skipToNextLine)
-			else
-				statements.add(stmt)
+			statements.add(stmt)
 			
 		dedentToken = _stream.expect(TokenKind.Dedent)
 		assert dedentToken.kind == TokenKind.Dedent
@@ -195,37 +191,18 @@ class CobraParser
 		t = _stream.token
 		return Identifier(Cobra.Compiler.Token(t.fileName, t.lineNum, t.colNum, t.charNum, TokenKind.Identifier, '', nil))
 	
-	def _makeStatement as IStatement?
+	def _makeStatement as IStatement
 		# todo
 		branch _stream.token.kind
 			on TokenKind.PrintKeyword
 				return _makePrintStatement
-			on TokenKind.Identifier
-				if _stream.peek.kind == TokenKind.AssignmentOperator
-					return _makeAssignmentStatement
-			else
-				trace _stream.token
 			
-		return nil
+		return ExpressionStatement.parse(_stream to !)
 	
 	def _makePrintStatement as PrintStatement
 		# TODO
 		require _stream.token.kind == TokenKind.PrintKeyword
 		return PrintStatement.parse(_stream to !)
-	
-	def _makeAssignmentStatement as AssignmentStatement
-		# todo
-		require
-			_stream.token.kind == TokenKind.Identifier
-			_stream.peek.kind == TokenKind.AssignmentOperator
-		body
-			id = _makeIdentifierExpression
-			opToken = _stream.grab
-			exp = _makeExpression
-			return AssignmentStatement(
-				AssignmentExpression(id, opToken, exp),
-				_stream.skipToNextLine
-			)
 	
 	def _makeExpression as IExpression
 		# TODO

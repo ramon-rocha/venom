@@ -5,36 +5,13 @@ class ExpressionStatement
 	inherits Expression
 	adds StatementBehavior
 	implements IExpression, IStatement
-	is abstract
-	"""
-	The base class for all expressions that can also be statements
-	such as method calls or assignment expression statements.
-	"""
 
 	def parse(stream as ITokenStream) as IStatement is new, shared
 		expr = Expression.parse(stream)
-		skipped = stream.skipToNextLine
-		if expr inherits BinaryOperatorExpression
-			if expr inherits AssignmentExpression, return AssignmentStatement(expr, skipped)
-		
-		throw FallThroughException("Unsupported token kind: [stream.token.kind]")
+		return ExpressionStatement(expr, stream.skipToNextLine)
 
 	cue init(expr as IExpression, extraTokens as TokenList?)
 		base.init(expr, extraTokens)
 		_expression = expr
 	
 	get expression from var as IExpression
-
-
-class AssignmentStatement
-	inherits ExpressionStatement
-	
-	cue init(expr as AssignmentExpression, extraTokens as TokenList?)
-		base.init(expr, extraTokens)
-
-
-class CallStatement
-	inherits ExpressionStatement
-
-	cue init(expr as BinaryOperatorExpression, extraTokens as TokenList?)
-		base.init(expr, extraTokens)

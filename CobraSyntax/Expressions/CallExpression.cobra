@@ -166,6 +166,6 @@ class ImplicitCallExpression
 		closeParen as Cobra.Compiler.IToken
 	)
 		base.init(_makeEmptyIdentifier, openParen, args, closeParen)
-		_firstToken = _expression.firstToken
+		_firstToken = expression.firstToken
 		_expression = expression
 		_addChild(_expression)

@@ -2,4 +2,34 @@
 namespace Venom.CobraSyntax
 
 class AssertStatement inherits Statement
-	pass
+	
+	def parse(stream as ITokenStream) as AssertStatement is new, shared
+		require
+			stream.token.kind == TokenKind.AssertKeyword
+		test
+			source = 'assert foo == true'
+			stream = TokenStream(source, 'test.cobra')
+			stmt = AssertStatement.parse(stream)
+			assert stmt.expression inherits EqualityComparisonExpression
+		test
+			source = 'assert foo == true true 1_000'
+			stream = TokenStream(source, 'test.cobra')
+			stmt = AssertStatement.parse(stream)
+			assert stmt.expression inherits EqualityComparisonExpression
+			assert stmt.extraTokens.count == 2
+			assert stmt.extraTokens[0].kind == TokenKind.TrueKeyword
+			assert stmt.extraTokens[1].kind == TokenKind.IntegerLiteral
+		body
+			keyword = stream.expect(TokenKind.AssertKeyword)
+			expr = Expression.parse(stream)
+			skipped = stream.skipToNextLine
+			return AssertStatement(keyword, expr, skipped)
+
+	get assertKeyword from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+
+	cue init(keyword as Cobra.Compiler.IToken, expr as IExpression, skipped as TokenList)
+		base.init(keyword, skipped)
+		_lastToken = expr.lastToken
+		_assertKeyword = keyword
+		_expression = expr

@@ -46,7 +46,7 @@ class Expression
 		body
 			return _parse(stream, 0, nil)
 	
-	def _operatorKind(stream as ITokenStream) as String is shared
+	def _getOperatorKind(stream as ITokenStream) as String is shared
 		"""
 		A helper function that returns the current kind of token for the given
 		token stream.  The stream is potentially modified to turn two tokens
@@ -73,7 +73,7 @@ class Expression
 	var _precedenceMap as IReadOnlyDictionary<of String, int>
 		is readonly, shared = TokenKind.binaryOperatorPrecedence
 
-	def _parse(stream as ITokenStream, precedence as int, leftExpr as IExpression?) as IExpression is shared
+	def _parse(stream as ITokenStream, minPrecedence as int, leftExpr as IExpression?) as IExpression is shared
 		"""
 		Uses the precedence climbing algorithm to parse expressions.
 		See: http://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
@@ -82,20 +82,20 @@ class Expression
 
 		while true
 			
-			opKind = _operatorKind(stream)
-			binaryOpPrecedence = try _precedenceMap[opKind] catch get -1
-			if binaryOpPrecedence < precedence
-				return left
+			opKind = _getOperatorKind(stream)
+			precedence = try _precedenceMap[opKind] catch get -1
+			if precedence < minPrecedence
+				break
 			
 			if opKind == TokenKind.IndexerStart
 				indexer = IndexerExpression.parse(stream)
-				return _parse(stream, precedence, IndexedExpression(left, indexer))
+				return _parse(stream, minPrecedence, IndexedExpression(left, indexer))
 
 			else if opKind == TokenKind.OpenParenthesis
 				openParen = stream.grab
 				args = CommaSeparatedExpressions.parse(stream)
 				closeParen = stream.expect(TokenKind.CloseParenthesis)
-				return _parse(stream, precedence, ImplicitCallExpression(left, openParen, args, closeParen))
+				return _parse(stream, minPrecedence, ImplicitCallExpression(left, openParen, args, closeParen))
 			
 			opToken = stream.grab
 			assert opKind == opToken.kind
@@ -109,8 +109,8 @@ class Expression
 				right = IdentifierExpression.parse(stream)
 			else
 				isRightAssoc = Cobra.Compiler.OperatorSpecs.rightAssoc.containsKey(opKind)
-				prec = if(isRightAssoc, binaryOpPrecedence, binaryOpPrecedence + 1)
-				right = _parse(stream, prec, nil)
+				nextMinPrecedence = if(isRightAssoc, precedence, precedence + 1)
+				right = _parse(stream, nextMinPrecedence, nil)
 			
 			binOpType = BinaryOperatorExpression.typeMap[opKind]
 			left =  binOpType(left, opToken, right)

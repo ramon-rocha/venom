@@ -47,30 +47,128 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 	Declares a local parameter for a method
 	"""
 	get asKeyword from var as Cobra.Compiler.IToken?
-	get returnIdentifier from var as TypeIdentifier?
-	get defaultValue from var as Expression?
+	get typeIdentifier from var as TypeIdentifier?
+	get defaultValue from var as IExpression?
+	get isVariableLength from var as bool
 	get isOutputOnly from var as bool
 	get isInputAndOutput from var as bool
 
+	var _paramModifiers as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.OutKeyword,
+		TokenKind.InOutKeyword,
+		TokenKind.VariKeyword,
+		TokenKind.InKeyword,
+	]
+
 	def parse(stream as ITokenStream) as ParameterDeclaration? is new, shared
-		id = Identifier.parse(stream)
-		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
-		if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
-		# TODO: in, inout, ref, vari, and =
-		return ParameterDeclaration(id, asKeyword, returnId)
+		test
+			source = "x"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.identifier.name == param.name == "x"
+			assert param.asKeyword == nil
+			assert param.typeIdentifier == nil
+			assert param.defaultValue == nil
+			assert param.isVariableLength == param.isOutputOnly == param.isInputAndOutput == false
+		test
+			source = "x as int"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.asKeyword <> nil
+			assert param.typeIdentifier.name == "int"
+			assert param.defaultValue == nil
+			assert param.isVariableLength == param.isOutputOnly == param.isInputAndOutput == false
+		test
+			source = "x as int = 5"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.asKeyword <> nil
+			assert param.typeIdentifier.name == "int"
+			assert param.defaultValue inherits IntegerLiteral
+		test
+			source = "x = 5"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.asKeyword == nil
+			assert param.typeIdentifier == nil
+			assert param.defaultValue inherits IntegerLiteral
+		test
+			source = "x as out int"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.asKeyword <> nil
+			assert param.typeIdentifier <> nil
+			assert param.defaultValue == nil
+			assert param.isOutputOnly == true
+			assert param.isVariableLength == param.isInputAndOutput == false
+		test
+			source = "x as inout int"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.isVariableLength == param.isOutputOnly == false
+			assert param.isInputAndOutput == true
+		test
+			source = ns"x as vari inout int = @[1, 2, 3, 4]"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.defaultValue inherits ArrayLiteral
+			assert param.isOutputOnly == false
+			assert param.isVariableLength == param.isInputAndOutput == true
+		body
+			mods = Dictionary<of String, bool>(_paramModifiers.count)
+			for m in _paramModifiers, mods[m] = false
+
+			id = Identifier.parse(stream)
+
+			asKeyword = stream.grabOptional(TokenKind.AsKeyword)
+			if asKeyword
+				while stream.token.kind in _paramModifiers
+					mods[stream.grab.kind] = true
+				typeIdentifier = TypeIdentifier.parse(stream) to ?
+
+			if stream.grabOptional(TokenKind.AssignmentOperator)
+				defaultValue = Expression.parse(stream) to ?
+
+			return ParameterDeclaration(
+				id,
+				asKeyword,
+				mods[TokenKind.VariKeyword],
+				mods[TokenKind.OutKeyword],
+				mods[TokenKind.InOutKeyword],
+				typeIdentifier,
+				defaultValue
+			)
 	
-	cue init(id as Identifier, asKeyword as Cobra.Compiler.IToken?, returnId as TypeIdentifier?)
+	cue init(
+		id as Identifier,
+		asKeyword as Cobra.Compiler.IToken?,
+		isVariableLength as bool,
+		isOutputOnly as bool,
+		isInputAndOutput as bool,
+		typeIdentifier as TypeIdentifier?,
+		defaultValue as IExpression?
+	)
 		base.init(id)
 		_identifier = id
 		if asKeyword
 			_asKeyword = asKeyword
 			_lastToken = asKeyword
-		if returnId
-			_returnIdentifier = returnId
-			_addChild(returnId)
+		_isVariableLength = isVariableLength
+		_isOutputOnly = isOutputOnly
+		_isInputAndOutput = isInputAndOutput
+		if typeIdentifier
+			_typeIdentifier = typeIdentifier
+			_addChild(typeIdentifier)
+		if defaultValue
+			_defaultValue = defaultValue
+			_addChild(defaultValue)
 	
 	def toCobraSource as String is override
-		return "TODO"
+		sb = StringBuilder(_identifier.name)
+		if _asKeyword, sb.append(" as ")
+		if _typeIdentifier, sb.append(_typeIdentifier.qualifiedName)
+		if _defaultValue, sb.append(" = [_defaultValue.toCobraSource]")
+		return sb.toString + "TODO"
 
 class MethodSignature inherits SyntaxNode
 	"""
@@ -98,11 +196,11 @@ class MethodSignature inherits SyntaxNode
 	)
 		base.init
 		_parameterDeclarations = List<of ParameterDeclaration>(params)
-		if _parameterDeclarations.count <> 0
+		if _parameterDeclarations.count == 0, _firstToken = closeParens
+		else
 			_firstToken = _parameterDeclarations[0].firstToken
 			for p in _parameterDeclarations, _addChild(p)
-		else
-			_firstToken = closeParens
+			
 		_lastToken = closeParens
 		if asKeyword <> nil
 			_asKeyword = _lastToken = asKeyword

@@ -74,6 +74,8 @@ class TokenKind
 	const DoKeyword = 'DO'
 	const CatchKeyword = 'CATCH'
 	const FinallyKeyword = 'FINALLY'
+	const SuccessKeyword = 'SUCCESS'
+	const ElseKeyword = 'ELSE'
 	#endregion
 	
 	#region Operators and Delimiters

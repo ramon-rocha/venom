@@ -101,14 +101,14 @@ class CallExpression inherits Expression
 			base.init(id.firstToken, nil)
 			_identifier = id
 			_addChild(id)
-	
+			
 			_openingParenthesis = openParen
-	
+			
 			_arguments = args.expressions
 			for a in args.expressions, _addChild(a)
-	
+			
 			_commas = TokenList(args.commas)
-	
+			
 			if closeParen <> nil
 				_closingParenthesis = closeParen
 				_lastToken = closeParen
@@ -154,7 +154,7 @@ class ImplicitCallExpression
 		body
 			return Expression.parse(stream) to ImplicitCallExpression
 
-	def _makeEmptyIdentifier as Identifier is shared
+	def _makeEmptyIdentifier as Identifier is shared # TODO: Create BaseCallExpression so we don't need this
 		return Identifier(Cobra.Compiler.Token.empty.copy(TokenKind.Identifier))
 
 	get expression from var as IExpression

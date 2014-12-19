@@ -83,7 +83,6 @@
     <Compile Include="CobraSyntax\Statements\ReturnStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\ThrowStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\TraceStatement.cobra" />
-    <Compile Include="CobraSyntax\Statements\TryCatchBlock.cobra" />
     <Compile Include="CobraSyntax\Statements\UsingStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\WhileStatement.cobra" />
     <Compile Include="CobraSyntax\Statements\YieldStatement.cobra" />
@@ -100,6 +99,7 @@
     <Compile Include="CobraSyntax\Expressions\AnonymousMethodExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\CallExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\CommaSeparatedExpressions.cobra" />
+    <Compile Include="CobraSyntax\Statements\TryCatchStatement.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

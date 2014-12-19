@@ -6,7 +6,12 @@ interface IStatement
 	pass
 
 mixin StatementBehavior
-	pass
+
+	var _endsStatement as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.EndOfLine,
+		TokenKind.EndOfFile,
+	]
+
 
 class Statement
 	implements IStatement
@@ -20,6 +25,8 @@ class Statement
 	"""
 
 	def parse(stream as ITokenStream) as IStatement is new, shared
+		stream.skipBlankLines
+
 		branch stream.token.kind
 			on TokenKind.AssertKeyword, return AssertStatement.parse(stream)
 			on TokenKind.BranchKeyword, return BranchStatement.parse(stream)
@@ -37,10 +44,83 @@ class Statement
 			on TokenKind.ReturnKeyword, return ReturnStatement.parse(stream)
 			on TokenKind.ThrowKeyword, return ThrowStatement.parse(stream)
 			on TokenKind.TraceKeyword, return TraceStatement.parse(stream)
-			on TokenKind.TryKeyword, return TryCatchBlock.parse(stream)
+			on TokenKind.TryKeyword, return TryCatchStatement.parse(stream) to !
 			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
 			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
 			else, return ExpressionStatement.parse(stream)
 
 	def toCobraSource as String is override
 		return "TODO"
+
+class StatementClause
+	inherits SyntaxNode
+	"""
+	Part of a more complex statement such as an if statement, while statement, or branch statement.
+	"""
+
+	get statements from var as IReadOnlyList<of IStatement>
+
+	def parse(stream as ITokenStream) as StatementClause is new, shared
+		require
+			stream.token.kind in @[TokenKind.Indent, TokenKind.Comma]
+		test
+			source = ", print x"
+			stream = TokenStream(source, 'test.cobra')
+			clause = StatementClause.parse(stream)
+			assert clause.firstToken.kind == TokenKind.Comma
+			assert clause.lastToken.kind == TokenKind.EndOfLine
+			assert clause.statements.count == 1
+			assert clause.statements[0] inherits PrintStatement
+		test
+			source =
+			"if x > y\n" +
+			"    print x + y\n" +
+			"    foo"
+			stream = TokenStream(source, 'test.cobra')
+			stream.grab
+			stream.grab
+			stream.grab
+			stream.grab
+			stream.grab
+			clause = StatementClause.parse(stream)
+			assert clause.firstToken.kind == TokenKind.Indent
+			assert clause.lastToken.kind == TokenKind.Dedent
+			assert clause.statements.count == 2
+			assert clause.statements[0] inherits PrintStatement
+			assert clause.statements[1] inherits ExpressionStatement
+		body
+			comma = stream.grabOptional(TokenKind.Comma)
+			stmts = StatementList()
+			if comma <> nil
+				stmts.add(Statement.parse(stream))
+				return StatementClause(comma, stmts[0].lastToken, stmts)
+	
+			indent = stream.expect(TokenKind.Indent)
+			while stream.token.kind <> TokenKind.Dedent
+				stmts.add(Statement.parse(stream))
+			dedent = stream.grab
+			
+			return StatementClause(indent, dedent, stmts)
+	
+	cue init(firstToken as Cobra.Compiler.IToken, endToken as Cobra.Compiler.IToken, stmts as IReadOnlyList<of IStatement>)
+		require
+			firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
+			firstToken.kind == TokenKind.Indent implies endToken.kind == TokenKind.Dedent
+		body
+			base.init(firstToken, endToken, nil)
+			_statements = StatementList(stmts)
+			for s in _statements, _addChild(s)
+
+	cue init(firstToken as Cobra.Compiler.IToken, endToken as Cobra.Compiler.IToken)
+		require
+			firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
+			firstToken.kind == TokenKind.Indent implies endToken.kind == TokenKind.Dedent
+		body
+			base.init(firstToken, endToken, nil)
+			_statements = StatementList()
+
+	def toCobraSource as String is override
+		sb = StringBuilder(_firstToken.text)
+		for s in _statements, sb.append(s.toCobraSource)
+		sb.append(_lastToken.text)
+		return sb.toTechString

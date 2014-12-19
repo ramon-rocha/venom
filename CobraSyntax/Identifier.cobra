@@ -307,7 +307,7 @@ class GenericIdentifier inherits Identifier
 			assert id.types.count == 6
 		body
 			open = TypeIdentifier(Identifier(stream.grab))
-			commas = List<of Cobra.Compiler.IToken>()
+			commas = TokenList()
 			types = List<of TypeIdentifier>()
 			kind = stream.token.kind
 			if kind in .validKinds or kind in TokenKind.cobraTypes
@@ -339,7 +339,7 @@ class GenericIdentifier inherits Identifier
 			_openIdentifier, _lastToken = open, close
 			_addChild(open)
 
-			_commas = List<of Cobra.Compiler.IToken>(commas)
+			_commas = TokenList(commas)
 			_types = List<of TypeIdentifier>(types)
 
 			sb = StringBuilder(open.name)

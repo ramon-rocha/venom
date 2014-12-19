@@ -184,7 +184,7 @@ class LessThanEqualToExpression inherits BinaryOperatorExpression
 class GreaterThanExpression inherits BinaryOperatorExpression
 	"""foo > bar"""
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
-		require op.kind == TokenKind.NilCoalesceAndAssignOperator
+		require op.kind == TokenKind.GreaterThanOperator
 		base.init(left, op, right)
 
 class GreaterThanEqualToExpression inherits BinaryOperatorExpression

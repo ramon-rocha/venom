@@ -3,4 +3,55 @@ namespace Venom.CobraSyntax
 
 class BranchStatement inherits Statement
 	pass
+	/#
+	def parse(stream as ITokenStream) as BranchStatement is new, shared
+		require
+			stream.token.kind == TokenKind.BreakKeyword
+		test
+			source = _
+			"branch foo\n" +
+			"   on bar\n" +
+			"       print"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BranchStatement.parse(stream)
+			assert stmt.branchVariable inherits IdentifierExpression
+		test
+			source = _
+			"branch foo\n" +
+			"   on bar, print 'bar'\n" +
+			"   else, print 'else'"
+			stream = TokenStream(source, 'test.cobra')
+		test
+			source = _
+			"branch foo\n" +
+			"   on bar1\n" +
+			"       print '1'\n" +
+			"   on bar2\n" +
+			"       print '2'\n" +
+			"   on bar3, print '3'\n" +
+			"   else\n" +
+			"       print 'else'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BranchStatement.parse(stream)
+		body
+			return BranchStatement()
+	
+	get branchKeyword from var as Cobra.Compiler.IToken
+	get branchVariable from var as IExpression
+	get onClauses from var as IReadOnlyList<of OnClause>
+	get elseClause from var as ElseClause?
 
+class OnClause inherits SyntaxNode
+	get onKeyword from var as Cobra.Compiler.IToken
+	get condition from var as IExpression # TODO: only literals?
+	get comma from var as Cobra.Compiler.IToken?
+	get indent from var as Cobra.Compiler.IToken?
+	get statements from var as IReadOnlyList<of IStatement>
+	get dedent from var as Cobra.Compiler.IToken?
+
+class ElseClause inherits SyntaxNode
+	get elseKeyword from var as Cobra.Compiler.IToken
+	get comma from var as Cobra.Compiler.IToken?
+	get indent from var as Cobra.Compiler.IToken?
+	get statements from var as IReadOnlyList<of IStatement>
+	get dedent from var as Cobra.Compiler.IToken?#/

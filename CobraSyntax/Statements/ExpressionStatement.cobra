@@ -6,12 +6,38 @@ class ExpressionStatement
 	adds StatementBehavior
 	implements IExpression, IStatement
 
-	def parse(stream as ITokenStream) as IStatement is new, shared
-		expr = Expression.parse(stream)
-		return ExpressionStatement(expr, stream.skipToNextLine)
+	get expression from var as IExpression
 
-	cue init(expr as IExpression, extraTokens as TokenList?)
+	def parse(stream as ITokenStream) as IStatement is new, shared
+		test
+			source = "text = File.readAllText('foo.txt')"
+			stream = TokenStream(source, 'test.cobra')
+
+			stmt = ExpressionStatement.parse(stream) to ExpressionStatement
+			assert stmt.extraTokens.count == 0
+
+			assign = stmt.expression to AssignmentExpression
+			left = assign.leftExpression to IdentifierExpression
+			assert left.identifier.name == 'text'
+
+			right = assign.rightExpression to MemberAccessExpression
+			idExpr = right.leftExpression to IdentifierExpression
+			assert idExpr.identifier.name == 'File'
+
+			member = right.rightExpression to CallExpression
+			assert member.identifier.name == 'readAllText'
+			assert member.arguments.count == 1
+			assert member.arguments[0] inherits StringLiteral
+			assert member.lastToken.kind == TokenKind.CallEnd
+		body
+			expr = Expression.parse(stream)
+			skipped = stream.skipTo(TokenKind.EndOfLine)
+			lastToken = skipped.last
+			skipped.remove(lastToken)
+			return ExpressionStatement(expr, lastToken, skipped)
+
+	cue init(expr as IExpression, lastToken as Cobra.Compiler.IToken, extraTokens as TokenList?)
 		base.init(expr, extraTokens)
 		_expression = expr
-	
-	get expression from var as IExpression
+		if lastToken.charNum > _lastToken.charNum
+			_lastToken = lastToken

@@ -1,0 +1,241 @@
+
+namespace Venom.CobraSyntax
+
+class TryCatchStatement
+	inherits Statement
+
+	get tryClause from var as TryClause
+	get catchClauses from var as IReadOnlyList<of CatchClause>
+	get successClause from var as SuccessClause?
+	get finallyClause from var as FinallyClause?
+
+	cue init(
+		tryClause as TryClause,
+		catchClauses as CatchClause*,
+		successClause as SuccessClause?,
+		finallyClause as FinallyClause?
+	)
+		base.init(tryClause.firstToken, nil)
+		_tryClause = tryClause
+		_addChild(tryClause)
+		_catchClauses = List<of CatchClause>(catchClauses)
+		for c in _catchClauses, _addChild(c)
+		if successClause <> nil
+			_successClause = successClause
+			_addChild(successClause)
+		if finallyClause <> nil
+			_finallyClause = finallyClause
+			_addChild(finallyClause)
+
+	def parse(stream as ITokenStream) as TryCatchStatement? is new, shared
+		require
+			stream.token.kind == TokenKind.TryKeyword
+		test
+			source =
+			"try\n" +
+			"    text = File.readAllText('foo.txt')\n" +
+			"catch\n" +
+			"    print 'error!'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TryCatchStatement.parse(stream)
+			assert stmt.tryClause.statements.count == 1
+			assert stmt.catchClauses.count == 1
+			catchClause = stmt.catchClauses[0]
+			assert catchClause.exceptionIdentifier == nil
+			assert catchClause.exceptionType == nil
+			assert catchClause.statements.count == 1
+			assert catchClause.statements[0] inherits PrintStatement
+			assert stmt.successClause == nil
+			assert stmt.finallyClause == nil
+			assert stmt.lastToken.kind == TokenKind.Dedent
+		test
+			source =
+			"try, text = File.readAllText('foo.txt')\n" +
+			"catch, print 'error!'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TryCatchStatement.parse(stream)
+			assert stmt.tryClause.statements.count == 1
+			assert stmt.catchClauses.count == 1
+			catchClause = stmt.catchClauses[0]
+			assert catchClause.exceptionIdentifier == nil
+			assert catchClause.exceptionType == nil
+			assert catchClause.statements.count == 1
+			assert catchClause.statements[0] inherits PrintStatement
+			assert stmt.successClause == nil
+			assert stmt.finallyClause == nil
+			assert stmt.lastToken.kind == catchClause.statements[0].lastToken.kind #
+		test
+			source =
+			"try\n" +
+			"    print 'Reading the file...'\n" +
+			"    text = File.readAllText('foo.txt')\n" +
+			"    text = text.trim\n" +
+			"catch fileEx as System.IO.IOException\n" +
+			"    print 'File I/O error!'\n" +
+			"    print 'Does the file exist?'\n" +
+			"catch otherEx as Exception\n" +
+			"    print 'Error reading the file!'\n" +
+			"success\n" +
+			"    print 'file read successfully'\n" +
+			"finally\n" +
+			"    print 'The data read was: '\n" +
+			"    print text"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TryCatchStatement.parse(stream)
+			assert stmt.tryClause.statements.count == 3
+			assert stmt.tryClause.statements[0] inherits PrintStatement
+			assert stmt.tryClause.statements[2] inherits ExpressionStatement
+
+			assert stmt.catchClauses.count == 2
+			assert stmt.catchClauses[0].exceptionIdentifier.name == "fileEx"
+			assert stmt.catchClauses[0].exceptionType.qualifiedName == "System.IO.IOException"
+			assert stmt.catchClauses[0].statements.count == 2
+
+			assert stmt.catchClauses[1].exceptionIdentifier.name == "otherEx"
+			assert stmt.catchClauses[1].exceptionType.qualifiedName == "Exception"
+			assert stmt.catchClauses[1].statements.count == 1
+
+			assert stmt.successClause <> nil
+			assert stmt.successClause.statements.count == 1
+			assert stmt.successClause.statements[0] inherits PrintStatement
+
+			assert stmt.finallyClause <> nil
+			assert stmt.finallyClause.statements.count == 2
+			assert stmt.finallyClause.statements[0] inherits PrintStatement
+			assert stmt.finallyClause.statements[1] inherits PrintStatement
+		body
+			tryClause = TryClause.parse(stream)
+			stream.skipBlankLines
+
+			catchClauses = List<of CatchClause>()
+			while stream.token.kind == TokenKind.CatchKeyword
+				catchClauses.add(CatchClause.parse(stream))
+				stream.skipBlankLines
+			
+			successClause as SuccessClause? = nil
+			if stream.token.kind == TokenKind.SuccessKeyword
+				successClause = SuccessClause.parse(stream)
+
+			finallyClause as FinallyClause? = nil
+			if stream.token.kind == TokenKind.FinallyKeyword
+				finallyClause = FinallyClause.parse(stream)
+
+			return TryCatchStatement(tryClause, catchClauses, successClause, finallyClause)
+
+class TryClause inherits StatementClause
+	
+	get tryKeyword as Cobra.Compiler.IToken
+		return _firstToken
+
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as TryClause is new, shared
+		require stream.token.kind == TokenKind.TryKeyword
+		tryKeyword = stream.expect(TokenKind.TryKeyword)
+		stream.skipBlankLines
+		clause = StatementClause.parse(stream)
+		return TryClause(tryKeyword, clause)
+
+	cue init(tryKeyword as Cobra.Compiler.IToken, clause as StatementClause)
+		base.init(tryKeyword, clause.lastToken)
+		_clause = clause
+		_addChild(clause)
+
+
+class CatchClause inherits StatementClause # TODO inherits ClauseDecorator
+	
+	get catchKeyword as Cobra.Compiler.IToken
+		return _firstToken
+	
+	get exceptionIdentifier from var as Identifier?
+
+	get asKeyword from var as Cobra.Compiler.IToken?
+
+	get exceptionType from var as TypeIdentifier?
+
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as CatchClause is new, shared
+		require stream.token.kind == TokenKind.CatchKeyword
+		catchKeyword = stream.expect(TokenKind.CatchKeyword)
+
+		if stream.peek.kind == TokenKind.AsKeyword
+			exceptionIdentifier = Identifier.parse(stream)
+			asKeyword = stream.expect(TokenKind.AsKeyword)
+			exceptionType = TypeIdentifier.parse(stream)
+		
+		if stream.token.kind in Identifier.validKinds
+			exceptionType = TypeIdentifier.parse(stream)
+		
+		stream.skipBlankLines
+		clause = StatementClause.parse(stream)
+		return CatchClause(catchKeyword, exceptionIdentifier, asKeyword, exceptionType, clause)
+
+	cue init(
+		catchKeyword as Cobra.Compiler.IToken,
+		exceptionIdentifier as Identifier?,
+		asKeyword as Cobra.Compiler.IToken?,
+		exceptionType as TypeIdentifier?,
+		clause as StatementClause
+	)
+		base.init(catchKeyword, clause.lastToken)
+		if exceptionIdentifier
+			_exceptionIdentifier = exceptionIdentifier
+			_addChild(exceptionIdentifier)
+		_asKeyword = asKeyword
+		if exceptionType
+			_exceptionType = exceptionType
+			_addChild(exceptionType)
+		_clause = clause
+		_addChild(clause)
+
+
+class SuccessClause inherits StatementClause
+	
+	get successKeyword as Cobra.Compiler.IToken
+		return _firstToken
+
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as SuccessClause is new, shared
+		require stream.token.kind == TokenKind.SuccessKeyword
+		successKeyword = stream.expect(TokenKind.SuccessKeyword)
+		stream.skipBlankLines
+		clause = StatementClause.parse(stream)
+		return SuccessClause(successKeyword, clause)
+
+	cue init(successKeyword as Cobra.Compiler.IToken, clause as StatementClause)
+		base.init(successKeyword, clause.lastToken)
+		_clause = clause
+		_addChild(clause)
+
+class FinallyClause inherits StatementClause
+	
+	get finallyKeyword as Cobra.Compiler.IToken
+		return _firstToken
+
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as FinallyClause is new, shared
+		require stream.token.kind == TokenKind.FinallyKeyword
+		finallyKeyword = stream.expect(TokenKind.FinallyKeyword)
+		stream.skipBlankLines
+		clause = StatementClause.parse(stream)
+		return FinallyClause(finallyKeyword, clause)
+
+	cue init(finallyKeyword as Cobra.Compiler.IToken, clause as StatementClause)
+		base.init(finallyKeyword, clause.lastToken)
+		_clause = clause
+		_addChild(clause)

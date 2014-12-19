@@ -1,5 +1,0 @@
-
-namespace Venom.CobraSyntax
-
-class TryCatchBlock inherits Statement
-	pass

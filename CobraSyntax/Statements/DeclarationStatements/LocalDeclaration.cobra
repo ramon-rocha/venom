@@ -123,7 +123,7 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 			asKeyword = stream.grabOptional(TokenKind.AsKeyword)
 			if asKeyword
 				while stream.token.kind in _paramModifiers
-					mods[stream.grab.kind] = true
+					mods[stream.grab.kind] = true # TODO: detect duplicates
 				typeIdentifier = TypeIdentifier.parse(stream) to ?
 
 			if stream.grabOptional(TokenKind.AssignmentOperator)

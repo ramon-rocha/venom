@@ -41,7 +41,10 @@ class CollectionLiteral
 			
 			endToken = stream.grab
 
-			return ListLiteral(startToken, expressions, endToken) # TODO
+			branch startToken.kind
+				on TokenKind.ListStart, return ListLiteral(startToken, expressions, endToken)
+				on TokenKind.ArrayStart, return ArrayLiteral(startToken, expressions, endToken)
+				else, throw NotImplementedException("TODO: Handle dictionary and set literals")
 
 	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
 		base.init(startToken, endToken, nil)

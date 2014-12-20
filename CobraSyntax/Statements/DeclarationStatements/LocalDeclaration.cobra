@@ -41,17 +41,31 @@ class NamedLocalDeclaration
 		_identifier = id
 		_name = id.name
 
+class LocalVariableDeclaration inherits NamedLocalDeclaration
+	"""
+	Declares a local variable inside a method
+	"""
+	def toCobraSource as String is override
+		return "TODO"
+
 
 class ParameterDeclaration inherits NamedLocalDeclaration
 	"""
 	Declares a local parameter for a method
 	"""
 	get asKeyword from var as Cobra.Compiler.IToken?
+	get modifiers from var as IReadOnlyList<of Cobra.Compiler.IToken>
 	get typeIdentifier from var as TypeIdentifier?
 	get defaultValue from var as IExpression?
-	get isVariableLength from var as bool
-	get isOutputOnly from var as bool
-	get isInputAndOutput from var as bool
+
+	get isVariableLength as bool
+		return any for m in _modifiers get m.kind == TokenKind.VariKeyword
+
+	get isOutputOnly as bool
+		return any for m in _modifiers get m.kind == TokenKind.OutKeyword
+
+	get isInputAndOutput as bool
+		return any for m in _modifiers get m.kind == TokenKind.InOutKeyword
 
 	var _paramModifiers as IReadOnlyList<of String> is shared, readonly = [
 		TokenKind.OutKeyword,
@@ -115,47 +129,34 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 			assert param.isOutputOnly == false
 			assert param.isVariableLength == param.isInputAndOutput == true
 		body
-			mods = Dictionary<of String, bool>(_paramModifiers.count)
-			for m in _paramModifiers, mods[m] = false
-
 			id = Identifier.parse(stream)
+			mods = TokenList()
 
 			asKeyword = stream.grabOptional(TokenKind.AsKeyword)
 			if asKeyword
 				while stream.token.kind in _paramModifiers
-					mods[stream.grab.kind] = true # TODO: detect duplicates
+					mods.add(stream.grab)
 				typeIdentifier = TypeIdentifier.parse(stream) to ?
-
+			
 			if stream.grabOptional(TokenKind.AssignmentOperator)
 				defaultValue = Expression.parse(stream) to ?
-
-			return ParameterDeclaration(
-				id,
-				asKeyword,
-				mods[TokenKind.VariKeyword],
-				mods[TokenKind.OutKeyword],
-				mods[TokenKind.InOutKeyword],
-				typeIdentifier,
-				defaultValue
-			)
+			
+			return ParameterDeclaration(id, asKeyword, mods, typeIdentifier, defaultValue)
 	
 	cue init(
 		id as Identifier,
 		asKeyword as Cobra.Compiler.IToken?,
-		isVariableLength as bool,
-		isOutputOnly as bool,
-		isInputAndOutput as bool,
+		modifiers as TokenList,
 		typeIdentifier as TypeIdentifier?,
 		defaultValue as IExpression?
 	)
+		require asKeyword implies typeIdentifier
 		base.init(id)
 		_identifier = id
 		if asKeyword
 			_asKeyword = asKeyword
 			_lastToken = asKeyword
-		_isVariableLength = isVariableLength
-		_isOutputOnly = isOutputOnly
-		_isInputAndOutput = isInputAndOutput
+		_modifiers = TokenList(modifiers)
 		if typeIdentifier
 			_typeIdentifier = typeIdentifier
 			_addChild(typeIdentifier)
@@ -164,11 +165,20 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 			_addChild(defaultValue)
 	
 	def toCobraSource as String is override
-		sb = StringBuilder(_identifier.name)
-		if _asKeyword, sb.append(" as ")
-		if _typeIdentifier, sb.append(_typeIdentifier.qualifiedName)
-		if _defaultValue, sb.append(" = [_defaultValue.toCobraSource]")
-		return sb.toString + "TODO"
+		test
+			source = ns"x as vari inout int = @[1, 2, 3, 4]"
+			stream = TokenStream(source, 'test.cobra')
+			param = ParameterDeclaration.parse(stream)
+			assert param.toCobraSource == source
+		body
+			sb = StringBuilder(_identifier.name)
+			if _asKeyword, sb.append(" as")
+			if .isVariableLength, sb.append(" vari")
+			if .isOutputOnly, sb.append(" out")
+			if .isInputAndOutput, sb.append(" inout")
+			if _typeIdentifier, sb.append(" [_typeIdentifier.toCobraSource]")
+			if _defaultValue, sb.append(" = [_defaultValue.toCobraSource]")
+			return sb.toString
 
 class MethodSignature inherits SyntaxNode
 	"""
@@ -179,14 +189,28 @@ class MethodSignature inherits SyntaxNode
 	get returnTypeIdentifier from var as TypeIdentifier?
 
 	def parse(stream as ITokenStream) as MethodSignature is new, shared
-		params = List<of ParameterDeclaration>()
-		while stream.token.kind <> TokenKind.CloseParenthesis
-			if params.count <> 0, stream.expect(TokenKind.Comma)
-			params.add(ParameterDeclaration.parse(stream))
-		closeParens = stream.expect(TokenKind.CloseParenthesis)
-		asKeyword = stream.grabOptional(TokenKind.AsKeyword)
-		if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
-		return MethodSignature(params, closeParens, asKeyword, returnId)
+		test
+			source = "x as int, y as int)"
+			stream = TokenStream(source, 'test.cobra')
+			msig = MethodSignature.parse(stream)
+			assert msig.parameterDeclarations.count == 2
+			assert msig.asKeyword == nil
+			assert msig.returnTypeIdentifier == nil
+		test
+			source = "x as int, y as int) as List<of String>"
+			stream = TokenStream(source, 'test.cobra')
+			msig = MethodSignature.parse(stream)
+			assert msig.asKeyword <> nil
+			assert msig.returnTypeIdentifier.name == "List<of String>"
+		body
+			params = List<of ParameterDeclaration>()
+			while stream.token.kind <> TokenKind.CloseParenthesis
+				if params.count <> 0, stream.expect(TokenKind.Comma)
+				params.add(ParameterDeclaration.parse(stream))
+			closeParens = stream.expect(TokenKind.CloseParenthesis)
+			asKeyword = stream.grabOptional(TokenKind.AsKeyword)
+			if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
+			return MethodSignature(params, closeParens, asKeyword, returnId)
 	
 	cue init(
 		params as IReadOnlyList<of ParameterDeclaration>,
@@ -209,4 +233,18 @@ class MethodSignature inherits SyntaxNode
 			_addChild(returnTypeId)
 	
 	def toCobraSource as String is override
-		return "TODO"
+		test
+			source = "x as int, y as int) as List<of String>"
+			stream = TokenStream(source, 'test.cobra')
+			msig = MethodSignature.parse(stream)
+			assert msig.toCobraSource == source
+		body
+			sb = StringBuilder()
+			for param in _parameterDeclarations
+				if sb.length <> 0, sb.append(", ")
+				sb.append(param.toCobraSource)
+			sb.append(")")
+			if _asKeyword <> nil
+				sb.append(" as ")
+				sb.append(_returnTypeIdentifier.toCobraSource)
+			return sb.toString

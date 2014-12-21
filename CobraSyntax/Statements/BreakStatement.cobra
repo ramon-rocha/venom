@@ -2,4 +2,23 @@
 namespace Venom.CobraSyntax
 
 class BreakStatement inherits Statement
-	pass
+	
+	def parse(stream as ITokenStream) as BreakStatement is new, shared
+		require
+			stream.token.kind == TokenKind.BreakKeyword
+		test
+			source = "break"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BreakStatement.parse(stream)
+			assert stmt.firstToken.kind == stmt.lastToken.kind == TokenKind.BreakKeyword
+			assert stmt.extraTokens.count == 0
+		test
+			source = "break plus a bunch of extra tokens"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BreakStatement.parse(stream)
+			assert stmt.firstToken.kind == stmt.lastToken.kind == TokenKind.BreakKeyword
+			assert stmt.extraTokens.count <> 0
+		body
+			keyword = stream.expect(TokenKind.BreakKeyword)
+			skipped = stream.skipToNextLine
+			return BreakStatement(keyword, skipped)

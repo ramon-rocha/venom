@@ -2,4 +2,24 @@
 namespace Venom.CobraSyntax
 
 class ContinueStatement inherits Statement
-	pass
+	
+	def parse(stream as ITokenStream) as ContinueStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ContinueKeyword
+		test
+			source = "continue"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ContinueStatement.parse(stream)
+			assert stmt.firstToken.kind == stmt.lastToken.kind == TokenKind.ContinueKeyword
+			assert stmt.extraTokens.count == 0
+		test
+			source = "continue plus a bunch of extra tokens"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ContinueStatement.parse(stream)
+			assert stmt.firstToken.kind == stmt.lastToken.kind == TokenKind.ContinueKeyword
+			assert stmt.extraTokens.count <> 0
+		body
+			keyword = stream.expect(TokenKind.ContinueKeyword)
+			skipped = stream.skipToNextLine
+			return ContinueStatement(keyword, skipped)
+

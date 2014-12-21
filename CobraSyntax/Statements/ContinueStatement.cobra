@@ -23,3 +23,5 @@ class ContinueStatement inherits Statement
 			skipped = stream.skipToNextLine
 			return ContinueStatement(keyword, skipped)
 
+	def toCobraSource as String is override
+		return "continue"

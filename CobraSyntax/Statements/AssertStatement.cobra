@@ -33,3 +33,6 @@ class AssertStatement inherits Statement
 		_lastToken = expr.lastToken
 		_assertKeyword = keyword
 		_expression = expr
+
+	def toCobraSource as String is override
+		return "assert " + _expression.toCobraSource

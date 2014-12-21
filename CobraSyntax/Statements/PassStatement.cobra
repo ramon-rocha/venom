@@ -28,3 +28,6 @@ class PassStatement inherits Statement
 	cue init(passKeyword as Cobra.Compiler.IToken, skippedTokens as TokenList?)
 		require passKeyword.kind == TokenKind.PassKeyword
 		base.init(passKeyword, skippedTokens)
+
+	def toCobraSource as String is override
+		return "pass"

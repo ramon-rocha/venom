@@ -22,3 +22,6 @@ class BreakStatement inherits Statement
 			keyword = stream.expect(TokenKind.BreakKeyword)
 			skipped = stream.skipToNextLine
 			return BreakStatement(keyword, skipped)
+
+	def toCobraSource as String is override
+		return "break"

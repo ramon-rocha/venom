@@ -2,4 +2,45 @@
 namespace Venom.CobraSyntax
 
 class ReturnStatement inherits Statement
-	pass
+	
+	get returnKeyword from var as Cobra.Compiler.IToken
+	get expression from var as IExpression?
+
+	def parse(stream as ITokenStream) as ReturnStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ReturnKeyword
+		test
+			source = "return"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ReturnStatement.parse(stream)
+			assert stmt.lastToken is stmt.returnKeyword
+			assert stmt.expression == nil
+		test
+			source = "return foo.bar"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ReturnStatement.parse(stream)
+			assert stmt.expression inherits MemberAccessExpression
+			assert stmt.lastToken is stmt.expression.lastToken
+		test
+			source = "return foo.bar extra tokens"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ReturnStatement.parse(stream)
+			assert stmt.extraTokens.count == 2
+		body
+			kw = stream.expect(TokenKind.ReturnKeyword)
+			if stream.token.kind == TokenKind.EndOfLine
+				return ReturnStatement(kw)
+			expr = Expression.parse(stream)
+			skipped = stream.skipToNextLine
+			return ReturnStatement(kw, expr, skipped)
+	
+
+	cue init(returnKeyword as Cobra.Compiler.IToken)
+		.init(returnKeyword, nil, TokenList())
+
+	cue init(returnKeyword as Cobra.Compiler.IToken, expression as IExpression?, skipped as TokenList)
+		base.init(returnKeyword, skipped)
+		_returnKeyword = returnKeyword
+		if expression
+			_addChild(expression)
+			_expression = expression

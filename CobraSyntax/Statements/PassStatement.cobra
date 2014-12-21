@@ -11,7 +11,7 @@ class PassStatement inherits Statement
 			assert stmt.firstToken.text == "pass"
 			assert stmt.firstToken is stmt.lastToken
 			assert stmt.extraTokens.count == 0
-			assert stream.token.kind == TokenKind.PrintKeyword
+			assert stream.peek.kind == TokenKind.PrintKeyword
 		test
 			source = "pass print 'hello!'"
 			stream = TokenStream(source, "test.cobra")
@@ -23,7 +23,6 @@ class PassStatement inherits Statement
 		body
 			kw = stream.expect(TokenKind.PassKeyword)
 			skippedTokens = stream.skipToNextLine
-			stream.skipBlankLines
 			return PassStatement(kw, skippedTokens)
 	
 	cue init(passKeyword as Cobra.Compiler.IToken, skippedTokens as TokenList?)

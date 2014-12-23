@@ -2,4 +2,54 @@
 namespace Venom.CobraSyntax
 
 class YieldStatement inherits Statement
-	pass
+	
+	get yieldKeyword from var as Cobra.Compiler.IToken
+	get expression from var as IExpression?
+	get breakKeyword from var as Cobra.Compiler.IToken?
+
+	invariant
+		.expression == nil implies .breakKeyword <> nil
+		.breakKeyword == nil implies .expression <> nil
+
+	def parse(stream as ITokenStream) as YieldStatement is new, shared
+		require
+			stream.token.kind == TokenKind.YieldKeyword
+		test
+			source = "yield result"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = YieldStatement.parse(stream)
+			assert stmt.breakKeyword == nil
+			assert stmt.expression inherits IdentifierExpression
+			assert stmt.lastToken is stmt.expression.lastToken
+		test
+			source = "yield break"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = YieldStatement.parse(stream)
+			assert stmt.expression == nil
+			assert stmt.lastToken is stmt.breakKeyword
+		body
+			yieldKeyword = stream.expect(TokenKind.YieldKeyword)
+			skipped = TokenList()
+
+			breakKeyword = stream.grabOptional(TokenKind.BreakKeyword)
+			if breakKeyword
+				skipped.addRange(stream.skipToNextLine)
+				return YieldStatement(yieldKeyword, breakKeyword, skipped)
+
+			expr = Expression.parse(stream)
+			skipped.addRange(stream.skipToNextLine)
+			return YieldStatement(yieldKeyword, expr, skipped)
+
+	cue init(yieldKeyword as Cobra.Compiler.IToken, breakKeyword as Cobra.Compiler.IToken, skipped as TokenList)
+		base.init(yieldKeyword, breakKeyword, skipped)
+		_yieldKeyword, _breakKeyword = yieldKeyword, breakKeyword
+	
+	cue init(yieldKeyword as Cobra.Compiler.IToken, expression as IExpression, skipped as TokenList)
+		base.init(yieldKeyword, expression.lastToken, skipped)
+		_yieldKeyword, _expression = yieldKeyword, expression
+		_addChild(expression)
+
+	def toCobraSource as String is override
+		if _breakKeyword <> nil
+			return "yield break"
+		return "yield [_expression.toCobraSource]"

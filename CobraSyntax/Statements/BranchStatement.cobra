@@ -2,56 +2,208 @@
 namespace Venom.CobraSyntax
 
 class BranchStatement inherits Statement
-	pass
-	/#
-	def parse(stream as ITokenStream) as BranchStatement is new, shared
-		require
-			stream.token.kind == TokenKind.BreakKeyword
-		test
-			source = _
-			"branch foo\n" +
-			"   on bar\n" +
-			"       print"
-			stream = TokenStream(source, 'test.cobra')
-			stmt = BranchStatement.parse(stream)
-			assert stmt.branchVariable inherits IdentifierExpression
-		test
-			source = _
-			"branch foo\n" +
-			"   on bar, print 'bar'\n" +
-			"   else, print 'else'"
-			stream = TokenStream(source, 'test.cobra')
-		test
-			source = _
-			"branch foo\n" +
-			"   on bar1\n" +
-			"       print '1'\n" +
-			"   on bar2\n" +
-			"       print '2'\n" +
-			"   on bar3, print '3'\n" +
-			"   else\n" +
-			"       print 'else'"
-			stream = TokenStream(source, 'test.cobra')
-			stmt = BranchStatement.parse(stream)
-		body
-			return BranchStatement()
 	
 	get branchKeyword from var as Cobra.Compiler.IToken
 	get branchVariable from var as IExpression
-	get onClauses from var as IReadOnlyList<of OnClause>
-	get elseClause from var as ElseClause?
+	get indent from var as Cobra.Compiler.IToken
+	get onClauses from var as IReadOnlyList<of BranchOnClause>
+	get elseClause from var as BranchElseClause?
+	get dedent from var as Cobra.Compiler.IToken
 
-class OnClause inherits SyntaxNode
-	get onKeyword from var as Cobra.Compiler.IToken
-	get condition from var as IExpression # TODO: only literals?
-	get comma from var as Cobra.Compiler.IToken?
-	get indent from var as Cobra.Compiler.IToken?
-	get statements from var as IReadOnlyList<of IStatement>
-	get dedent from var as Cobra.Compiler.IToken?
+	def parse(stream as ITokenStream) as BranchStatement is new, shared
+		require
+			stream.token.kind == TokenKind.BranchKeyword
+		test
+			source = _
+			"branch foo\n" +
+			"    on bar\n" +
+			"        print"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BranchStatement.parse(stream)
+			assert stmt.firstToken.kind == TokenKind.BranchKeyword
+			assert stmt.branchVariable inherits IdentifierExpression
+			assert not stmt.lastToken.isEmpty
+			assert stmt.lastToken.kind == TokenKind.Dedent
 
-class ElseClause inherits SyntaxNode
-	get elseKeyword from var as Cobra.Compiler.IToken
-	get comma from var as Cobra.Compiler.IToken?
-	get indent from var as Cobra.Compiler.IToken?
-	get statements from var as IReadOnlyList<of IStatement>
-	get dedent from var as Cobra.Compiler.IToken?#/
+			assert stmt.onClauses.count == 1
+			assert stmt.onClauses[0].statements.count == 1
+			assert stmt.onClauses[0].statements[0] inherits PrintStatement
+
+			assert stmt.elseClause == nil
+		test
+			source = _
+			"branch foo\n" +
+			"    on bar, print 'bar'\n" +
+			"    else, print 'else'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BranchStatement.parse(stream)
+			assert stmt.onClauses.count == 1
+			assert stmt.elseClause <> nil
+		test
+			source = _
+			"branch foo\n" +
+			"    on bar1\n" +
+			"        print '1'\n" +
+			"    on bar2 or bar4\n" +
+			"        print '2'\n" +
+			"    on bar3, print '3'\n" +
+			"    else\n" +
+			"        print 'else'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = BranchStatement.parse(stream)
+			assert stmt.onClauses.count == 3
+			branch2 = stmt.onClauses[1]
+			assert branch2.orTokens.count == 1
+			assert branch2.values.count == 2
+			assert stmt.elseClause <> nil
+		body
+			branchKeyword = stream.expect(TokenKind.BranchKeyword)
+			branchVar = Expression.parse(stream)
+			skipped = stream.skipToNextLine
+			stream.skipBlankLines
+
+			onClauses = List<of BranchOnClause>()
+
+			indent = stream.expect(TokenKind.Indent)
+			while stream.token.kind == TokenKind.OnKeyword
+				onClauses.add(BranchOnClause.parse(stream))
+			if stream.token.kind == TokenKind.ElseKeyword
+				elseClause = BranchElseClause.parse(stream) to ?
+			dedent = stream.expect(TokenKind.Dedent)
+
+			return BranchStatement(branchKeyword, branchVar, indent, onClauses, elseClause, dedent, skipped)
+
+	cue init(
+		branchKeyword as Cobra.Compiler.IToken,
+		branchVariable as IExpression,
+		indent as Cobra.Compiler.IToken,
+		onClauses as BranchOnClause*,
+		elseClause as BranchElseClause?,
+		dedent as Cobra.Compiler.IToken,
+		skipped as TokenList
+	)
+		base.init(branchKeyword, dedent, skipped)
+		_branchKeyword, _branchVariable = branchKeyword, branchVariable
+		_addChild(branchVariable)
+		_indent, _dedent = indent, dedent
+
+		ons = List<of BranchOnClause>()
+		for o in onClauses
+			ons.add(o)
+			_addChild(o)
+		_onClauses = ons
+
+		if elseClause
+			_elseClause = elseClause
+			_addChild(elseClause)
+	
+	def toCobraSource as String is override
+		sb = StringBuilder("branch [_branchVariable]\n\t")
+		for o in _onClauses, sb.append(o.toCobraSource)
+		if _elseClause, sb.append(_elseClause.toCobraSource)
+		return sb.toString
+
+class BranchOnClause inherits StatementClause
+	
+	get onKeyword as Cobra.Compiler.IToken
+		return _firstToken
+	
+	get unexpectedExpressions from var as IReadOnlyList<of IExpression>
+	get values from var as IReadOnlyList<of IExpression>
+	get orTokens from var as IReadOnlyList<of Cobra.Compiler.IToken>
+
+	invariant
+		.orTokens.count == .values.count - 1
+
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as BranchOnClause is new, shared
+		require
+			stream.token.kind == TokenKind.OnKeyword
+		body
+			onKeyword = stream.expect(TokenKind.OnKeyword)
+			expr = Expression.parse(stream) # this will get split into expressions and or tokens later...I don't like though
+			skipped = TokenList()
+			if stream.token.kind <> TokenKind.Comma
+				skipped.addRange(stream.skipToNextLine)
+				stream.skipBlankLines
+			
+			clause = StatementClause.parse(stream)
+			return BranchOnClause(onKeyword, expr, clause, skipped)
+
+	cue init(
+		onKeyword as Cobra.Compiler.IToken,
+		expr as IExpression,
+		clause as StatementClause,
+		skipped as TokenList
+	)
+		base.init(onKeyword,  clause.lastToken, skipped)
+		_addChild(expr)
+
+		values = ExpressionList()
+		orTokens = TokenList()
+		unexpected = ExpressionList()
+
+		while expr inherits BinaryOperatorExpression
+			binOpExpr = expr to BinaryOperatorExpression
+			if binOpExpr.operatorToken.kind == TokenKind.LogicalOrOperator
+				orTokens.add(binOpExpr.operatorToken)
+				values.add(binOpExpr.rightExpression)
+			else
+				unexpected.add(expr)
+			expr = binOpExpr.leftExpression
+		values.add(expr)
+
+		_values, _orTokens, _unexpectedExpressions = values, orTokens, unexpected
+		_clause = clause
+		_addChild(clause)
+
+	def toCobraSource as String is override
+		sb = StringBuilder("on ")
+		valueBuilder = StringBuilder()
+		for e in _values
+			if valueBuilder.length <> 0, valueBuilder.append(" or ")
+			valueBuilder.append(e.toCobraSource)
+		sb.append(valueBuilder.toString)
+		if _unexpectedExpressions.count <> 0
+			for e in _unexpectedExpressions, sb.append(e.toCobraSource)
+		sb.appendLine
+		sb.append(_clause)
+		return sb.toString
+
+class BranchElseClause inherits StatementClause
+	
+	get elseKeyword as Cobra.Compiler.IToken
+		return _firstToken
+	
+	var _clause as StatementClause
+
+	get statements as IReadOnlyList<of IStatement> is override
+		return _clause.statements
+
+	def parse(stream as ITokenStream) as BranchElseClause is new, shared
+		require
+			stream.token.kind == TokenKind.ElseKeyword
+		body
+			elseKeyword = stream.expect(TokenKind.ElseKeyword)
+
+			skipped = TokenList()
+			if stream.token.kind <> TokenKind.Comma
+				skipped.addRange(stream.skipToNextLine)
+				stream.skipBlankLines
+			
+			clause = StatementClause.parse(stream)
+			return BranchElseClause(elseKeyword, clause, skipped)
+
+	cue init(elseKeyword as Cobra.Compiler.IToken, clause as StatementClause, skipped as TokenList)
+		base.init(elseKeyword, clause.lastToken, skipped)
+		_clause = clause
+		_addChild(clause)
+
+	def toCobraSource as String is override
+		sb = StringBuilder("else")
+		sb.append(_clause)
+		return sb.toString

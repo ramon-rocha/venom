@@ -68,34 +68,27 @@ class TypeMemberDeclaration
 	A member declaration that appears inside a type declaration
 	"""
 	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
+		
 		stream.skipBlankLines
 		kind = stream.token.kind
+
 		if kind in TokenKind.typeDeclarationKeywords
 			return TypeDeclaration.parse(stream)
+		
 		else if kind in TokenKind.modifierKeywords
 			return ModifierBlock.parse(stream)
 		
 		branch kind
-			on TokenKind.CueKeyword
-				return nil # TODO
-			on TokenKind.MethodKeyword
-				return MethodDeclaration.parse(stream)
-			on TokenKind.GetterKeyword
-				return nil # TODO
-			on TokenKind.SetterKeyword
-				return nil # TODO
-			on TokenKind.PropertyKeyword
-				return nil # TODO
-			on TokenKind.FieldKeyword
-				return FieldDeclaration.parse(stream)
-			on TokenKind.ConstKeyword
-				return nil # TODO
-			on TokenKind.InvariantKeyord
-				return nil # TODO
-			on TokenKind.EventKeyword
-				return nil # TODO
-			on TokenKind.TestKeyword
-				return nil # TODO
+			on TokenKind.CueKeyword, return nil # TODO
+			on TokenKind.MethodKeyword, return MethodDeclaration.parse(stream)
+			on TokenKind.GetterKeyword, return nil # TODO
+			on TokenKind.SetterKeyword, return nil # TODO
+			on TokenKind.PropertyKeyword, return nil # TODO
+			on TokenKind.FieldKeyword, return FieldDeclaration.parse(stream)
+			on TokenKind.ConstKeyword, return nil # TODO
+			on TokenKind.InvariantKeyord, return nil # TODO
+			on TokenKind.EventKeyword, return nil # TODO
+			on TokenKind.TestKeyword, return nil # TODO
 		
 		return nil # TODO
 

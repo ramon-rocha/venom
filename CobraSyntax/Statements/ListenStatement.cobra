@@ -2,4 +2,44 @@
 namespace Venom.CobraSyntax
 
 class ListenStatement inherits Statement
-	pass
+	
+	get listenKeyword from var as Cobra.Compiler.IToken
+	get eventExpression from var as IExpression
+	get comma from var as Cobra.Compiler.IToken
+	get methodReference from var as MethodReferenceExpression
+
+	def parse(stream as ITokenStream) as ListenStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ListenKeyword
+		test
+			source = "listen button.click, ref .clickHandler"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ListenStatement.parse(stream)
+			assert stmt.eventExpression inherits MemberAccessExpression
+			assert not stmt.comma.isEmpty
+			assert stmt.lastToken is stmt.methodReference.lastToken
+		body
+			kw = stream.expect(TokenKind.ListenKeyword)
+			expr = Expression.parse(stream)
+			comma = stream.expect(TokenKind.Comma)
+			methRef = MethodReferenceExpression.parse(stream)
+			skipped = stream.skipToNextLine
+			return ListenStatement(kw, expr, comma, methRef, skipped)
+
+	cue init(
+		keyword as Cobra.Compiler.IToken,
+		eventExpr as IExpression,
+		comma as Cobra.Compiler.IToken,
+		methodRef as MethodReferenceExpression,
+		skipped as TokenList
+	)
+		base.init(keyword, methodRef.lastToken, skipped)
+		_listenKeyword = keyword
+		_eventExpression = eventExpr
+		_addChild(eventExpr)
+		_comma = comma
+		_methodReference = methodRef
+		_addChild(methodRef)
+
+	def toCobraSource as String is override
+		return "listen [_eventExpression.toCobraSource], [_methodReference.toCobraSource]"

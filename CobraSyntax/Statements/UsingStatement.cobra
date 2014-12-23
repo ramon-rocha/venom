@@ -2,4 +2,55 @@
 namespace Venom.CobraSyntax
 
 class UsingStatement inherits Statement
-	pass
+	
+	get usingKeyword from var as Cobra.Compiler.IToken
+	get resourceName from var as Identifier
+	get assignmentToken from var as Cobra.Compiler.IToken
+	get resourceExpression from var as IExpression
+	get clause from var as StatementClause
+
+	def parse(stream as ITokenStream) as UsingStatement is new, shared
+		require
+			stream.token.kind == TokenKind.UsingKeyword
+		test
+			source = 
+			'using font1 = Font("Arial", 10.0f)\n' +
+			"    charset = font1.GdiCharSet"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = UsingStatement.parse(stream)
+			assert stmt.resourceName.name == "font1"
+			assert stmt.resourceExpression inherits CallExpression
+			assert stmt.clause.statements.count == 1
+			assert stmt.lastToken.kind == TokenKind.Dedent
+		body
+			keyword = stream.expect(TokenKind.UsingKeyword)
+			name = Identifier.parse(stream)
+			equals = stream.expect(TokenKind.AssignmentOperator)
+			resource = Expression.parse(stream)
+			if stream.token.kind <> TokenKind.Comma
+				skipped = stream.skipToNextLine
+			else
+				skipped = TokenList()
+			clause = StatementClause.parse(stream)
+			return UsingStatement(keyword, name, equals, resource, clause, skipped)
+
+	cue init(
+		keyword as Cobra.Compiler.IToken,
+		resourceName as Identifier,
+		equals as Cobra.Compiler.IToken,
+		resource as IExpression,
+		clause as StatementClause,
+		skipped as TokenList
+	)
+		base.init(keyword, clause.lastToken, skipped)
+		_usingKeyword = keyword
+		_resourceName = resourceName
+		_addChild(resourceName)
+		_assignmentToken = equals
+		_resourceExpression = resource
+		_addChild(resource)
+		_clause = clause
+		_addChild(clause)
+
+	def toCobraSource as String is override
+		return "using [_resourceName.toCobraSource] = [_resourceExpression.toCobraSource][_clause.toCobraSource]"	

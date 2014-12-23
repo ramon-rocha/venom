@@ -8,7 +8,10 @@ class UnaryOperatorExpression inherits Expression
 		TokenKind.LogicalAnyOperator : AnyExpression,
 		TokenKind.OldValueOperator : OldExpression,
 		TokenKind.MethodReferenceOperator : MethodReferenceExpression,
-		TokenKind.CompilerDirective : CompilerDirectiveExpression
+		TokenKind.CompilerDirective : CompilerDirectiveExpression,
+		TokenKind.LogicalNotOperator : LogicalNotExpression,
+		TokenKind.SubtractionOperator : AdditiveInverseExpression,
+		# TODO + and ~ operators
 	}
 
 	def parse(stream as ITokenStream) as UnaryOperatorExpression is new, shared
@@ -75,3 +78,22 @@ class CompilerDirectiveExpression inherits UnaryOperatorExpression
 	def parse(stream as ITokenStream) as CompilerDirectiveExpression is new, shared
 		require stream.token.kind == TokenKind.CompilerDirective
 		return UnaryOperatorExpression.parse(stream) to CompilerDirectiveExpression
+
+
+class LogicalNotExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.LogicalNotOperator
+		base.init(op, expr)
+
+	def parse(stream as ITokenStream) as LogicalNotExpression is new, shared
+		require stream.token.kind == TokenKind.LogicalNotOperator
+		return UnaryOperatorExpression.parse(stream) to LogicalNotExpression
+
+class AdditiveInverseExpression inherits UnaryOperatorExpression
+	cue init(op as Cobra.Compiler.IToken, expr as IExpression)
+		require op.kind == TokenKind.SubtractionOperator
+		base.init(op, expr)
+
+	def parse(stream as ITokenStream) as AdditiveInverseExpression is new, shared
+		require stream.token.kind == TokenKind.SubtractionOperator
+		return UnaryOperatorExpression.parse(stream) to AdditiveInverseExpression

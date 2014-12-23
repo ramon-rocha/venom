@@ -2,4 +2,31 @@
 namespace Venom.CobraSyntax
 
 class ThrowStatement inherits Statement
-	pass
+	
+	get throwKeyword from var as Cobra.Compiler.IToken
+	get typeIdentifier from var as TypeIdentifier
+
+	def parse(stream as ITokenStream) as ThrowStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ThrowKeyword
+		test
+			source = 'throw MyException()'
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ThrowStatement.parse(stream)
+			assert stmt.typeIdentifier.name == "MyException"
+			assert stmt.lastToken.kind == TokenKind.CloseParenthesis
+		body
+			keyword = stream.expect(TokenKind.ThrowKeyword)
+			id = TypeIdentifier.parse(stream)
+			paren = stream.expect(TokenKind.CloseParenthesis)
+			skipped = stream.skipToNextLine
+			return ThrowStatement(keyword, id, paren, skipped)
+
+	cue init(keyword as Cobra.Compiler.IToken, id as TypeIdentifier, paren as Cobra.Compiler.IToken, skipped as TokenList)
+		base.init(keyword, paren, skipped)
+		_throwKeyword = keyword
+		_typeIdentifier = id
+		_addChild(id)
+
+	def toCobraSource as String is override
+		return "throw [_typeIdentifier.toCobraSource]()"

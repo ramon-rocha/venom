@@ -2,4 +2,70 @@
 namespace Venom.CobraSyntax
 
 class RaiseStatement inherits Statement
-	pass
+	
+	get raiseKeyword from var as Cobra.Compiler.IToken
+	get eventExpression from var as IExpression
+	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get args from var as IReadOnlyList<of IExpression>
+
+	def parse(stream as ITokenStream) as RaiseStatement is new, shared
+		require
+			stream.token.kind == TokenKind.RaiseKeyword
+		test
+			source = "raise .notifyEvent"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = RaiseStatement.parse(stream)
+			evnt = stmt.eventExpression to MemberAccessExpression
+			thisLit = evnt.leftExpression to ThisLiteral
+			assert thisLit.isImplicit
+			assert stmt.commas.count == stmt.args.count == 0
+		test
+			source = "raise button.click, EventArgs()"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = RaiseStatement.parse(stream)
+			assert stmt.commas.count == stmt.args.count == 1
+			assert stmt.args[0] inherits CallExpression
+		test
+			source = "raise button.click, arg1, arg2, arg3"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = RaiseStatement.parse(stream)
+			assert stmt.commas.count == stmt.args.count == 3
+			assert all for a in stmt.args get a inherits IdentifierExpression
+		body
+			kw = stream.expect(TokenKind.RaiseKeyword)
+			expr = Expression.parse(stream)
+			commas = TokenList()
+			args = ExpressionList()
+			c = stream.grabOptional(TokenKind.Comma)
+			while c <> nil
+				commas.add(c)
+				args.add(Expression.parse(stream))
+				c = stream.grabOptional(TokenKind.Comma)
+			skipped = stream.skipToNextLine
+			return RaiseStatement(kw, expr, commas, args, skipped)
+
+	cue init(
+		keyword as Cobra.Compiler.IToken,
+		eventExpr as IExpression,
+		commas as IEnumerable<of Cobra.Compiler.IToken>,
+		args as IExpression*,
+		skipped as TokenList
+	)
+		base.init(keyword, skipped)
+		_raiseKeyword = keyword
+		_eventExpression = eventExpr
+		_addChild(eventExpr)
+		_commas = TokenList(commas)
+		_args = List<of IExpression>(args)
+		for a in _args, _addChild(a)
+
+	def toCobraSource as String is override
+		sb =StringBuilder("raise [_eventExpression.toCobraSource]")
+		if _args.count <> 0
+			sb.append(", ")
+			argBuilder = StringBuilder()
+			for a in _args
+				if argBuilder.length <> 0, argBuilder.append(", ")
+				argBuilder.append(a.toCobraSource)
+			sb.append(argBuilder.toString)
+		return sb.toString

@@ -3,6 +3,27 @@ namespace Venom.CobraSyntax
 
 class PrintStatement inherits Statement
 
+	invariant
+		_toKeyword implies _destination
+		_destination implies _toKeyword
+
+	get printKeyword from var as Cobra.Compiler.IToken
+		"""Token for the 'print' keyword."""
+	
+	get toKeyword from var as Cobra.Compiler.IToken?
+		"""Optional token for the 'to' keyword.  nil when not present."""
+	
+	get destination from var as IExpression?
+		"""Optional TextWriter to print to.  nil when printing to Console."""
+	
+	get expressions from var as IReadOnlyList<of IExpression>
+		"""One or more comma delimited expressions to print"""
+
+	
+	get stopKeyword as Cobra.Compiler.IToken?
+		"""Optional token for the 'stop' keyword.  nil when not present."""
+		return if(_lastToken.kind == TokenKind.StopKeyword, _lastToken, nil)
+
 	var _endsPrintStatement as IReadOnlyList<of String> is shared, readonly = [
 		TokenKind.EndOfLine,
 		TokenKind.StopKeyword,
@@ -111,29 +132,10 @@ class PrintStatement inherits Statement
 			_expressions = ExpressionList(expressions)
 			if destination, _addChild(destination)
 			for e in _expressions, _addChild(e) # TODO? Add expression list as single node
-	
-	get printKeyword from var as Cobra.Compiler.IToken
-		"""
-		Token for the 'print' keyword.
-		"""
-	
-	get toKeyword from var as Cobra.Compiler.IToken?
-		"""
-		Optional token for the 'to' keyword.  nil when not present.
-		"""
-	
-	get destination from var as IExpression?
-		"""
-		Optional TextWriter to print to.  nil when printing to Console.
-		"""
-	
-	get stopKeyword as Cobra.Compiler.IToken?
-		"""
-		Optional token for the 'stop' keyword.  nil when not present.
-		"""
-		return if(_lastToken.kind == TokenKind.StopKeyword, _lastToken, nil)
-	
-	get expressions from var as IReadOnlyList<of IExpression>
-		"""
-		One or more comma delimited expressions to print
-		"""
+
+	def toCobraSource as String is override
+		sb = StringBuilder("print")
+		if .toKeyword
+			sb.append(" to [_destination.toCobraSource]")
+		sb.append(" TODO ")
+		return sb.toString

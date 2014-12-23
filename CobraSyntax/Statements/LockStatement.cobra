@@ -2,4 +2,38 @@
 namespace Venom.CobraSyntax
 
 class LockStatement inherits Statement
-	pass
+	
+	get lockKeyword from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+
+	def parse(stream as ITokenStream) as LockStatement is new, shared
+		require
+			stream.token.kind == TokenKind.LockKeyword
+		test
+			source = "lock this"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = LockStatement.parse(stream)
+			assert stmt.expression inherits ThisLiteral
+			assert stmt.firstToken.kind == TokenKind.LockKeyword
+			assert stmt.lastToken.kind == TokenKind.ThisKeyword
+			assert stmt.extraTokens.count == 0
+		test
+			source = "lock this foo bar"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = LockStatement.parse(stream)
+			assert stmt.expression inherits ThisLiteral
+			assert stmt.firstToken.kind == TokenKind.LockKeyword
+			assert stmt.lastToken.kind == TokenKind.ThisKeyword
+			assert stmt.extraTokens.count == 2
+		body
+			keyword = stream.expect(TokenKind.LockKeyword)
+			expr = Expression.parse(stream)
+			skipped = stream.skipToNextLine
+			return LockStatement(keyword, expr, skipped)
+
+	cue init(keyword as Cobra.Compiler.IToken, expression as IExpression, skipped as TokenList)
+		base.init(keyword, skipped)
+		_lockKeyword = keyword
+		_expression = expression
+		_addChild(expression)
+

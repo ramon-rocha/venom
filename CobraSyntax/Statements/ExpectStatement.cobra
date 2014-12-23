@@ -2,4 +2,41 @@
 namespace Venom.CobraSyntax
 
 class ExpectStatement inherits Statement
-	pass
+	
+	get expectKeyword from var as Cobra.Compiler.IToken
+	get exceptionTypeIdentifier from var as TypeIdentifier
+	get clause from var as StatementClause
+
+	def parse(stream as ITokenStream) as ExpectStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ExpectKeyword
+		test
+			source = "expect FormatException\n\ti = Int32.parse('abc')"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ExpectStatement.parse(stream)
+			assert stmt.exceptionTypeIdentifier.name == "FormatException"
+			assert stmt.clause.statements.count == 1
+		body
+			kw = stream.expect(TokenKind.ExpectKeyword)
+			id = TypeIdentifier.parse(stream)
+			skipped = TokenList()
+			if stream.token.kind <> TokenKind.Comma
+				skipped.addRange(stream.skipToNextLine)
+			clause = StatementClause.parse(stream)
+			return ExpectStatement(kw, id, skipped, clause)
+	
+	cue init(
+		expectKeyword as Cobra.Compiler.IToken,
+		typeId as TypeIdentifier,
+		skipped as TokenList,
+		clause as StatementClause
+	)
+		base.init(expectKeyword, skipped)
+		_expectKeyword = expectKeyword
+		_exceptionTypeIdentifier = typeId
+		_addChild(typeId)
+		_clause = clause
+		_addChild(clause)
+	
+	def toCobraSource as String is override
+		return "expect [_exceptionTypeIdentifier.toCobraSource][_clause.toCobraSource]"

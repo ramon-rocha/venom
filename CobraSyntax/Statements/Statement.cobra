@@ -94,7 +94,7 @@ class StatementClause
 			if comma <> nil
 				stmts.add(Statement.parse(stream))
 				return StatementClause(comma, stmts[0].lastToken, stmts)
-	
+			
 			indent = stream.expect(TokenKind.Indent)
 			while stream.token.kind <> TokenKind.Dedent
 				stmts.add(Statement.parse(stream))
@@ -102,7 +102,12 @@ class StatementClause
 			
 			return StatementClause(indent, dedent, stmts)
 	
-	cue init(firstToken as Cobra.Compiler.IToken, endToken as Cobra.Compiler.IToken, stmts as IReadOnlyList<of IStatement>)
+	cue init(
+		firstToken as Cobra.Compiler.IToken,
+		endToken as Cobra.Compiler.IToken,
+		stmts as IReadOnlyList<of IStatement>,
+		skipped as TokenList? = nil
+	)
 		require
 			firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
 			firstToken.kind == TokenKind.Indent implies endToken.kind == TokenKind.Dedent
@@ -111,12 +116,12 @@ class StatementClause
 			_statements = StatementList(stmts)
 			for s in _statements, _addChild(s)
 
-	cue init(firstToken as Cobra.Compiler.IToken, endToken as Cobra.Compiler.IToken)
+	cue init(firstToken as Cobra.Compiler.IToken, endToken as Cobra.Compiler.IToken, skipped as TokenList? = nil)
 		require
 			firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
 			firstToken.kind == TokenKind.Indent implies endToken.kind == TokenKind.Dedent
 		body
-			base.init(firstToken, endToken, nil)
+			base.init(firstToken, endToken, skipped)
 			_statements = StatementList()
 
 	def toCobraSource as String is override

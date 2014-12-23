@@ -2,4 +2,120 @@
 namespace Venom.CobraSyntax
 
 class ForStatement inherits Statement
-	pass
+	
+	get forKeyword from var as Cobra.Compiler.IToken
+	get iterationVariable from var as Identifier
+	get inKeyword from var as Cobra.Compiler.IToken
+	get startExpression from var as IExpression?
+	get colon1 from var as Cobra.Compiler.IToken?
+	get stopExpression from var as IExpression
+	get colon2 from var as Cobra.Compiler.IToken?
+	get stepExpression from var as IExpression?
+	get clause from var as StatementClause
+
+	invariant
+		.colon1 <> nil implies .startExpression <> nil
+		.startExpression <> nil implies .colon1 <> nil
+		.stepExpression <> nil implies .colon2 <> nil
+		.colon2 <> nil implies .stepExpression <> nil
+
+	def parse(stream as ITokenStream) as ForStatement is new, shared
+		require
+			stream.token.kind == TokenKind.ForKeyword
+		test
+			source = "for i in 5, print i"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ForStatement.parse(stream)
+			assert stmt.iterationVariable.name == "i"
+			assert stmt.startExpression == nil
+			assert stmt.colon1 == nil
+			assert stmt.stopExpression inherits IntegerLiteral
+			assert stmt.colon2 == nil
+			assert stmt.stepExpression == nil
+			assert stmt.clause.statements.count == 1
+			assert stmt.lastToken == stmt.lastToken
+		test
+			source =
+			"for i in 1:10\n" +
+			"    print i"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ForStatement.parse(stream)
+			assert stmt.startExpression inherits IntegerLiteral
+			assert stmt.colon1 <> nil
+			assert stmt.stopExpression inherits IntegerLiteral
+			assert stmt.colon2 == nil
+			assert stmt.stepExpression == nil
+			assert stmt.clause.statements.count == 1
+			assert stmt.lastToken == stmt.lastToken
+		test
+			source =
+			"for i in -10:10:2\n" +
+			"    print i"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ForStatement.parse(stream)
+			assert stmt.startExpression inherits AdditiveInverseExpression
+			assert stmt.colon1 <> nil
+			assert stmt.stopExpression inherits IntegerLiteral
+			assert stmt.colon2 <> nil
+			assert stmt.stepExpression inherits IntegerLiteral
+		body
+			forKeyword = stream.expect(TokenKind.ForKeyword)
+			iterVar = Identifier.parse(stream)
+			inKeyword = stream.expect(TokenKind.InKeyword)
+
+			expr = Expression.parse(stream)
+			colon1 = stream.grabOptional(TokenKind.Colon)
+			if colon1
+				startExpr as IExpression? = expr
+				stopExpr = Expression.parse(stream)
+			else
+				stopExpr = expr
+			colon2 = stream.grabOptional(TokenKind.Colon)
+			if colon2
+				stepExpr = Expression.parse(stream) to ?
+
+			if stream.token.kind <> TokenKind.Comma
+				skipped = stream.skipToNextLine
+			else
+				skipped = TokenList()
+			clause = StatementClause.parse(stream)
+			return ForStatement(forKeyword, iterVar, inKeyword, startExpr, colon1, stopExpr, colon2, stepExpr, clause, skipped)
+
+	cue init(
+		forKeyword as Cobra.Compiler.IToken,
+		iterationVar as Identifier,
+		inKeyword as Cobra.Compiler.IToken,
+		startExpression as IExpression?,
+		colon1 as Cobra.Compiler.IToken?,
+		stopExpression as IExpression,
+		colon2 as Cobra.Compiler.IToken?,
+		stepExpression as IExpression?,
+		clause as StatementClause,
+		skipped as TokenList
+	)
+		base.init(forKeyword, clause.lastToken, skipped)
+		_forKeyword, _inKeyword = forKeyword, inKeyword
+		_iterationVariable = iterationVar
+		_addChild(iterationVar)
+		if startExpression
+			_startExpression, _colon1 = startExpression, colon1 to !
+			_addChild(startExpression)
+		_stopExpression = stopExpression
+		_addChild(stopExpression)
+		if stepExpression
+			_stepExpression, _colon2 = stepExpression, colon2 to !
+			_addChild(stepExpression)
+		_clause = clause
+		_addChild(clause)
+
+	def toCobraSource as String is override
+		sb = StringBuilder("for [_iterationVariable.toCobraSource] in ")
+		if _colon1
+			sb.append(_startExpression.toCobraSource)
+			sb.append(":")
+		sb.append(_stopExpression.toCobraSource)
+		if _colon2
+			sb.append(":")
+			sb.append(_stepExpression.toCobraSource)
+		sb.append(_clause.toCobraSource)
+		return sb.toString

@@ -99,6 +99,14 @@ class IfStatement inherits Statement
 			_falseClause = falseClause
 			_addChild(falseClause)
 
+	def toCobraSource as String is override
+		sb = StringBuilder("if ")
+		sb.append(_condition.toCobraSource)
+		sb.append(_trueClause.toCobraSource)
+		if _falseClause, sb.append(_falseClause.toCobraSource)
+		return sb.toString
+
+
 class ElseClause inherits StatementClause
 	
 	get elseKeyword as Cobra.Compiler.IToken
@@ -111,6 +119,10 @@ class ElseClause inherits StatementClause
 	get statements as IReadOnlyList<of IStatement> is override
 		if _clause <> nil, return _clause.statements
 		return _statements
+
+	invariant
+		.ifStatement implies _clause == nil and _statements.count == 1
+		_clause implies .ifStatement == nil
 
 	def parse(stream as ITokenStream) as ElseClause is new, shared
 		require
@@ -134,3 +146,11 @@ class ElseClause inherits StatementClause
 		base.init(elseKeyword, clause.lastToken)
 		_clause = clause
 		_addChild(clause)
+
+	def toCobraSource as String is override
+		sb = StringBuilder("else")
+		if _ifStatement
+			sb.append(" [_ifStatement.toCobraSource]")
+			return sb.toString
+		sb.append(_clause)
+		return sb.toString

@@ -416,6 +416,6 @@ class TokenKind
 		]
 			"""
 			These are the different keywords for modifiers that can be applied to declarations.
-			The are sometimes called "is names" since they ususally follow the "is" keyword.
+			They are sometimes called "is names" since they ususally follow the "is" keyword.
 			However, they can also be used sometimes to start an indented block.
 			"""

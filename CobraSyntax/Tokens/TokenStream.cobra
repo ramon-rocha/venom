@@ -70,6 +70,11 @@ interface ITokenStream
 		token is generated for the first kind in the given list of 'kinds'.
 		"""
 
+	def grabOneOfOptional(kinds as IReadOnlyList<of String>) as ICobraToken?
+		"""
+		Grabs and returns the current token if it matches any of the given 'kinds' otherwise returns nil.
+		"""
+	
 	def expect(kind as String) as ICobraToken
 		"""
 		Consume the current token if it matches the given kind and return it.
@@ -235,6 +240,11 @@ class TokenStream
 		if token == nil
 			.expect(kinds[0])
 		return token to !
+
+	def grabOneOfOptional(kinds as IReadOnlyList<of String>) as ICobraToken?
+		if .token.kind in kinds
+			return .grab
+		return nil
 
 	def expect(kind as String) as Cobra.Compiler.IToken
 		t = .token

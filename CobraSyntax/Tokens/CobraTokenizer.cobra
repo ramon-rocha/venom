@@ -9,22 +9,22 @@ class CobraTokenizer inherits Cobra.Compiler.CobraTokenizer
 	test
 		tokenizer = CobraTokenizer(Cobra.Compiler.FakeTypeProvider())
 
-		source = _
-			"use System.Diagnostics\n\n" +
-			"namespace Venom.TokenizerTest # here is a comment!\n\n" +
-			"class Program\n" +
-				"\tdef main\n" +
-					"\t\tx, y = 1.5, 2.0\n" +
-					"\t\tprint x, ' + ', y, ' = ', x + y"
+		source =
+		"use System.Diagnostics\n\n" +
+		"namespace Venom.TokenizerTest # here is a comment!\n\n" +
+		"class Program\n" +
+		"    def main\n" +
+		"        x, y = 1.5, 2.0\n" +
+		"        print x, ' + ', y, ' = ', x + y"
 		
-		expectedTokens = _
-			"USE ID DOT ID EOL EOL " +
-			"NAMESPACE ID DOT ID COMMENT EOL EOL " +
-			"CLASS ID EOL " +
-				"INDENT DEF ID EOL " +
-					"INDENT ID COMMA ID ASSIGN FRACTIONAL_LIT COMMA FRACTIONAL_LIT EOL " +
-					"PRINT ID COMMA STRING_SINGLE COMMA ID COMMA STRING_SINGLE COMMA ID PLUS ID EOL " +
-			"DEDENT DEDENT EOF"
+		expectedTokens =
+		"USE ID DOT ID EOL EOL " +
+		"NAMESPACE ID DOT ID COMMENT EOL EOL " +
+		"CLASS ID EOL " +
+			"INDENT DEF ID EOL " +
+				"INDENT ID COMMA ID ASSIGN FRACTIONAL_LIT COMMA FRACTIONAL_LIT EOL " +
+				"PRINT ID COMMA STRING_SINGLE COMMA ID COMMA STRING_SINGLE COMMA ID PLUS ID EOL " +
+		"DEDENT DEDENT EOF"
 		
 		tokenizer.startSource('test.cobra', source)
 		tokens = tokenizer.allTokens

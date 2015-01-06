@@ -30,6 +30,8 @@ class MemberDeclaration
 	)
 		require
 			keywordToken.isKeyword
+
+			# member declarations (other than namespaces) that have a doc string must have both an indent and dedent token
 			not (this inherits NamespaceDeclaration) implies _
 				(docString implies (indentToken and dedentToken))
 		body
@@ -46,27 +48,21 @@ class MemberDeclaration
 			if dedentToken <> nil
 				_lastToken = dedentToken
 	
-	get keywordToken as Cobra.Compiler.IToken
-		return _firstToken
-	
 	get identifier from var as Identifier
 	get indentToken from var as Cobra.Compiler.IToken?
 	get dedentToken from var as Cobra.Compiler.IToken?
 
 
 interface ITypeMemberDeclaration inherits IMemberDeclaration
-	"""
-	A declaration statement for a member of a type
-	"""
+	"""A member declaration that appears inside a type declaration"""
 	pass
 
 class TypeMemberDeclaration
 	inherits MemberDeclaration
 	implements ITypeMemberDeclaration
 	is abstract
-	"""
-	A member declaration that appears inside a type declaration
-	"""
+	"""A member declaration that appears inside a type declaration"""
+
 	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
 		
 		stream.skipBlankLines
@@ -93,26 +89,216 @@ class TypeMemberDeclaration
 		return nil # TODO
 
 
-class ModifierBlock inherits TypeMemberDeclaration
-	pass #TODO
+class ModifierBlock inherits Statement implements ITypeMemberDeclaration
+	"""
+	A block that applies access modifiers or "is names" to all indented members
+	"""
+
+	#region unused
+	# TODO: how can we refactor so we don't need these bogus properties?
+	get identifier from var as Identifier
+		"""
+		Modifier blocks cannot be identified by an identifier,
+		but this is part of the ITypeMemberDeclaration interface
+		"""
+	
+	get name as String
+		return _identifier.name
+
+	get isUnderscored as bool
+		return false
+
+	get isPascalCased as bool
+		return false
+
+	get isCamelCased as bool
+		return false
+
+	get docString as DocString?
+		return nil
+	#endregion unused
+	
+	get modifiers from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+
+	invariant
+		_firstToken.kind in TokenKind.modifierKeywords
+		.modifiers.count == .commas.count + 1
+		_lastToken.kind == TokenKind.Dedent
+	
+	get indent from var as Cobra.Compiler.IToken
+	get declarations from var as IReadOnlyList<of ITypeMemberDeclaration>
+	get dedent as Cobra.Compiler.IToken
+		return _lastToken
+
+	var _endsBlock as IReadOnlyList<of String> is readonly, shared = [
+		TokenKind.Dedent,
+		TokenKind.EndOfFile
+	]
+
+	def parse(stream as ITokenStream) as ModifierBlock is new, shared
+		require
+			stream.token.kind in TokenKind.modifierKeywords
+		test
+			source =
+			"shared\n" +
+			"    var cache = Dictionary<of String, String>()"
+			stream = TokenStream(source, 'test.cobra')
+			modBlock = ModifierBlock.parse(stream)
+			assert modBlock.modifiers.count == 1
+			assert modBlock.modifiers[0].kind == TokenKind.SharedKeyword
+			assert modBlock.declarations.count == 1
+			assert modBlock.declarations[0] inherits FieldDeclaration
+		test
+			source =
+			"shared, readonly\n" +
+			ns"    var foo = [1, 2, 3]\n" +
+			ns"    var bar = [4, 5, 6]"
+			stream = TokenStream(source, 'test.cobra')
+			modBlock = ModifierBlock.parse(stream)
+			assert modBlock.modifiers.count == 2
+			assert modBlock.modifiers[0].kind == TokenKind.SharedKeyword
+			assert modBlock.modifiers[1].kind == TokenKind.ReadOnlyKeyword
+			assert modBlock.declarations.count == 2
+			assert modBlock.declarations[0] inherits FieldDeclaration
+			assert modBlock.declarations[1] inherits FieldDeclaration
+		body
+			mods = TokenList()
+			commas = TokenList()
+
+			m = stream.grabOneOf(TokenKind.modifierKeywords) to ?
+			mods.add(m)
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				m = stream.grabOneOfOptional(TokenKind.modifierKeywords)
+				if m, mods.add(m)
+				else, break
+
+			skipped = stream.skipToNextLine
+			stream.skipBlankLines
+			indent = stream.expect(TokenKind.Indent)
+			decls = List<of ITypeMemberDeclaration>()
+			while stream.token.kind not in _endsBlock
+				decls.add(TypeMemberDeclaration.parse(stream))
+			dedent = stream.expect(TokenKind.Dedent)
+			
+			return ModifierBlock(mods, commas, indent, decls, dedent, skipped)
+
+	cue init(
+		modifiers as IList<of Cobra.Compiler.IToken>,
+		commas as IList<of Cobra.Compiler.IToken>,
+		indent as Cobra.Compiler.IToken,
+		decls as ITypeMemberDeclaration*,
+		dedent as Cobra.Compiler.IToken,
+		skipped as TokenList
+	)
+		require modifiers.count > 0
+		base.init(modifiers[0], dedent, skipped)
+		_identifier = Identifier(_firstToken.copy(TokenKind.Identifier, ""))
+		_modifiers = TokenList(modifiers)
+		_commas = TokenList(commas)
+		_indent = indent
+		_declarations = List<of ITypeMemberDeclaration>(decls)
+		for d in decls, _addChild(d)
+
 
 class FieldDeclaration inherits TypeMemberDeclaration
 	
+	get varKeyword from var as Cobra.Compiler.IToken
+
+	get isKeyword from var as Cobra.Compiler.IToken?
+	get isValues from var as IReadOnlyList<of Cobra.Compiler.IToken>
+
+	get hasKeyword from var as Cobra.Compiler.IToken?
+	get attributes from var as IReadOnlyList<of TypeIdentifier>
+
+	def parse(stream as ITokenStream) as FieldDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.FieldKeyword
+		test
+			source = "var x"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.identifier.name == "x"
+			assert field.isKeyword == field.hasKeyword == nil
+			assert field.isValues.count == field.attributes.count == 0
+			assert field.docString == nil
+		test
+			source = "var x = 1"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source = "var x as number = 1.0"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source = "var x as number is readonly = 1.0"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source =
+			"var x = 1.0\n" +
+			"    is readonly\n" +
+			"    has Obsolete('use y instead')"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source =
+			"var x = 1.0\n" +
+			"    is readonly\n" +
+			'    """the docstring goes here"""'
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source =
+			ns"var oneTwoThree as IReadonlyList<of int> is shared, readonly = [\n" +
+			"    1,\n" +
+			"    2,\n" +
+			"    3,\n" +
+			"]"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			throw NotImplementedException("TODO")
+		body
+			varKeyword = stream.expect(TokenKind.FieldKeyword)
+			id = Identifier.parse(stream)
+			isValues as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+			attributes as IReadOnlyList<of TypeIdentifier> = List<of TypeIdentifier>()
+			skipped = stream.skipToNextLine
+			return FieldDeclaration(varKeyword, id, nil, nil, nil, nil, isValues, nil, attributes, skipped)
+
 	cue init(
-		varToken as Cobra.Compiler.IToken,
+		varKeyword as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
-		isToken as Cobra.Compiler.IToken?,
-		isValues as TokenList?,
+		isKeyword as Cobra.Compiler.IToken?,
+		isValues as IReadOnlyList<of Cobra.Compiler.IToken>,
 		hasToken as Cobra.Compiler.IToken?,
-		attributes as NodeList?,
+		attributes as IReadOnlyList<of TypeIdentifier>,
 		extraTokens as TokenList?
 	)
-		require varToken.which == TokenKind.FieldKeyword
-		base.init(varToken, identifier, indent, docString, dedent, nil, extraTokens)
-		#TODO: initializer
+		require varKeyword.which == TokenKind.FieldKeyword
+		base.init(varKeyword, identifier, indent, docString, dedent, nil, extraTokens)
+		_varKeyword = varKeyword
+		if isKeyword <> nil
+			_isKeyword = isKeyword
+			_isValues = List<of Cobra.Compiler.IToken>(isValues)
+		else
+			_isValues = List<of Cobra.Compiler.IToken>()
+		
+		if hasToken <> nil
+			_hasKeyword = hasToken
+			_attributes = List<of TypeIdentifier>(attributes)
+			for a in _attributes, _addChild(a)
+		else
+			_attributes = List<of TypeIdentifier>()
 
 
 class MethodSpecification

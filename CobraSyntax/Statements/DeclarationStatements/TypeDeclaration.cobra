@@ -9,38 +9,53 @@ class TypeSpecification
 	adheres to.
 	"""
 
-	def parse(stream as ITokenStream) as TypeSpecification? is new, shared
-		# TODO
-		stream.skipBlankLines
-		return nil
-	
-	var _isNames as IList<of String>
-	get isNames from var as IReadOnlyList<of String>
-
-	var _attributes as IList<of String>
-	get attributes from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
-
-	var _baseTypes as IList<of TypeIdentifier>
+	get attributes from var as IReadOnlyList<of TypeIdentifier>
 	get baseTypes from var as IReadOnlyList<of TypeIdentifier>
-
-	var _interfaces as IList<of TypeIdentifier>
-	get interfaces from var as IReadOnlyList<of TypeIdentifier>
-
-	var _mixins as IList<of TypeIdentifier>
-	get mixins from var as IReadOnlyList<of TypeIdentifier>
-
-	var _genericConstraints as IList<of ISyntaxNode>
 	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
+	get mixins from var as IReadOnlyList<of TypeIdentifier>
+	get interfaces from var as IReadOnlyList<of TypeIdentifier>
+	get isNames from var as IReadOnlyList<of String>
 
 	get indentToken from var as Cobra.Compiler.IToken?
 	get isIndented as bool
 		return _indentToken <> nil
 	
+	get dedentToken from var as Cobra.Compiler.IToken?
+
+	def parse(stream as ITokenStream) as TypeSpecification is new, shared
+		require
+			true
+		test
+			source =
+			"class Foo<of T>\n" +
+			"    is protected, abstract\n" +
+			"    has ObsoleteAttribute('Replaced by Foo class'), MyCustomAttribute\n" +
+			"    where T must be IComparable\n" +
+			"    inherits Bar\n" +
+			"    adds FooBehavior, BarBehavior" +
+			"    implements IFoo, IFooBar\n" +
+			'    """Foo class is the best class"""\n' +
+			"    pass"
+			stream = TokenStream(source, 'test.cobra')
+			stream.grab
+			stream.grab
+			stream.grab
+			stream.grab
+			assert stream.token.kind == TokenKind.EndOfLine
+			spec = TypeSpecification.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			throw NotImplementedException("TODO")
+		body
+			# TODO
+			stream.skipBlankLines
+			return TypeSpecification()
+	
 	cue init
 		# TODO
 		base.init
 		_isNames = List<of String>()
-		_attributes = List<of String>()
+		_attributes = List<of TypeIdentifier>()
 		_baseTypes = List<of TypeIdentifier>()
 		_interfaces = List<of TypeIdentifier>()
 		_mixins = List<of TypeIdentifier>()
@@ -63,6 +78,19 @@ class TypeDeclaration
 	This is the base class for member declarations of type definitions
 	such as classes, interfaces, structs, etc.
 	"""
+
+	invariant
+		_firstToken.isKeyword
+
+	get memberDeclarations from var as IReadOnlyList<of ITypeMemberDeclaration>
+		"""
+		Member declarations made inside this type.  Will not include inherited
+		member declarations unless they are overriden in this type.
+		"""
+	
+	get specification from var as TypeSpecification?
+	get passStatement from var as PassStatement?
+
 	var _typeMap as IReadOnlyDictionary<of String, Type> is readonly, shared = {
 		TokenKind.ClassKeyword : ClassDeclaration,
 		TokenKind.InterfaceKeyword : InterfaceDeclaration,
@@ -80,7 +108,7 @@ class TypeDeclaration
 			signature = MethodSignature.parse(stream) to ?
 
 		specs = TypeSpecification.parse(stream)
-		if specs == nil or not specs.isIndented
+		if not specs.isIndented
 			indent = stream.grabOptional(TokenKind.Indent)
 			stream.skipBlankLines
 		didIndent = indent <> nil or if(specs, specs.isIndented, false)
@@ -99,22 +127,20 @@ class TypeDeclaration
 		memberDecls = List<of ITypeMemberDeclaration>()
 		while stream.token.kind <> TokenKind.Dedent
 			decl = TypeMemberDeclaration.parse(stream)
+
+			# TODO: remove this
+			skipped = TokenList()
+			while decl == nil
+				skipped.add(stream.grab)
+				decl = TypeMemberDeclaration.parse(stream)
+			trace skipped
+
 			memberDecls.add(decl)
 		
 		stream.skipBlankLines
 		dedent = stream.expect(TokenKind.Dedent)
 		return _typeMap[kw.kind](kw, id, specs, indent, docString, passStmt, dedent, memberDecls)
 	
-	var _memberDeclarations as IList<of ITypeMemberDeclaration>
-	get memberDeclarations from var as IReadOnlyList<of ITypeMemberDeclaration>
-		"""
-		Member declarations made inside this type.  Will not include inherited
-		member declarations unless they are overriden in this type.
-		"""
-	
-	get specification from var as TypeSpecification?
-	get passStatement from var as PassStatement?
-
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
@@ -156,7 +182,7 @@ class ClassDeclaration inherits TypeDeclaration
 	"""
 
 	invariant
-		.keywordToken.kind == TokenKind.ClassKeyword
+		_firstToken.kind == TokenKind.ClassKeyword
 	
 	def parse(stream as ITokenStream) as ClassDeclaration is new, shared
 		require
@@ -194,8 +220,10 @@ class ClassDeclaration inherits TypeDeclaration
 			return TypeDeclaration.parse(stream) to ClassDeclaration
 
 class InterfaceDeclaration inherits TypeDeclaration
+	
 	invariant
-		.keywordToken.kind == TokenKind.InterfaceKeyword
+		_firstToken.kind == TokenKind.InterfaceKeyword
+
 	def parse(stream as ITokenStream) as InterfaceDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.InterfaceKeyword
@@ -211,8 +239,10 @@ class InterfaceDeclaration inherits TypeDeclaration
 			return TypeDeclaration.parse(stream) to InterfaceDeclaration
 
 class MixinDeclaration inherits TypeDeclaration
+	
 	invariant
-		.keywordToken.kind == TokenKind.MixinKeyword
+		_firstToken.kind == TokenKind.MixinKeyword
+	
 	def parse(stream as ITokenStream) as MixinDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.MixinKeyword
@@ -220,8 +250,10 @@ class MixinDeclaration inherits TypeDeclaration
 			return TypeDeclaration.parse(stream) to MixinDeclaration
 
 class StructDeclaration inherits TypeDeclaration
+	
 	invariant
-		.keywordToken.kind == TokenKind.StructKeyword
+		_firstToken.kind == TokenKind.StructKeyword
+	
 	def parse(stream as ITokenStream) as StructDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.StructKeyword
@@ -229,8 +261,10 @@ class StructDeclaration inherits TypeDeclaration
 			return TypeDeclaration.parse(stream) to StructDeclaration
 
 class EnumDeclaration inherits TypeDeclaration
+	
 	invariant
-		.keywordToken.kind == TokenKind.EnumKeyword
+		_firstToken.kind == TokenKind.EnumKeyword
+	
 	def parse(stream as ITokenStream) as EnumDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.EnumKeyword
@@ -238,8 +272,10 @@ class EnumDeclaration inherits TypeDeclaration
 			return TypeDeclaration.parse(stream) to EnumDeclaration
 
 class SigDeclaration inherits TypeDeclaration
+	
 	invariant
-		.keywordToken.kind == TokenKind.SigKeyword
+		_firstToken.kind == TokenKind.SigKeyword
+	
 	def parse(stream as ITokenStream) as SigDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.SigKeyword

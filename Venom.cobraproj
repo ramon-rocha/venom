@@ -47,7 +47,6 @@
     <Compile Include="CobraSyntax\SyntaxNode.cobra" />
     <Compile Include="CobraSyntax\DocString.cobra" />
     <Compile Include="CobraSyntax\Expressions\Expression.cobra" />
-    <Compile Include="CobraSyntax\AccessModifiers.cobra" />
     <Compile Include="CobraSyntax\Expressions\LiteralExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\BinaryOperatorExpression.cobra" />
     <Compile Include="CobraSyntax\Identifier.cobra" />
@@ -100,6 +99,7 @@
     <Compile Include="CobraSyntax\Expressions\CallExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\CommaSeparatedExpressions.cobra" />
     <Compile Include="CobraSyntax\Statements\TryCatchStatement.cobra" />
+    <Compile Include="CobraSyntax\Specifications.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

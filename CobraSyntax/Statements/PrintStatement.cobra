@@ -98,7 +98,7 @@ class PrintStatement inherits Statement
 			expressions = ExpressionList()
 			if isIndented
 				stream.skipBlankLines
-				while stream.token.kind <> TokenKind.Dedent
+				while not stream.token.endsBlock
 					expressions.add(Expression.parse(stream))
 					stream.skipBlankLines
 				

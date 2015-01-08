@@ -55,12 +55,12 @@ interface ISyntaxNode
 	get childCount as int
 		"""The number of child nodes under this node."""
 	
-	get extraTokens as IReadOnlyList<of Cobra.Compiler.IToken>
+	get extraTokens as IReadOnlyTokenList
 		"""
 		A list of tokens that were not expected to be contained in this node but are.
 		"""
 	
-	get missingTokens as IReadOnlyList<of Cobra.Compiler.IToken>
+	get missingTokens as IReadOnlyTokenList
 		"""
 		A list of tokens that were expected but were missing from the source code when this node was constructed.
 		"""
@@ -265,12 +265,12 @@ class SyntaxNode
 		"""
 		for child in children, _addChild(child)
 	
-	get extraTokens from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get extraTokens from var as IReadOnlyTokenList
 		"""
 		A list of tokens that were not expected to be contained in this node.
 		"""
 	
-	get missingTokens from var as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+	get missingTokens from var as IReadOnlyTokenList = TokenList()
 		"""
 		A list of tokens that were expected but were missing from the source code when this node was constructed.
 		

@@ -1,0 +1,301 @@
+﻿"""
+These classes are for member specifications such as "is override" or "inherits Foo"
+"""
+
+namespace Venom.CobraSyntax
+
+enum AccessModifiers
+	has Flags
+	
+	None = 0
+	Public = 1
+	Protected = 2
+	Private = 4
+	Internal = 8
+
+class AttributeExpression
+	inherits Expression
+	"""
+	A particular attribute specfied in an attribute specification section.
+	"""
+	get identifier from var as Identifier
+	get arguments from var as IReadOnlyList<of IExpression>
+	get commas from var as IReadOnlyTokenList
+	get closeParen from var as Cobra.Compiler.IToken?
+
+	invariant
+		.identifier.firstToken.kind == TokenKind.CallStart implies .closeParen <> nil
+		.arguments.count > 0 implies .arguments.count == .commas.count + 1
+		.arguments.count == 0 implies .commas.count == 0
+
+	def parse(stream as ITokenStream) as AttributeExpression is new, shared
+		id = Identifier.parse(stream)
+		if id.firstToken.kind <> TokenKind.CallStart
+			return AttributeExpression(id, ExpressionList(), TokenList(), nil)
+		
+		args = ExpressionList()
+		args.add(Expression.parse(stream))
+		commas = TokenList()
+		while stream.token.kind <> TokenKind.CloseParenthesis
+			commas.add(stream.expect(TokenKind.Comma))
+			args.add(Expression.parse(stream))
+		close = stream.grab
+		return AttributeExpression(id, args, commas, close)
+
+	cue init(id as Identifier, args as IExpression*, commas as Cobra.Compiler.IToken*, close as Cobra.Compiler.IToken?)
+		base.init(id, nil)
+		_identifier = id
+		if close
+			_closeParen = _lastToken = close
+		else
+			_lastToken = id.lastToken
+		_arguments = ExpressionList(args)
+		for a in args, _addChild(a)
+		_commas = TokenList(commas)
+
+class AttributeSpecification
+	inherits SyntaxNode
+	"""
+	The syntax to specify one or more attributes applied to a declaration.
+	"""
+
+	get hasKeyword from var as Cobra.Compiler.IToken
+	get attributes from var as IReadOnlyList<of AttributeExpression>
+	get commas from var as IReadOnlyTokenList
+
+	invariant
+		.hasKeyword.isKeyword
+		.attributes.count == .commas.count + 1
+		#all for c in .commas get c.kind == TokenKind.Comma # doesn't work due to compiler bug
+
+	def parse(stream as ITokenStream) as AttributeSpecification is new, shared
+		require
+			stream.token.kind == TokenKind.HasKeyword
+		test
+			source =
+			"has Serializable, ObsoleteAttribute('Replaced by Foo class'), ItemProperty('Turbo', defaultValue = false)"
+			stream = TokenStream(source, 'test.cobra')
+			spec = AttributeSpecification.parse(stream)
+			assert spec.attributes.count == 3
+			assert spec.attributes[0].identifier.name == "Serializable"
+			assert spec.attributes[0].arguments.count == 0
+
+			assert spec.attributes[1].identifier.name == "ObsoleteAttribute"
+			assert spec.attributes[1].arguments.count == 1
+			assert spec.attributes[1].arguments[0] inherits StringLiteral
+
+			assert spec.attributes[2].identifier.name == "ItemProperty"
+			assert spec.attributes[2].arguments.count == 2
+			assert spec.attributes[2].arguments[1] inherits AssignmentExpression
+		body
+			kw = stream.expect(TokenKind.HasKeyword)
+			attributes = List<of AttributeExpression>()
+			att = AttributeExpression.parse(stream)
+			attributes.add(att)
+
+			commas = TokenList()
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				att = AttributeExpression.parse(stream)
+				attributes.add(att)
+			
+			skipped = stream.skipToNextLine
+			return AttributeSpecification(kw, commas, attributes, skipped)
+
+	cue init(
+		kw as Cobra.Compiler.IToken,
+		commas as Cobra.Compiler.IToken*,
+		atts as AttributeExpression*,
+		skipped as TokenList
+	)
+		base.init(kw, skipped)
+		_hasKeyword = kw
+		_commas = TokenList(commas)
+		_attributes = List<of AttributeExpression>(atts)
+		for a in atts, _addChild(a)
+
+	def toCobraSource as String is override
+		sb = StringBuilder()
+		for a in _attributes
+			if sb.length <> 0, sb.append(", ")
+			sb.append(a.toCobraSource)
+		return "has [sb.toString]"
+
+class ModifierSpecification inherits SyntaxNode
+	"""
+	The syntax to specify access modifiers, overload modifiers, and other "is names"
+	"""
+
+	get isKeyword from var as Cobra.Compiler.IToken
+	get modifierTokens from var as IReadOnlyTokenList
+	get commas from var as IReadOnlyTokenList
+
+	def parse(stream as ITokenStream) as ModifierSpecification? is new, shared
+		return ModifierSpecification(stream.grab, stream.skipToNextLine) # TODO
+
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
+class BaseTypeSpecification inherits SyntaxNode
+
+	def parse(stream as ITokenStream) as BaseTypeSpecification? is new, shared
+		return BaseTypeSpecification(stream.grab, stream.skipToNextLine) # TODO
+
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
+class InterfaceSpecification inherits SyntaxNode
+
+	def parse(stream as ITokenStream) as InterfaceSpecification? is new, shared
+		return InterfaceSpecification(stream.grab, stream.skipToNextLine) # TODO
+
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
+class GenericConstraintSpecification inherits SyntaxNode
+
+	def parse(stream as ITokenStream) as GenericConstraintSpecification? is new, shared
+		return GenericConstraintSpecification(stream.grab, stream.skipToNextLine) # TODO
+
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
+class MixinSpecification inherits SyntaxNode
+	
+	def parse(stream as ITokenStream) as MixinSpecification? is new, shared
+		return MixinSpecification(stream.grab, stream.skipToNextLine) # TODO
+	
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
+class TypeSpecification
+	inherits SyntaxNode
+	"""
+	Contains information about the access modifiers, base class,
+	implemented interfaces, attributes, etc. that a type declaration
+	adheres to.
+	"""
+
+	get isNames from var as IReadOnlyList<of ModifierSpecification>
+	get baseTypes from var as IReadOnlyList<of BaseTypeSpecification>
+	get interfaces from var as IReadOnlyList<of InterfaceSpecification>
+	get attributes from var as IReadOnlyList<of AttributeSpecification>
+	get mixins from var as IReadOnlyList<of MixinSpecification>
+	get genericConstraints from var as IReadOnlyList<of GenericConstraintSpecification>
+
+	get indentToken from var as Cobra.Compiler.IToken?
+	get isIndented as bool
+		return _indentToken <> nil
+
+	var _specKeywords as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.IsKeyword,
+		TokenKind.InheritsKeyword,
+		TokenKind.ImplementsKeyword,
+		TokenKind.HasKeyword,
+		TokenKind.AddsKeyword,
+		TokenKind.WhereKeyword
+	]
+
+	def parse(stream as ITokenStream) as TypeSpecification is new, shared
+		require
+			stream.token.kind == TokenKind.Indent _
+			or stream.token.kind in _specKeywords
+		test
+			source = "class Foo is abstract inherits Bar\n\tpass"
+			stream = TokenStream(source, 'test.cobra')
+			spec = TypeSpecification.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source =
+			"class Foo<of T>\n" +
+			"    is protected, abstract\n" +
+			"    has ObsoleteAttribute('Replaced by Foo class'), MyCustomAttribute\n" +
+			"    where T must be IComparable\n" +
+			"    inherits Bar\n" +
+			"    adds FooBehavior, BarBehavior\n" +
+			"    implements IFoo, IFooBar\n" +
+			'    """Foo class is the best class"""\n' +
+			"    pass"
+			stream = TokenStream(source, 'test.cobra')
+			stream.skipToNextLine
+			spec = TypeSpecification.parse(stream)
+			throw NotImplementedException("TODO")
+		test
+			source =
+			"class Foo<of T> where T must be IComparable inherits Bar\n" +
+			"    implements IFoo, IFooBar adds FooBehavior, BarBehavior\n" +
+			"    has ObsoleteAttribute('Replaced by Foo class'), MyCustomAttribute\n" +
+			"\n" +
+			"    is protected, abstract\n" +
+			'    """Foo class is the best class"""\n' +
+			"    pass"
+			stream = TokenStream(source, 'test.cobra')
+			stream.skipToNextLine
+			spec = TypeSpecification.parse(stream)
+			throw NotImplementedException("TODO")
+		body
+			indent = stream.grabOptional(TokenKind.Indent)
+
+			mods = List<of ModifierSpecification>()
+			bases = List<of BaseTypeSpecification>()
+			ints = List<of InterfaceSpecification>()
+			atts = List<of AttributeSpecification>()
+			mixins = List<of MixinSpecification>()
+			constraints = List<of GenericConstraintSpecification>()
+
+			kind = stream.token.kind
+			while kind in _specKeywords
+				branch kind
+					on TokenKind.IsKeyword
+						mods.add(ModifierSpecification.parse(stream))
+
+					on TokenKind.InheritsKeyword
+						bases.add(BaseTypeSpecification.parse(stream))
+
+					on TokenKind.ImplementsKeyword
+						ints.add(InterfaceSpecification.parse(stream))
+					
+					on TokenKind.HasKeyword
+						atts.add(AttributeSpecification.parse(stream))
+
+					on TokenKind.AddsKeyword
+						mixins.add(MixinSpecification.parse(stream))
+
+					on TokenKind.WhereKeyword
+						constraints.add(GenericConstraintSpecification.parse(stream))
+				
+				stream.skipBlankLines
+
+				if indent == nil
+					indent = stream.grabOptional(TokenKind.Indent)
+
+				kind = stream.token.kind
+
+			return TypeSpecification(indent, mods, bases, ints, atts, mixins, constraints)
+	
+	cue init(
+		indent as Cobra.Compiler.IToken?,
+		mods as ModifierSpecification*,
+		bases as BaseTypeSpecification*,
+		ints as InterfaceSpecification*,
+		atts as AttributeSpecification*,
+		mixins as MixinSpecification*,
+		constraints as GenericConstraintSpecification*)
+		base.init
+		if indent <> nil
+			_indentToken = _firstToken = indent
+		_isNames = List<of ModifierSpecification>(mods)
+		for c as ISyntaxNode in mods, _addChild(c)
+		_baseTypes = List<of BaseTypeSpecification>(bases)
+		for c in bases, _addChild(c)
+		_interfaces = List<of InterfaceSpecification>(ints)
+		for c in ints, _addChild(c)
+		_attributes = List<of AttributeSpecification>(atts)
+		for c in atts, _addChild(c)
+		_mixins = List<of MixinSpecification>(mixins)
+		for c in mixins, _addChild(c)
+		_genericConstraints = List<of GenericConstraintSpecification>(constraints)
+		for c in constraints, _addChild(c)
+	
+	def toCobraSource as String is override
+		return "TODO"

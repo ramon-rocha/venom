@@ -118,8 +118,8 @@ class ModifierBlock inherits Statement implements ITypeMemberDeclaration
 		return nil
 	#endregion unused
 	
-	get modifiers from var as IReadOnlyList<of Cobra.Compiler.IToken>
-	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get modifiers from var as IReadOnlyTokenList
+	get commas from var as IReadOnlyTokenList
 
 	invariant
 		_firstToken.kind in TokenKind.modifierKeywords
@@ -207,7 +207,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 	get varKeyword from var as Cobra.Compiler.IToken
 
 	get isKeyword from var as Cobra.Compiler.IToken?
-	get isValues from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get isValues from var as IReadOnlyTokenList
 
 	get hasKeyword from var as Cobra.Compiler.IToken?
 	get attributes from var as IReadOnlyList<of TypeIdentifier>
@@ -267,7 +267,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 		body
 			varKeyword = stream.expect(TokenKind.FieldKeyword)
 			id = Identifier.parse(stream)
-			isValues as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+			isValues as IReadOnlyTokenList = TokenList()
 			attributes as IReadOnlyList<of TypeIdentifier> = List<of TypeIdentifier>()
 			skipped = stream.skipToNextLine
 			return FieldDeclaration(varKeyword, id, nil, nil, nil, nil, isValues, nil, attributes, skipped)
@@ -279,7 +279,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
 		isKeyword as Cobra.Compiler.IToken?,
-		isValues as IReadOnlyList<of Cobra.Compiler.IToken>,
+		isValues as IReadOnlyTokenList,
 		hasToken as Cobra.Compiler.IToken?,
 		attributes as IReadOnlyList<of TypeIdentifier>,
 		extraTokens as TokenList?
@@ -289,9 +289,9 @@ class FieldDeclaration inherits TypeMemberDeclaration
 		_varKeyword = varKeyword
 		if isKeyword <> nil
 			_isKeyword = isKeyword
-			_isValues = List<of Cobra.Compiler.IToken>(isValues)
+			_isValues = TokenList(isValues)
 		else
-			_isValues = List<of Cobra.Compiler.IToken>()
+			_isValues = TokenList()
 		
 		if hasToken <> nil
 			_hasKeyword = hasToken
@@ -388,7 +388,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 				stream.skipBlankLines
 			
 			statements = StatementList()
-			while stream.token.kind <> TokenKind.Dedent
+			while not stream.token.endsBlock
 				stmt = Statement.parse(stream)
 				statements.add(stmt)
 	

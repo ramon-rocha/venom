@@ -110,7 +110,7 @@ class BranchOnClause inherits StatementClause
 	
 	get unexpectedExpressions from var as IReadOnlyList<of IExpression>
 	get values from var as IReadOnlyList<of IExpression>
-	get orTokens from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get orTokens from var as IReadOnlyTokenList
 
 	invariant
 		.orTokens.count == .values.count - 1

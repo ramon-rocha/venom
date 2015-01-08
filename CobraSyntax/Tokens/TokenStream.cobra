@@ -23,13 +23,13 @@ extend ICobraToken
 		but was supposed to be.
 		"""
 		return .isEmpty and this is not Cobra.Compiler.Token.empty
-	
+
+
+interface IReadOnlyTokenList inherits IReadOnlyList<of ICobraToken>
+	pass
 	
 class TokenList inherits List<of ICobraToken>
-	"""
-	A type alias for System.Collections.Generic.List<of Cobra.Compiler.IToken>
-	"""
-	pass
+	implements IReadOnlyTokenList
 
 
 interface ITokenStream
@@ -113,7 +113,7 @@ class TokenStream
 
 	var _currentIndex as int
 	var _tokenCount as int
-	var _tokens as IReadOnlyList<of ICobraToken>
+	var _tokens as IReadOnlyTokenList
 	var _emptyToken is readonly, shared = Cobra.Compiler.Token.empty
 
 	invariant
@@ -246,7 +246,7 @@ class TokenStream
 			return .grab
 		return nil
 
-	def expect(kind as String) as Cobra.Compiler.IToken
+	def expect(kind as String) as ICobraToken
 		t = .token
 		if t.kind == kind
 			return .grab

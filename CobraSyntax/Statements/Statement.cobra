@@ -96,7 +96,7 @@ class StatementClause
 				return StatementClause(comma, stmts[0].lastToken, stmts)
 			
 			indent = stream.expect(TokenKind.Indent)
-			while stream.token.kind <> TokenKind.Dedent
+			while not stream.token.endsBlock
 				stmts.add(Statement.parse(stream))
 			dedent = stream.grab
 			

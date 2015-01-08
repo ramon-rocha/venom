@@ -78,7 +78,7 @@ class IndexerExpression inherits Expression
 		endToken = stream.expect(TokenKind.IndexerEnd)
 		return IndexerExpression(startToken, expressions, separators, endToken)
 
-	cue init(startBracket as Cobra.Compiler.IToken, expressions as IExpression?*, separators as IReadOnlyList<of Cobra.Compiler.IToken>, endBracket as Cobra.Compiler.IToken)
+	cue init(startBracket as Cobra.Compiler.IToken, expressions as IExpression?*, separators as IReadOnlyTokenList, endBracket as Cobra.Compiler.IToken)
 		ensure
 			_expressions.count > .childCount implies nil in _expressions
 		body
@@ -89,7 +89,7 @@ class IndexerExpression inherits Expression
 			_separators = TokenList(separators)
 	
 	get expressions from var as IReadOnlyList<of IExpression?>
-	get separators from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get separators from var as IReadOnlyTokenList
 
 	def toCobraSource as String is override
 		sb = StringBuilder(_firstToken.text)

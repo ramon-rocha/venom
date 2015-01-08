@@ -1,69 +1,6 @@
 
 namespace Venom.CobraSyntax
 
-class TypeSpecification
-	inherits SyntaxNode
-	"""
-	Contains information about the access modifiers, base class,
-	implemented interfaces, attributes, etc. that a type declaration
-	adheres to.
-	"""
-
-	get attributes from var as IReadOnlyList<of TypeIdentifier>
-	get baseTypes from var as IReadOnlyList<of TypeIdentifier>
-	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
-	get mixins from var as IReadOnlyList<of TypeIdentifier>
-	get interfaces from var as IReadOnlyList<of TypeIdentifier>
-	get isNames from var as IReadOnlyList<of String>
-
-	get indentToken from var as Cobra.Compiler.IToken?
-	get isIndented as bool
-		return _indentToken <> nil
-	
-	get dedentToken from var as Cobra.Compiler.IToken?
-
-	def parse(stream as ITokenStream) as TypeSpecification is new, shared
-		require
-			true
-		test
-			source =
-			"class Foo<of T>\n" +
-			"    is protected, abstract\n" +
-			"    has ObsoleteAttribute('Replaced by Foo class'), MyCustomAttribute\n" +
-			"    where T must be IComparable\n" +
-			"    inherits Bar\n" +
-			"    adds FooBehavior, BarBehavior" +
-			"    implements IFoo, IFooBar\n" +
-			'    """Foo class is the best class"""\n' +
-			"    pass"
-			stream = TokenStream(source, 'test.cobra')
-			stream.grab
-			stream.grab
-			stream.grab
-			stream.grab
-			assert stream.token.kind == TokenKind.EndOfLine
-			spec = TypeSpecification.parse(stream)
-			throw NotImplementedException("TODO")
-		test
-			throw NotImplementedException("TODO")
-		body
-			# TODO
-			stream.skipBlankLines
-			return TypeSpecification()
-	
-	cue init
-		# TODO
-		base.init
-		_isNames = List<of String>()
-		_attributes = List<of TypeIdentifier>()
-		_baseTypes = List<of TypeIdentifier>()
-		_interfaces = List<of TypeIdentifier>()
-		_mixins = List<of TypeIdentifier>()
-		_genericConstraints = List<of ISyntaxNode>()
-	
-	def toCobraSource as String is override
-		return "TODO"
-
 interface ITypeDeclaration inherits IMemberDeclaration
 	"""
 	A type declaration statement
@@ -125,7 +62,7 @@ class TypeDeclaration
 			passStmt = PassStatement.parse(stream) to ?
 		
 		memberDecls = List<of ITypeMemberDeclaration>()
-		while stream.token.kind <> TokenKind.Dedent
+		while not stream.token.endsBlock
 			decl = TypeMemberDeclaration.parse(stream)
 
 			# TODO: remove this

@@ -54,7 +54,7 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 	Declares a local parameter for a method
 	"""
 	get asKeyword from var as Cobra.Compiler.IToken?
-	get modifiers from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get modifiers from var as IReadOnlyTokenList
 	get typeIdentifier from var as TypeIdentifier?
 	get defaultValue from var as IExpression?
 

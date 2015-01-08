@@ -80,7 +80,7 @@ class CallExpression inherits Expression
 	get openingParenthesis from var as Cobra.Compiler.IToken?
 
 	get arguments from var as IReadOnlyList<of IExpression>
-	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get commas from var as IReadOnlyTokenList
 
 	get closingParenthesis from var as Cobra.Compiler.IToken?
 

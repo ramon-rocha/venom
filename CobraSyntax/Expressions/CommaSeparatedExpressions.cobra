@@ -7,7 +7,7 @@ class CommaSeparatedExpressions
 	"""
 
 	get expressions from var as IReadOnlyList<of IExpression> = ExpressionList()
-	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken> = TokenList()
+	get commas from var as IReadOnlyTokenList = TokenList()
 
 	def parse(stream as ITokenStream, stopKind = TokenKind.CloseParenthesis) as CommaSeparatedExpressions is shared
 		list = CommaSeparatedExpressions()

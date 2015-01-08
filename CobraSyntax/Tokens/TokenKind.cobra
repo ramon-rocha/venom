@@ -56,7 +56,9 @@ class TokenKind
 	#endregion
 
 	#region Misc. Keywords
+	const AddsKeyword = 'ADDS'
 	const WhereKeyword = 'WHERE'
+	const CallableKeyword = 'CALLABLE'
 	const FromKeyword = 'FROM'
 	const NilKeyword = 'NIL'
 	const ToKeyword = 'TO'
@@ -65,6 +67,7 @@ class TokenKind
 	const VariKeyword = 'VARI'
 	const InOutKeyword = 'INOUT'
 	const OutKeyword = 'OUT'
+	const HasKeyword = 'HAS'
 	const IsKeyword = 'IS'
 	const InheritsKeyword = 'INHERITS'
 	const ImplementsKeyword = 'IMPLEMENTS'

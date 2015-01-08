@@ -55,8 +55,8 @@ class CobraTokenizer inherits Cobra.Compiler.CobraTokenizer
 		base.init(verbosity)
 		_typeProvider = typeProvider
 	
-	var _comments = List<of Cobra.Compiler.IToken>()
-	get comments as IReadOnlyList<of Cobra.Compiler.IToken>
+	var _comments = TokenList()
+	get comments as IReadOnlyTokenList
 		return _comments
 
 	def _reset is override

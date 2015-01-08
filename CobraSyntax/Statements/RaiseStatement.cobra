@@ -5,7 +5,7 @@ class RaiseStatement inherits Statement
 	
 	get raiseKeyword from var as Cobra.Compiler.IToken
 	get eventExpression from var as IExpression
-	get commas from var as IReadOnlyList<of Cobra.Compiler.IToken>
+	get commas from var as IReadOnlyTokenList
 	get args from var as IReadOnlyList<of IExpression>
 
 	def parse(stream as ITokenStream) as RaiseStatement is new, shared

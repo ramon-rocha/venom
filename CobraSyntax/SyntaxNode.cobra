@@ -100,20 +100,20 @@ class SyntaxNode
 	cue init(extraTokens as TokenList?)
 		.init(Cobra.Compiler.Token.empty, extraTokens)
 	
-	cue init(child as ISyntaxNode, extraTokens as TokenList?)
+	cue init(child as ISyntaxNode, extraTokens as IReadOnlyTokenList?)
 		.init(child.firstToken, child.lastToken, extraTokens)
 		_addChild(child)
 	
-	cue init(token as Cobra.Compiler.IToken, extraTokens as TokenList?)
+	cue init(token as Cobra.Compiler.IToken, extraTokens as IReadOnlyTokenList?)
 		.init(token, token, extraTokens)
 	
-	cue init(children as NodeList, extraTokens as TokenList?)
+	cue init(children as NodeList, extraTokens as IReadOnlyTokenList?)
 		.init(children.first.firstToken, children.last.lastToken, children, extraTokens)
 	
 	cue init(
 		firstToken as Cobra.Compiler.IToken,
 		lastToken as Cobra.Compiler.IToken,
-		extraTokens as TokenList?
+		extraTokens as IReadOnlyTokenList?
 	)
 		require
 			not lastToken.isEmpty implies lastToken.charNum >= firstToken.charNum
@@ -124,14 +124,15 @@ class SyntaxNode
 		firstToken as Cobra.Compiler.IToken,
 		lastToken as Cobra.Compiler.IToken,
 		children as NodeList,
-		extraTokens as TokenList?
+		extraTokens as IReadOnlyTokenList?
 	)
 		require
-			not lastToken.isEmpty implies _
-				lastToken.charNum >= firstToken.colNum
-			
+			not lastToken.isEmpty implies lastToken.charNum >= firstToken.colNum
 			not lastToken.isEmpty and children.count <> 0 implies _
 				lastToken.charNum + lastToken.length >= children.last.endOffset
+		ensure
+			_extraTokens is not extraTokens
+			extraTokens <> nil implies _extraTokens == extraTokens
 		body
 			base.init
 			_firstToken = firstToken
@@ -259,7 +260,7 @@ class SyntaxNode
 			_lastToken = child.lastToken
 		child.parent = this
 	
-	def _addChildren(children as IList<of ISyntaxNode>)
+	def _addChildren(children as ISyntaxNode*)
 		"""
 		Adds the given nodes as children to this node.  The child nodes should not already have a parent node.
 		"""

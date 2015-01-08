@@ -25,10 +25,11 @@ extend ICobraToken
 		return .isEmpty and this is not Cobra.Compiler.Token.empty
 
 
-interface IReadOnlyTokenList inherits IReadOnlyList<of ICobraToken>
-	pass
+interface IReadOnlyTokenList
+	inherits IReadOnlyList<of ICobraToken>
 	
-class TokenList inherits List<of ICobraToken>
+class TokenList
+	inherits List<of ICobraToken>
 	implements IReadOnlyTokenList
 
 

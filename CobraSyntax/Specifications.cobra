@@ -27,6 +27,7 @@ class AttributeExpression
 		.identifier.firstToken.kind == TokenKind.CallStart implies .closeParen <> nil
 		.arguments.count > 0 implies .arguments.count == .commas.count + 1
 		.arguments.count == 0 implies .commas.count == 0
+		.closeParen <> nil implies .identifier.firstToken.text.endsWith("(")
 
 	def parse(stream as ITokenStream) as AttributeExpression is new, shared
 		id = Identifier.parse(stream)
@@ -52,6 +53,19 @@ class AttributeExpression
 		_arguments = ExpressionList(args)
 		for a in args, _addChild(a)
 		_commas = TokenList(commas)
+
+	def toCobraSource as String is override
+		if _arguments.count == 0
+			return _identifier.toCobraSource
+
+		sb = StringBuilder()
+		for a in _arguments
+			if sb.length <> 0, sb.append(", ")
+			sb.append(a.toCobraSource)
+
+		if _closeParen <> nil, sb.append(")")
+
+		return "[_identifier.toCobraSource][sb.toString]"
 
 class AttributeSpecification
 	inherits SyntaxNode
@@ -87,6 +101,8 @@ class AttributeSpecification
 			assert spec.attributes[2].identifier.name == "ItemProperty"
 			assert spec.attributes[2].arguments.count == 2
 			assert spec.attributes[2].arguments[1] inherits AssignmentExpression
+
+			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.HasKeyword)
 			attributes = List<of AttributeExpression>()
@@ -130,11 +146,53 @@ class ModifierSpecification inherits SyntaxNode
 	get modifierTokens from var as IReadOnlyTokenList
 	get commas from var as IReadOnlyTokenList
 
+	invariant
+		.modifierTokens.count == .commas.count + 1
+
 	def parse(stream as ITokenStream) as ModifierSpecification? is new, shared
-		return ModifierSpecification(stream.grab, stream.skipToNextLine) # TODO
+		require
+			stream.token.kind == TokenKind.IsKeyword
+		test
+			source = "is shared"
+			stream = TokenStream(source, 'test.cobra')
+			spec = ModifierSpecification.parse(stream)
+			assert spec.modifierTokens.count == 1
+			assert spec.modifierTokens[0].kind == TokenKind.SharedKeyword
+			assert spec.toCobraSource == source
+		test
+			source = "is protected, abstract"
+			stream = TokenStream(source, 'test.cobra')
+			spec = ModifierSpecification.parse(stream)
+			assert spec.modifierTokens.count == 2
+			assert spec.modifierTokens[0].kind == TokenKind.ProtectedKeyword
+			assert spec.modifierTokens[1].kind == TokenKind.AbstractKeyword
+			assert spec.toCobraSource == source
+		body
+			kw = stream.expect(TokenKind.IsKeyword)
+			mods = TokenList()
+			commas = TokenList()
+			m = stream.grabOneOf(TokenKind.modifierKeywords)
+			mods.add(m)
+
+			while stream.token.kind in TokenKind.Comma
+				commas.add(stream.grab)
+				m = stream.grabOneOf(TokenKind.modifierKeywords)
+				mods.add(m)
+
+			return ModifierSpecification(kw, mods, commas)
+
+	cue init(isKeyword as Cobra.Compiler.IToken, modTokens as Cobra.Compiler.IToken*, commas as Cobra.Compiler.IToken*)
+		base.init(isKeyword, nil)
+		_isKeyword = isKeyword
+		_modifierTokens = TokenList(modTokens)
+		_commas = TokenList(commas)
 
 	def toCobraSource as String is override
-		throw NotImplementedException()
+		sb = StringBuilder()
+		for m in _modifierTokens
+			if sb.length <> 0, sb.append(", ")
+			sb.append(m.text)
+		return "is [sb.toString]"
 
 class BaseTypeSpecification inherits SyntaxNode
 
@@ -204,7 +262,13 @@ class TypeSpecification
 			source = "class Foo is abstract inherits Bar\n\tpass"
 			stream = TokenStream(source, 'test.cobra')
 			spec = TypeSpecification.parse(stream)
-			throw NotImplementedException("TODO")
+			assert spec.isNames.count == 1
+			assert spec.attributes.count == 0
+			assert spec.genericConstraints.count == 0
+			assert spec.baseTypes.count == 1
+			assert spec.mixins.count == 0
+			assert spec.interfaces.count == 0
+			assert not spec.isIndented
 		test
 			source =
 			"class Foo<of T>\n" +
@@ -219,12 +283,19 @@ class TypeSpecification
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipToNextLine
 			spec = TypeSpecification.parse(stream)
-			throw NotImplementedException("TODO")
+			assert spec.isNames.count == 2
+			assert spec.attributes.count == 2
+			assert spec.genericConstraints.count == 1
+			assert spec.baseTypes.count == 1
+			assert spec.mixins.count == 2
+			assert spec.interfaces.count == 2
+			assert spec.isIndented
+			assert spec.indentToken.charNum < spec.isNames[0].firstToken.charNum
 		test
 			source =
 			"class Foo<of T> where T must be IComparable inherits Bar\n" +
-			"    implements IFoo, IFooBar adds FooBehavior, BarBehavior\n" +
-			"    has ObsoleteAttribute('Replaced by Foo class'), MyCustomAttribute\n" +
+			"    implements IFooBar adds FooBehavior, BarBehavior\n" +
+			"    has MyCustomAttribute\n" +
 			"\n" +
 			"    is protected, abstract\n" +
 			'    """Foo class is the best class"""\n' +
@@ -232,7 +303,14 @@ class TypeSpecification
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipToNextLine
 			spec = TypeSpecification.parse(stream)
-			throw NotImplementedException("TODO")
+			assert spec.isNames.count == 2
+			assert spec.attributes.count == 1
+			assert spec.genericConstraints.count == 1
+			assert spec.baseTypes.count == 1
+			assert spec.mixins.count == 2
+			assert spec.interfaces.count == 1
+			assert spec.isIndented
+			assert spec.indentToken.charNum < spec.genericConstraints[0].firstToken.charNum
 		body
 			indent = stream.grabOptional(TokenKind.Indent)
 

@@ -227,17 +227,17 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			source = "var x = 1"
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		test
 			source = "var x as number = 1.0"
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		test
 			source = "var x as number is readonly = 1.0"
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		test
 			source =
 			"var x = 1.0\n" +
@@ -245,7 +245,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			"    has Obsolete('use y instead')"
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		test
 			source =
 			"var x = 1.0\n" +
@@ -253,7 +253,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			'    """the docstring goes here"""'
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		test
 			source =
 			ns"var oneTwoThree as IReadonlyList<of int> is shared, readonly = [\n" +
@@ -263,7 +263,7 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			"]"
 			stream = TokenStream(source, 'test.cobra')
 			field = FieldDeclaration.parse(stream)
-			throw NotImplementedException("TODO")
+			throw NotImplementedException("TODO: finish test for [field]")
 		body
 			varKeyword = stream.expect(TokenKind.FieldKeyword)
 			id = Identifier.parse(stream)

@@ -48,7 +48,7 @@ class TypeDeclaration
 		if not specs.isIndented
 			indent = stream.grabOptional(TokenKind.Indent)
 			stream.skipBlankLines
-		didIndent = indent <> nil or if(specs, specs.isIndented, false)
+		didIndent = indent <> nil or specs.isIndented
 		
 		if stream.token.startsDocString
 			docString = DocString.parse(stream)

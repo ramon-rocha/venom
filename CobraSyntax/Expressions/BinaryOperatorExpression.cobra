@@ -73,6 +73,9 @@ class BinaryOperatorExpression inherits Expression
 		sb.append("([_operatorToken.text])")
 		return sb.toString
 
+	def toCobraSource as String is override
+		return "[_leftExpression.toCobraSource] [_operatorToken.text] [_rightExpression.toCobraSource]"
+
 class AssignmentExpression inherits BinaryOperatorExpression
 	"""foo = bar"""
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)

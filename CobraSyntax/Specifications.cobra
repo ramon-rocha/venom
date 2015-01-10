@@ -359,12 +359,11 @@ class TypeSpecification
 	]
 
 	def parse(stream as ITokenStream) as TypeSpecification is new, shared
-		require
-			stream.token.kind == TokenKind.Indent _
-			or stream.token.kind in _specKeywords
 		test
 			source = "class Foo is abstract inherits Bar\n\tpass"
 			stream = TokenStream(source, 'test.cobra')
+			stream.grab
+			stream.grab
 			spec = TypeSpecification.parse(stream)
 			assert spec.isNames.count == 1
 			assert spec.attributes.count == 0
@@ -387,14 +386,17 @@ class TypeSpecification
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipToNextLine
 			spec = TypeSpecification.parse(stream)
-			assert spec.isNames.count == 2
-			assert spec.attributes.count == 2
+			assert spec.isNames.count == 1
+			assert spec.isNames[0].modifierTokens.count == 2
+			assert spec.attributes.count == 1
+			assert spec.attributes[0].attributes.count == 2
 			assert spec.genericConstraints.count == 1
 			assert spec.baseTypes.count == 1
-			assert spec.mixins.count == 2
-			assert spec.interfaces.count == 2
+			assert spec.mixins.count == 1
+			assert spec.interfaces.count == 1
 			assert spec.isIndented
-			assert spec.indentToken.charNum < spec.isNames[0].firstToken.charNum
+			assert spec.indentToken.lineNum == spec.isNames[0].firstToken.lineNum
+			assert spec.indentToken.colNum < spec.isNames[0].firstToken.colNum
 		test
 			source =
 			"class Foo<of T> where T must be IComparable inherits Bar\n" +
@@ -405,16 +407,16 @@ class TypeSpecification
 			'    """Foo class is the best class"""\n' +
 			"    pass"
 			stream = TokenStream(source, 'test.cobra')
-			stream.skipToNextLine
+			stream.skipTo(TokenKind.GenericIdentifierEnd)
 			spec = TypeSpecification.parse(stream)
-			assert spec.isNames.count == 2
-			assert spec.attributes.count == 1
 			assert spec.genericConstraints.count == 1
 			assert spec.baseTypes.count == 1
-			assert spec.mixins.count == 2
+			assert spec.isNames.count == 1
+			assert spec.attributes.count == 1
+			assert spec.mixins.count == 1
 			assert spec.interfaces.count == 1
 			assert spec.isIndented
-			assert spec.indentToken.charNum < spec.genericConstraints[0].firstToken.charNum
+			assert spec.indentToken.charNum > spec.genericConstraints[0].firstToken.charNum
 		body
 			indent = stream.grabOptional(TokenKind.Indent)
 
@@ -427,6 +429,10 @@ class TypeSpecification
 
 			kind = stream.token.kind
 			while kind in _specKeywords
+
+				if indent == nil
+					indent = stream.grabOptional(TokenKind.Indent)
+
 				branch kind
 					on TokenKind.IsKeyword
 						mods.add(ModifierSpecification.parse(stream))
@@ -447,10 +453,6 @@ class TypeSpecification
 						constraints.add(GenericConstraintSpecification.parse(stream))
 				
 				stream.skipBlankLines
-
-				if indent == nil
-					indent = stream.grabOptional(TokenKind.Indent)
-
 				kind = stream.token.kind
 
 			return TypeSpecification(indent, mods, bases, ints, atts, mixins, constraints)

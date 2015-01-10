@@ -52,14 +52,13 @@ class TypeDeclaration
 		else
 			indent = stream.grabOptional(TokenKind.Indent)
 			stream.skipBlankLines
-		didIndent = indent <> nil or specs.isIndented
 		
 		if stream.token.startsDocString
 			docString = DocString.parse(stream)
 			stream.skipBlankLines
 		
 		if isSig
-			if didIndent, dedent = stream.expect(TokenKind.Dedent)
+			if indent <> nil, dedent = stream.expect(TokenKind.Dedent)
 			return SigDeclaration(kw, id, signature, specs, indent, docString, dedent, nil)
 		
 		if stream.token.kind == TokenKind.PassKeyword

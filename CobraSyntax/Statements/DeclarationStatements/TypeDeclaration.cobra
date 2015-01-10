@@ -43,9 +43,13 @@ class TypeDeclaration
 		isSig = kw.kind == TokenKind.SigKeyword
 		if isSig and id.firstToken.kind == TokenKind.CallStart
 			signature = MethodSignature.parse(stream) to ?
-
+		
+		stream.skipBlankLines
 		specs = TypeSpecification.parse(stream)
-		if not specs.isIndented
+		stream.skipBlankLines
+		if specs.isIndented
+			indent = specs.indentToken
+		else
 			indent = stream.grabOptional(TokenKind.Indent)
 			stream.skipBlankLines
 		didIndent = indent <> nil or specs.isIndented
@@ -120,27 +124,31 @@ class ClassDeclaration inherits TypeDeclaration
 
 	invariant
 		_firstToken.kind == TokenKind.ClassKeyword
+		.indentToken <> nil
+		.dedentToken <> nil
+		.dedentToken.charNum > .indentToken.charNum
 	
 	def parse(stream as ITokenStream) as ClassDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.ClassKeyword
 		test
-			source = "class Foo\n\tpass\n"
+			source =
+			"class Foo\n" +
+			"    pass"
 			stream = TokenStream(source, "test.cobra")
 			c = ClassDeclaration.parse(stream)
 			assert c.name == "Foo"
-			assert c.dedentToken.charNum > c.indentToken.charNum
 			assert c.passStatement <> nil
 			assert c.passStatement.firstToken.lineNum == c.firstToken.lineNum + 1
 			assert c.docString == nil
 			assert c.memberDeclarations.count == 0
 		test
-			source = _
+			source =
 			"class Foo<of Bar, Baz>\n" +
-				'\t"""\n' +
-				'\tThis is a doc string!\n' +
-				'\t"""\n' +
-				'\tpass\n'
+			'    """\n' +
+			"    This is a doc string!\n" +
+			'    """\n' +
+			"    pass"
 			stream = TokenStream(source, "test.cobra")
 			c = ClassDeclaration.parse(stream)
 			assert c.name == "Foo<of Bar, Baz>"
@@ -150,9 +158,21 @@ class ClassDeclaration inherits TypeDeclaration
 			assert genericId.types[1].name == "Baz"
 			assert c.dedentToken.lineNum > c.indentToken.lineNum
 			assert c.memberDeclarations.count == 0
-			assert c.docString.content == "\tThis is a doc string!\n"
+			assert c.docString.content == "    This is a doc string!\n"
 			assert c.passStatement <> nil
 			assert c.passStatement.firstToken.lineNum == c.docString.lastToken.lineNum + 1
+		test
+			source =
+			"class Foo\n" +
+			"    inherits Bar"
+			stream = TokenStream(source, "test.cobra")
+			c = ClassDeclaration.parse(stream)
+			assert c.name == "Foo"
+			assert c.specification.baseTypes.count == 1
+			assert c.specification.baseTypes[0].typeIdentifier.name == "Bar"
+			assert c.passStatement == nil
+			assert c.docString == nil
+			assert c.memberDeclarations.count == 0
 		body
 			return TypeDeclaration.parse(stream) to ClassDeclaration
 
@@ -160,6 +180,9 @@ class InterfaceDeclaration inherits TypeDeclaration
 	
 	invariant
 		_firstToken.kind == TokenKind.InterfaceKeyword
+		.indentToken <> nil
+		.dedentToken <> nil
+		.dedentToken.charNum > .indentToken.charNum
 
 	def parse(stream as ITokenStream) as InterfaceDeclaration is new, shared
 		require
@@ -179,6 +202,9 @@ class MixinDeclaration inherits TypeDeclaration
 	
 	invariant
 		_firstToken.kind == TokenKind.MixinKeyword
+		.indentToken <> nil
+		.dedentToken <> nil
+		.dedentToken.charNum > .indentToken.charNum
 	
 	def parse(stream as ITokenStream) as MixinDeclaration is new, shared
 		require
@@ -190,6 +216,9 @@ class StructDeclaration inherits TypeDeclaration
 	
 	invariant
 		_firstToken.kind == TokenKind.StructKeyword
+		.indentToken <> nil
+		.dedentToken <> nil
+		.dedentToken.charNum > .indentToken.charNum
 	
 	def parse(stream as ITokenStream) as StructDeclaration is new, shared
 		require
@@ -201,6 +230,9 @@ class EnumDeclaration inherits TypeDeclaration
 	
 	invariant
 		_firstToken.kind == TokenKind.EnumKeyword
+		.indentToken <> nil
+		.dedentToken <> nil
+		.dedentToken.charNum > .indentToken.charNum
 	
 	def parse(stream as ITokenStream) as EnumDeclaration is new, shared
 		require
@@ -212,6 +244,8 @@ class SigDeclaration inherits TypeDeclaration
 	
 	invariant
 		_firstToken.kind == TokenKind.SigKeyword
+		.indentToken <> nil implies .dedentToken <> nil
+		.indentToken <> nil implies .dedentToken.charNum > .indentToken.charNum
 	
 	def parse(stream as ITokenStream) as SigDeclaration is new, shared
 		require
@@ -226,7 +260,9 @@ class SigDeclaration inherits TypeDeclaration
 			assert s.indentToken == s.dedentToken == nil
 			assert s.memberDeclarations.count == 0
 		test
-			source = 'sig BinOp(x as int, y as int) as int\n\t"""Does op on x and y"""'
+			source =
+			"sig BinOp(x as int, y as int) as int\n" +
+			'    """Does op on x and y"""'
 			stream = TokenStream(source, "test.cobra")
 			s = SigDeclaration.parse(stream)
 			assert s.name == "BinOp"

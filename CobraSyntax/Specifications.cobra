@@ -16,7 +16,7 @@ enum AccessModifiers
 class AttributeExpression
 	inherits Expression
 	"""
-	A particular attribute specfied in an attribute specification section.
+	A particular attribute specfied in an attribute specification section
 	"""
 	get identifier from var as Identifier
 	get arguments from var as IReadOnlyList<of IExpression>
@@ -70,7 +70,7 @@ class AttributeExpression
 class AttributeSpecification
 	inherits SyntaxNode
 	"""
-	The syntax to specify one or more attributes applied to a declaration.
+	The syntax to specify one or more attributes applied to a declaration
 	"""
 
 	get hasKeyword from var as Cobra.Compiler.IToken
@@ -149,7 +149,7 @@ class ModifierSpecification inherits SyntaxNode
 	invariant
 		.modifierTokens.count == .commas.count + 1
 
-	def parse(stream as ITokenStream) as ModifierSpecification? is new, shared
+	def parse(stream as ITokenStream) as ModifierSpecification is new, shared
 		require
 			stream.token.kind == TokenKind.IsKeyword
 		test
@@ -195,36 +195,140 @@ class ModifierSpecification inherits SyntaxNode
 		return "is [sb.toString]"
 
 class BaseTypeSpecification inherits SyntaxNode
+	"""
+	The syntax for specifying the base type a declaration inherits from
+	"""
 
-	def parse(stream as ITokenStream) as BaseTypeSpecification? is new, shared
-		return BaseTypeSpecification(stream.grab, stream.skipToNextLine) # TODO
+	get inheritsKeyword from var as Cobra.Compiler.IToken
+	get typeIdentifier from var as TypeIdentifier
+
+	def parse(stream as ITokenStream) as BaseTypeSpecification is new, shared
+		require
+			stream.token.kind == TokenKind.InheritsKeyword
+		test
+			source = "inherits System.Collections.Generic.IReadOnlyList<of int>"
+			stream = TokenStream(source, 'test.cobra')
+			spec = BaseTypeSpecification.parse(stream)
+			assert spec.typeIdentifier in spec.children
+			assert spec.typeIdentifier.qualifiedName == "System.Collections.Generic.IReadOnlyList<of int>"
+			assert spec.toCobraSource == source
+		body
+			kw = stream.expect(TokenKind.InheritsKeyword)
+			id = TypeIdentifier.parse(stream)
+			return BaseTypeSpecification(kw, id)
+
+	cue init(keyword as Cobra.Compiler.IToken, typeId as TypeIdentifier)
+		base.init(keyword, nil)
+		_inheritsKeyword = keyword
+		_typeIdentifier = typeId
+		_addChild(typeId)
 
 	def toCobraSource as String is override
-		throw NotImplementedException()
+		return "inherits [_typeIdentifier.toCobraSource]"
 
 class InterfaceSpecification inherits SyntaxNode
+	"""
+	The syntax for specifying the interface(s) a declaration implements
+	"""
 
-	def parse(stream as ITokenStream) as InterfaceSpecification? is new, shared
-		return InterfaceSpecification(stream.grab, stream.skipToNextLine) # TODO
+	get implementsKeyword from var as Cobra.Compiler.IToken
+	get typeIdentifiers from var as IReadOnlyList<of TypeIdentifier>
+	get commas from var as IReadOnlyTokenList
+
+	invariant
+		.typeIdentifiers.count == .commas.count + 1
+
+	def parse(stream as ITokenStream) as InterfaceSpecification is new, shared
+		require
+			stream.token.kind == TokenKind.ImplementsKeyword
+		test
+			source = "implements Foo.IBar, IBaz"
+			stream = TokenStream(source, 'test.cobra')
+			spec = InterfaceSpecification.parse(stream)
+			assert spec.typeIdentifiers.count == 2
+			assert spec.typeIdentifiers[0].name == "IBar"
+			assert spec.typeIdentifiers[1].name == "IBaz"
+			assert spec.toCobraSource == source
+		body
+			kw = stream.expect(TokenKind.ImplementsKeyword)
+			types = List<of TypeIdentifier>()
+			commas = TokenList()
+			types.add(TypeIdentifier.parse(stream))
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				types.add(TypeIdentifier.parse(stream))
+			return InterfaceSpecification(kw, types, commas)
+
+	cue init(keyword as Cobra.Compiler.IToken, typeIds as TypeIdentifier*, commas as Cobra.Compiler.IToken*)
+		base.init(keyword, nil)
+		_implementsKeyword = keyword
+		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
+		for t in _typeIdentifiers, _addChild(t)
+		_commas = TokenList(commas)
 
 	def toCobraSource as String is override
-		throw NotImplementedException()
+		sb = StringBuilder()
+		for t in _typeIdentifiers
+			if sb.length <> 0, sb.append(", ")
+			sb.append(t.toCobraSource)
+		return "implements [sb.toString]"
 
 class GenericConstraintSpecification inherits SyntaxNode
 
-	def parse(stream as ITokenStream) as GenericConstraintSpecification? is new, shared
+	def parse(stream as ITokenStream) as GenericConstraintSpecification is new, shared
 		return GenericConstraintSpecification(stream.grab, stream.skipToNextLine) # TODO
 
 	def toCobraSource as String is override
 		throw NotImplementedException()
 
 class MixinSpecification inherits SyntaxNode
-	
-	def parse(stream as ITokenStream) as MixinSpecification? is new, shared
-		return MixinSpecification(stream.grab, stream.skipToNextLine) # TODO
-	
+	"""
+	The syntax for specifying the mixins added to a type declaration
+	"""
+
+	#Hmm...this is almost identical to InterfaceSpecification
+
+	get addsKeyword from var as Cobra.Compiler.IToken
+	get typeIdentifiers from var as IReadOnlyList<of TypeIdentifier>
+	get commas from var as IReadOnlyTokenList
+
+	invariant
+		.typeIdentifiers.count == .commas.count + 1
+
+	def parse(stream as ITokenStream) as MixinSpecification is new, shared
+		require
+			stream.token.kind == TokenKind.AddsKeyword
+		test
+			source = "adds Foo.BarBehavior, BazBehavior"
+			stream = TokenStream(source, 'test.cobra')
+			spec = MixinSpecification.parse(stream)
+			assert spec.typeIdentifiers.count == 2
+			assert spec.typeIdentifiers[0].name == "BarBehavior"
+			assert spec.typeIdentifiers[1].name == "BazBehavior"
+			assert spec.toCobraSource == source
+		body
+			kw = stream.expect(TokenKind.AddsKeyword)
+			types = List<of TypeIdentifier>()
+			commas = TokenList()
+			types.add(TypeIdentifier.parse(stream))
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				types.add(TypeIdentifier.parse(stream))
+			return MixinSpecification(kw, types, commas)
+
+	cue init(keyword as Cobra.Compiler.IToken, typeIds as TypeIdentifier*, commas as Cobra.Compiler.IToken*)
+		base.init(keyword, nil)
+		_addsKeyword = keyword
+		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
+		for t in _typeIdentifiers, _addChild(t)
+		_commas = TokenList(commas)
+
 	def toCobraSource as String is override
-		throw NotImplementedException()
+		sb = StringBuilder()
+		for t in _typeIdentifiers
+			if sb.length <> 0, sb.append(", ")
+			sb.append(t.toCobraSource)
+		return "adds [sb.toString]"
 
 class TypeSpecification
 	inherits SyntaxNode

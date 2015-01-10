@@ -39,7 +39,7 @@ class MemberDeclaration
 			_identifier = identifier
 			_name = identifier.name
 			_addChild(identifier)
-			_indentToken, _dedentToken = indentToken, _dedentToken = dedentToken
+			_indentToken, _dedentToken = indentToken, dedentToken
 			if docString <> nil
 				_addChild(docString)
 				_docString = docString

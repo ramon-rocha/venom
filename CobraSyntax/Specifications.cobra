@@ -433,13 +433,13 @@ class TypeSpecification
 			stream.grab
 			stream.grab
 			spec = TypeSpecification.parse(stream)
+			assert not spec.isIndented
 			assert spec.isNames.count == 1
 			assert spec.attributes.count == 0
 			assert spec.genericConstraints.count == 0
 			assert spec.baseTypes.count == 1
 			assert spec.mixins.count == 0
 			assert spec.interfaces.count == 0
-			assert not spec.isIndented
 		test
 			source =
 			"class Foo<of T>\n" +
@@ -454,6 +454,7 @@ class TypeSpecification
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipToNextLine
 			spec = TypeSpecification.parse(stream)
+			assert spec.isIndented
 			assert spec.isNames.count == 1
 			assert spec.isNames[0].modifierTokens.count == 2
 			assert spec.attributes.count == 1
@@ -462,7 +463,6 @@ class TypeSpecification
 			assert spec.baseTypes.count == 1
 			assert spec.mixins.count == 1
 			assert spec.interfaces.count == 1
-			assert spec.isIndented
 			assert spec.indentToken.lineNum == spec.isNames[0].firstToken.lineNum
 			assert spec.indentToken.colNum < spec.isNames[0].firstToken.colNum
 		test
@@ -472,18 +472,19 @@ class TypeSpecification
 			"    has MyCustomAttribute\n" +
 			"\n" +
 			"    is protected, abstract\n" +
+			"    where T must be callable\n" +
 			'    """Foo class is the best class"""\n' +
 			"    pass"
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipTo(TokenKind.GenericIdentifierEnd)
 			spec = TypeSpecification.parse(stream)
-			assert spec.genericConstraints.count == 1
+			assert spec.isIndented
+			assert spec.genericConstraints.count == 2
 			assert spec.baseTypes.count == 1
 			assert spec.isNames.count == 1
 			assert spec.attributes.count == 1
 			assert spec.mixins.count == 1
 			assert spec.interfaces.count == 1
-			assert spec.isIndented
 			assert spec.indentToken.charNum > spec.genericConstraints[0].firstToken.charNum
 		body
 			indent = stream.grabOptional(TokenKind.Indent)

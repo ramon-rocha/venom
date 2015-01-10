@@ -58,6 +58,8 @@ class TokenKind
 	#region Misc. Keywords
 	const AddsKeyword = 'ADDS'
 	const WhereKeyword = 'WHERE'
+	const MustKeyword = 'MUST'
+	const BeKeyword = 'BE'
 	const CallableKeyword = 'CALLABLE'
 	const FromKeyword = 'FROM'
 	const NilKeyword = 'NIL'

@@ -273,10 +273,78 @@ class InterfaceSpecification inherits SyntaxNode
 			sb.append(t.toCobraSource)
 		return "implements [sb.toString]"
 
+class GenericConstraint
+	inherits SyntaxNode
+
+	var validKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.ClassKeyword,
+		TokenKind.InterfaceKeyword,
+		TokenKind.CallableKeyword,
+	] + Identifier.validKinds
+
+	invariant
+		_firstToken.kind in .validKinds
+
+	def parse(stream as ITokenStream) as GenericConstraint is shared, new
+		require stream.token.kind in .validKinds
+		if stream.token.kind in Identifier.validKinds
+			return GenericConstraint(Identifier.parse(stream))
+		return GenericConstraint(stream.grab)
+
+	cue init(keyword as Cobra.Compiler.IToken)
+		base.init(keyword, nil)
+
+	cue init(id as Identifier)
+		base.init(id.firstToken, nil)
+		_addChild(id)
+
+	def toCobraSource as String is override
+		throw NotImplementedException()
+
 class GenericConstraintSpecification inherits SyntaxNode
+	"""
+	The syntax for specifying any constraining parameters on a generic type declaration
+	"""
+
+	get whereKeyword from var as Cobra.Compiler.IToken
+	get genericParameter from var as Identifier
+	get mustKeyword from var as Cobra.Compiler.IToken
+	get beKeyword from var as Cobra.Compiler.IToken
+	get genericConstraints from var as IReadOnlyList<of GenericConstraint>
+	get commas from var as IReadOnlyTokenList
 
 	def parse(stream as ITokenStream) as GenericConstraintSpecification is new, shared
-		return GenericConstraintSpecification(stream.grab, stream.skipToNextLine) # TODO
+		require stream.token.kind == TokenKind.WhereKeyword
+		whereKeyword = stream.expect(TokenKind.WhereKeyword)
+		genericParam = Identifier.parse(stream)
+		mustKeyword = stream.expect(TokenKind.MustKeyword)
+		beKeyword = stream.expect(TokenKind.BeKeyword)
+		constraints = List<of GenericConstraint>()
+		constraints.add(GenericConstraint.parse(stream))
+		commas = TokenList()
+		while stream.token.kind == TokenKind.Comma
+			commas.add(stream.grab)
+			constraints.add(GenericConstraint.parse(stream))
+		return GenericConstraintSpecification(
+			whereKeyword, genericParam, mustKeyword, beKeyword, constraints, commas
+		)
+
+	cue init(
+		whereKeyword as Cobra.Compiler.IToken,
+		genericParameter as Identifier,
+		mustKeyword as Cobra.Compiler.IToken,
+		beKeyword as Cobra.Compiler.IToken,
+		genericConstraints as GenericConstraint*,
+		commas as Cobra.Compiler.IToken*
+	)
+		base.init(whereKeyword, nil)
+		_whereKeyword = whereKeyword
+		_genericParameter = genericParameter
+		_addChild(genericParameter)
+		_mustKeyword, _beKeyword = mustKeyword, beKeyword
+		_genericConstraints = List<of GenericConstraint>(genericConstraints)
+		for c in _genericConstraints, _addChild(c)
+		_commas = TokenList(commas)
 
 	def toCobraSource as String is override
 		throw NotImplementedException()
@@ -429,10 +497,7 @@ class TypeSpecification
 
 			kind = stream.token.kind
 			while kind in _specKeywords
-
-				if indent == nil
-					indent = stream.grabOptional(TokenKind.Indent)
-
+				
 				branch kind
 					on TokenKind.IsKeyword
 						mods.add(ModifierSpecification.parse(stream))
@@ -453,6 +518,12 @@ class TypeSpecification
 						constraints.add(GenericConstraintSpecification.parse(stream))
 				
 				stream.skipBlankLines
+				if stream.peek.kind == TokenKind.PassKeyword
+					break
+
+				if indent == nil
+					indent = stream.grabOptional(TokenKind.Indent)
+
 				kind = stream.token.kind
 
 			return TypeSpecification(indent, mods, bases, ints, atts, mixins, constraints)

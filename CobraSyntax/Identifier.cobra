@@ -44,12 +44,11 @@ class Identifier
 		TokenKind.Identifier,
 		TokenKind.CallStart,
 		TokenKind.GenericIdentifierStart,
-	]
+	] + TokenKind.cobraTypes
 	
 	def parse(stream as ITokenStream) as Identifier is new, shared
 		require
-			stream.token.kind in .validKinds _
-			or stream.token.kind in TokenKind.cobraTypes
+			stream.token.kind in .validKinds
 		body
 			kind = stream.token.kind
 			if kind == TokenKind.GenericIdentifierStart
@@ -64,8 +63,7 @@ class Identifier
 	
 	cue init(token as Cobra.Compiler.IToken)
 		require
-			token.kind in .validKinds _
-			or token.kind in TokenKind.cobraTypes
+			token.kind in .validKinds
 		test camelCaseAndLocation
 			token = Cobra.Compiler.Token("test.cobra", 4, 8, 30, TokenKind.Identifier, "testing", nil)
 			id = Identifier(token)			
@@ -149,8 +147,7 @@ class QualifiedIdentifier inherits Identifier
 
 	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
 		require
-			stream.token.kind in .validKinds _
-			or stream.token.kind in TokenKind.cobraTypes
+			stream.token.kind in .validKinds
 		test
 			source = "System"
 			stream = TokenStream(source, "test.cobra")
@@ -200,8 +197,6 @@ class QualifiedIdentifier inherits Identifier
 			kind = stream.token.kind
 			if kind in .validKinds
 				right = QualifiedIdentifier.parse(stream)
-			else if kind in TokenKind.cobraTypes
-				right = QualifiedIdentifier(Identifier.parse(stream))
 			else
 				right = QualifiedIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
 			return QualifiedIdentifier(left, dot, right)
@@ -310,7 +305,7 @@ class GenericIdentifier inherits Identifier
 			commas = TokenList()
 			types = List<of TypeIdentifier>()
 			kind = stream.token.kind
-			if kind in .validKinds or kind in TokenKind.cobraTypes
+			if kind in .validKinds
 				id = TypeIdentifier.parse(stream)
 			else
 				missingToken = stream.expect(TokenKind.Identifier)
@@ -319,7 +314,7 @@ class GenericIdentifier inherits Identifier
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
 				kind = stream.token.kind
-				if kind in .validKinds or kind in TokenKind.cobraTypes
+				if kind in .validKinds
 					id = TypeIdentifier.parse(stream)
 				else
 					missingToken = stream.expect(TokenKind.Identifier)
@@ -361,7 +356,6 @@ class TypeIdentifier inherits QualifiedIdentifier
 	"""
 	def parse(stream as ITokenStream) as TypeIdentifier is new, shared
 		require
-			stream.token.kind in .validKinds _
-			or stream.token.kind in TokenKind.cobraTypes
+			stream.token.kind in .validKinds
 		body
 			return TypeIdentifier(QualifiedIdentifier.parse(stream))

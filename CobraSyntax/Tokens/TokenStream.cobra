@@ -113,9 +113,11 @@ class TokenStream
 	implements ITokenStream
 
 	var _currentIndex as int
-	var _tokenCount as int is readonly
-	var _tokens as IReadOnlyTokenList is readonly
-	var _emptyToken is readonly, shared = Cobra.Compiler.Token.empty
+
+	readonly
+		var _tokenCount as int
+		var _tokens as IReadOnlyTokenList
+		var _emptyToken is shared = Cobra.Compiler.Token.empty
 
 	invariant
 		_currentIndex >= 0

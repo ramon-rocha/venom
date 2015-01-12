@@ -114,7 +114,7 @@ class TokenStream
 
 	var _currentIndex as int
 	var _tokenCount as int
-	var _tokens as IReadOnlyTokenList
+	var _tokens as IReadOnlyTokenList is readonly
 	var _emptyToken is readonly, shared = Cobra.Compiler.Token.empty
 
 	invariant

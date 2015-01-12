@@ -245,6 +245,7 @@ class SigDeclaration inherits TypeDeclaration
 		_firstToken.kind == TokenKind.SigKeyword
 		.indentToken <> nil implies .dedentToken <> nil
 		.indentToken <> nil implies .dedentToken.charNum > .indentToken.charNum
+		.memberDeclarations.count == 0
 	
 	def parse(stream as ITokenStream) as SigDeclaration is new, shared
 		require

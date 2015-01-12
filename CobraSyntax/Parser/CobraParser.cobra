@@ -168,9 +168,8 @@ class CobraParser
 		return members
 	
 	def _makeFieldDeclaration as FieldDeclaration
-		# TODO
 		require _stream.token.kind == TokenKind.FieldKeyword
-		return FieldDeclaration(_stream.grab, Identifier.parse(_stream to !), nil, nil, nil, nil, nil, nil, nil, _stream.skipToNextLine)
+		return FieldDeclaration.parse(_stream to !)
 	
 	def _makeMethodDeclaration as MethodDeclaration
 		return MethodDeclaration.parse(_stream to !)

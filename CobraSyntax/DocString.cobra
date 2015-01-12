@@ -11,8 +11,9 @@ mixin DocumentationBehavior
 
 	get hasDocString as bool
 		return _docString <> nil
-	
-	get docString from var as DocString?
+
+	var _docString as DocString? is protected # must be explicit due to compiler bug
+	get docString from var
 
 
 extend Cobra.Compiler.IToken

@@ -133,7 +133,7 @@ class Expression
 		if TokenKind.unaryOperatorPrecedence.containsKey(kind)
 			return UnaryOperatorExpression.parse(stream)
 		
-		else if kind in CollectionLiteral.validKinds
+		else if kind in CollectionLiteral.validStartKinds
 			return CollectionLiteral.parse(stream)
 		
 		else if kind in StringLiteral.validKinds

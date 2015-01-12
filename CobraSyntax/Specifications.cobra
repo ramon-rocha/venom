@@ -186,6 +186,7 @@ class ModifierSpecification inherits SyntaxNode
 		_isKeyword = isKeyword
 		_modifierTokens = TokenList(modTokens)
 		_commas = TokenList(commas)
+		_lastToken = _modifierTokens.last
 
 	def toCobraSource as String is override
 		sb = StringBuilder()

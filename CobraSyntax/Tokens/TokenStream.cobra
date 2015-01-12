@@ -27,10 +27,19 @@ extend ICobraToken
 
 interface IReadOnlyTokenList
 	inherits IReadOnlyList<of ICobraToken>
+
+	get first as ICobraToken
+	get last as ICobraToken
 	
 class TokenList
 	inherits List<of ICobraToken>
 	implements IReadOnlyTokenList
+
+	get first as ICobraToken
+		return (this to IList<of ICobraToken>).first
+
+	get last as ICobraToken
+		return (this to IList<of ICobraToken>).last
 
 
 interface ITokenStream
@@ -290,3 +299,135 @@ class TokenStream
 		for i in _currentIndex:_tokenCount
 			sb.appendLine(.peek(i, false).toTechString)
 		return sb.toString
+
+
+
+interface IWhiteSpaceAgnosticTokenStream
+	inherits ITokenStream
+	"""
+	Provides the same functionality as an ITokenStream but ignores all EOL, INDENT, and DEDENT tokens.
+	"""
+
+class WhiteSpaceAgnosticTokenStreamWrapper
+	implements IWhiteSpaceAgnosticTokenStream
+	"""
+	Wraps an existing ITokenStream object but ignores all INDENT, EOL, or DEDENT tokens.
+
+	When a token is grabbed from this stream, it is actually grabbed from the wrapped stream.
+	Peeking does not modify the wrapped stream.
+	"""
+
+	readonly
+		var _wrappedStream as ITokenStream
+		var _whiteSpaceTokens as IReadOnlyList<of String> is shared = [
+			TokenKind.EndOfLine, TokenKind.Indent, TokenKind.Dedent
+		]
+
+	cue init(stream as ITokenStream)
+		base.init
+		_wrappedStream = stream
+
+	get token as ICobraToken
+		return .peek(0)
+
+	def peek(howFar = 1, skipComments = true) as ICobraToken
+		ensure
+			result.kind not in _whiteSpaceTokens
+			_wrappedStream.token is old _wrappedStream.token
+		test
+			source =
+			"weekDays = {\n" +
+			"    'Monday', 'Tuesday', 'Wednesday',\n" +
+			"    'Thursday', 'Friday'\n" +
+			"}"
+			wrappedStream = TokenStream(source, 'test.cobra')
+			stream = WhiteSpaceAgnosticTokenStreamWrapper(wrappedStream)
+			assert stream.peek(0).kind == wrappedStream.peek(0).kind == TokenKind.Identifier
+			assert stream.peek(1).kind == wrappedStream.peek(1).kind == TokenKind.AssignmentOperator
+			assert stream.peek(2).kind == wrappedStream.peek(2).kind == TokenKind.SetStart
+
+			assert stream.peek(3).kind <> TokenKind.EndOfLine
+			assert wrappedStream.peek(3).kind == TokenKind.EndOfLine
+
+			assert stream.peek(3).kind <> TokenKind.Indent
+			assert wrappedStream.peek(4).kind == TokenKind.Indent
+
+			assert stream.peek(3).kind == wrappedStream.peek(5).kind == TokenKind.SingleQuotedString
+		body
+			token = _wrappedStream.peek(howFar, skipComments)
+			while token.kind in _whiteSpaceTokens
+				howFar += 1
+				token = _wrappedStream.peek(howFar, skipComments)
+			return token
+	
+	def grab as ICobraToken
+		ensure result.kind not in _whiteSpaceTokens
+		_skipWhiteSpace
+		return _wrappedStream.grab
+	
+	def replace(token as ICobraToken)
+		_skipWhiteSpace
+		_wrappedStream.replace(token)
+
+	def grabOptional(kind as String) as ICobraToken?
+		require kind not in _whiteSpaceTokens
+		if .token.kind == kind
+			return .grab
+		return nil
+
+	def grabOneOf(kinds as IReadOnlyList<of String>) as ICobraToken
+		require kinds.count > 0
+		for kind in kinds
+			token = .grabOptional(kind)
+			if token <> nil, break
+		if token == nil
+			.expect(kinds[0])
+		return token to !
+
+	def grabOneOfOptional(kinds as IReadOnlyList<of String>) as ICobraToken?
+		if .token.kind in kinds
+			return .grab
+		return nil
+
+	def expect(kind as String) as ICobraToken
+		t = .token
+		if t.kind == kind
+			return .grab
+		
+		missingToken = Cobra.Compiler.Token(
+			t.fileName, t.lineNum, t.colNum, t.charNum, kind, "", nil, true
+		)
+		return missingToken
+
+	def expect(kinds as IReadOnlyList<of String>) as TokenList
+		require kinds.count > 0
+		tokens = TokenList(kinds.count)
+		for kind in kinds
+			tokens.add(.expect(kind))
+		return tokens
+
+	def skipTo(kind as String) as TokenList
+		require kind not in _whiteSpaceTokens
+		skippedTokens = TokenList()
+		while .token is not Cobra.Compiler.Token.empty
+			token = .grab
+			skippedTokens.add(token)
+			if token.kind == kind
+				break
+		return skippedTokens
+	
+	def skipToNextLine as TokenList
+		skippedTokens = _wrappedStream.skipToNextLine
+		if skippedTokens.last.kind == TokenKind.EndOfLine
+			skippedTokens.remove(skippedTokens.last)
+		return skippedTokens
+	
+	def skipBlankLines
+		_skipWhiteSpace
+
+	def _skipWhiteSpace
+		while _wrappedStream.token.kind in _whiteSpaceTokens
+			_wrappedStream.grab
+	
+	def toTechString as String
+		return _wrappedStream.toTechString

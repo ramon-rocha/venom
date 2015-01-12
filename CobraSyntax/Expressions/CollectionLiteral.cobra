@@ -7,15 +7,26 @@ class CollectionLiteral
 	"""
 	The base class for list, dictionary, and other collection-like literals
 	"""
-	var validKinds as IReadOnlyList<of String> is shared, readonly = [
-		TokenKind.ListStart,
-		TokenKind.ArrayStart,
-		TokenKind.SetStart,
-	]
+	shared, readonly
+		var validStartKinds as IReadOnlyList<of String> = [
+			TokenKind.ListStart,
+			TokenKind.ArrayStart,
+			TokenKind.SetStart,
+		]
+	
+		var endMap as IReadOnlyDictionary<of String, String> = {
+			TokenKind.ListStart : TokenKind.ListEnd,
+			TokenKind.ArrayStart : TokenKind.ArrayEnd,
+			TokenKind.SetStart : TokenKind.SetEnd,
+		}
+
+	# COBRA INTERNAL ERROR / ArgumentNullException / Argument cannot be null.; Parameter name: obj
+	/#invariant
+		all for k in .validStartKinds get .endMap.containsKey(k)#/
 
 	def parse(stream as ITokenStream) as CollectionLiteral is new, shared
 		require
-			stream.token.kind in .validKinds
+			stream.token.kind in .validStartKinds
 		test
 			source = r'[]'
 			stream = TokenStream(source, 'test.cobra')
@@ -32,11 +43,16 @@ class CollectionLiteral
 			assert list.elements.count == 3
 			assert all for e in list.elements get e inherits IntegerLiteral
 		body
+			if not stream implements IWhiteSpaceAgnosticTokenStream
+				stream = WhiteSpaceAgnosticTokenStreamWrapper(stream)
+			
 			startToken = stream.grab
+			endKind = .endMap[startToken.kind]
 
 			expressions = ExpressionList()
-			while stream.token.kind not in @[TokenKind.ListEnd, TokenKind.SetEnd]
+			while stream.token.kind <> endKind
 				if expressions.count <> 0, stream.expect(TokenKind.Comma)
+				if stream.token.kind == endKind, break
 				expressions.add(Expression.parse(stream))
 			
 			endToken = stream.grab

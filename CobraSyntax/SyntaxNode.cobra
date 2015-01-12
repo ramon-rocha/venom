@@ -236,7 +236,7 @@ class SyntaxNode
 		else
 			return .parent.root
 	
-	var _children as NodeList
+	var _children as NodeList is readonly
 	get children as ISyntaxNode*
 		"""
 		The stream of child nodes under this node.

@@ -58,6 +58,44 @@ class BinaryOperatorExpression inherits Expression
 		TokenKind.BitShiftRightAndAssignOperator: BitShiftRightAndAssignExpression
 	}
 
+	var implicitLineContinuationKinds as IReadOnlyList<of String> is shared, readonly = List<of String>({
+		TokenKind.AssignmentOperator,
+		TokenKind.LogicalAndOperator,
+		TokenKind.LogicalOrOperator,
+		TokenKind.AdditionOperator,
+		TokenKind.AddAndAssignOperator,
+		TokenKind.MultiplyAndAssignOperator,
+		TokenKind.MultiplicationOperator,
+		TokenKind.DivisionOperator,
+		TokenKind.DivideAndAssignOperator,
+		TokenKind.SubtractionOperator,
+		TokenKind.SubtractAndAssignOperator,
+		TokenKind.EqualityComparisonOperator,
+		TokenKind.InequalityComparisonOperator,
+		TokenKind.ExponentiationOperator,
+		TokenKind.ExponentAndAssignOperator,
+		TokenKind.LessThanOperator,
+		TokenKind.LessThanEqualToOperator,
+		TokenKind.GreaterThanOperator,
+		TokenKind.GreaterThanEqualToOperator,
+		TokenKind.MembershipCheckOperator,
+		TokenKind.NonMembershipCheckOperator,
+		TokenKind.IntegerDivisionOperator,
+		TokenKind.IntegerDivideAndAssignOperator,
+		TokenKind.ModulusOperator,
+		TokenKind.ModulusAndAssignOperator,
+		TokenKind.BitwiseAndOperator,
+		TokenKind.BitwiseAndAndAssignOperator,
+		TokenKind.BitwiseOrOperator,
+		TokenKind.BitwiseOrAndAssignOperator,
+		TokenKind.BitwiseXorOperator,
+		TokenKind.BitwiseXorAndAssignOperator,
+		TokenKind.BitwiseShiftLeftOperator,
+		TokenKind.BitShiftLeftAndAssignOperator,
+		TokenKind.BitwiseShiftRightOperator,
+		TokenKind.BitShiftRightAndAssignOperator,
+	})
+
 	cue init(left as IExpression, op as Cobra.Compiler.IToken, right as IExpression)
 		base.init(left.firstToken, right.lastToken, nil)
 		_leftExpression, _operatorToken, _rightExpression = left, op, right

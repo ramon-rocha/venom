@@ -3,12 +3,35 @@ namespace Venom.CobraSyntax
 
 class ParenthesizedExpression inherits Expression
 	
-	def parse(stream as ITokenStream) as IExpression is new, shared
-		test
-			pass # TODO
+	def parse(stream as ITokenStream) as ParenthesizedExpression is new, shared
+		test basics
+			source =
+			"(a + b) * (a - b)"
+			stream = TokenStream(source, 'test.cobra')
+			multExpr = Expression.parse(stream) to MultiplicationExpression
+			left = multExpr.leftExpression to ParenthesizedExpression
+			right = multExpr.rightExpression to ParenthesizedExpression
+			assert left.expression inherits AdditionExpression
+			assert right.expression inherits SubtractionExpression
+			assert left.firstToken.lineNum == right.lastToken.lineNum
+		test whiteSpaceAgnostic
+			source =
+			"(\n" +
+			"    a + b\n" +
+			") * (\n" +
+			"       a - b\n" +
+			")"
+			stream = TokenStream(source, 'test.cobra')
+			multExpr = Expression.parse(stream) to MultiplicationExpression
+			left = multExpr.leftExpression to ParenthesizedExpression
+			right = multExpr.rightExpression to ParenthesizedExpression
+			assert left.expression inherits AdditionExpression
+			assert right.expression inherits SubtractionExpression
+			assert left.firstToken.lineNum < right.lastToken.lineNum
 		body
 			openParen = stream.expect(TokenKind.OpenParenthesis)
-			# TODO space agnostic
+			if not stream implements IWhiteSpaceAgnosticTokenStream
+				stream = WhiteSpaceAgnosticTokenStreamWrapper(stream)
 			expr = Expression.parse(stream)
 			closeParen = stream.expect(TokenKind.CloseParenthesis)
 			return ParenthesizedExpression(openParen, expr, closeParen)

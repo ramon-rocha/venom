@@ -37,6 +37,7 @@ class ExpressionStatement
 			return ExpressionStatement(expr, lastToken, skipped)
 
 	cue init(expr as IExpression, lastToken as Cobra.Compiler.IToken, extraTokens as TokenList?)
+		ensure expr in _children
 		base.init(expr, extraTokens)
 		_expression = expr
 		if lastToken.charNum > _lastToken.charNum

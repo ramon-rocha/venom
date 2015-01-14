@@ -92,6 +92,7 @@ class TokenKind
 	const Colon = 'COLON'
 	const Dot = 'DOT'
 	const QuestionMark = 'QUESTION'
+	const Star = 'STAR'
 	const ExclamationPoint = 'BANG'
 	const OpenParenthesis = 'LPAREN'
 	const CloseParenthesis = 'RPAREN'

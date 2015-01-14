@@ -354,8 +354,110 @@ class TypeIdentifier inherits QualifiedIdentifier
 
 	Used primarily for categorization such as when we are expecting a type versus a namespace.
 	"""
+
+	var wrappedTypeMap as IReadOnlyDictionary<of String, Type> is shared, readonly = {
+		TokenKind.QuestionMark : NilableTypeIdentifier,
+		TokenKind.Star : StreamTypeIdentifier,
+		TokenKind.OpenBracket : ArrayTypeIdentifier
+	}
+
 	def parse(stream as ITokenStream) as TypeIdentifier is new, shared
 		require
 			stream.token.kind in .validKinds
+		test
+			source = "int"
+			stream = TokenStream(source, 'test.cobra')
+			typeId = TypeIdentifier.parse(stream)
+			assert typeId.qualifiedName == source
+		test
+			source = "String?"
+			stream = TokenStream(source, 'test.cobra')
+			typeId = TypeIdentifier.parse(stream)
+			assert typeId inherits NilableTypeIdentifier
+			assert typeId.qualifiedName == source
+		test
+			source = ns"Foo.Bar<of T>[]"
+			stream = TokenStream(source, 'test.cobra')
+			typeId = TypeIdentifier.parse(stream)
+			assert typeId inherits ArrayTypeIdentifier
+			assert typeId.qualifiedName == source
+		test
+			source = "Foo.Bar*"
+			stream = TokenStream(source, 'test.cobra')
+			typeId = TypeIdentifier.parse(stream)
+			assert typeId inherits StreamTypeIdentifier
+			assert typeId.qualifiedName == source
+		test
+			source = "Foo.Bar.IType?*?" # fully qualified nilable stream of nilable ITypes
+			stream = TokenStream(source, 'test.cobra')
+			typeId = TypeIdentifier.parse(stream) to NilableTypeIdentifier
+			wrapped1 = typeId.wrappedTypeIdentifier to StreamTypeIdentifier
+			wrapped2 = wrapped1.wrappedTypeIdentifier to NilableTypeIdentifier
+			assert wrapped2.wrappedTypeIdentifier.qualifiedName == "Foo.Bar.IType"
+			assert typeId.qualifiedName == source
 		body
-			return TypeIdentifier(QualifiedIdentifier.parse(stream))
+			typeId = TypeIdentifier(QualifiedIdentifier.parse(stream))
+
+			while stream.token.kind in .wrappedTypeMap.keys
+				token = stream.grab
+				if token.kind <> TokenKind.OpenBracket
+					typeId = .wrappedTypeMap[token.kind](typeId, token)
+					continue
+
+				skipped = stream.skipTo(TokenKind.CloseBracket)
+				closeToken = skipped.last
+				skipped.remove(closeToken)
+				typeId = ArrayTypeIdentifier(typeId, token, skipped, closeToken)
+
+			return typeId
+
+class TypeIdentifierWrapper
+	inherits TypeIdentifier
+	is abstract
+
+	get wrappedTypeIdentifier from var as TypeIdentifier
+
+	get qualifiedName as String is override
+		return _wrappedTypeIdentifier.qualifiedName + _lastToken.text
+
+	cue init(typeId as TypeIdentifier, lastToken as Cobra.Compiler.IToken)
+		ensure typeId in _children
+		base.init(typeId)
+		_wrappedTypeIdentifier = typeId
+		_lastToken = lastToken
+
+class NilableTypeIdentifier
+	inherits TypeIdentifierWrapper
+	"""Foo?"""
+
+	get questionMarkToken as Cobra.Compiler.IToken
+		return _lastToken
+
+class StreamTypeIdentifier
+	inherits TypeIdentifierWrapper
+	"""Foo*"""
+
+	get starToken as Cobra.Compiler.IToken
+		return _lastToken
+
+class ArrayTypeIdentifier
+	inherits TypeIdentifierWrapper
+	"""Foo[]"""
+
+	get openBracket from var as Cobra.Compiler.IToken
+	get closeBracket as Cobra.Compiler.IToken
+		return _lastToken
+
+	get qualifiedName as String is override
+		return "[_wrappedTypeIdentifier.qualifiedName][_openBracket.text][_lastToken.text]"
+
+	cue init(
+		typeId as TypeIdentifier,
+		openBracket as Cobra.Compiler.IToken,
+		skipped as IReadOnlyTokenList,
+		closeBracket as Cobra.Compiler.IToken
+	)
+		ensure typeId in _children
+		base.init(typeId, closeBracket)
+		_extraTokens = TokenList(skipped)
+		_openBracket = openBracket

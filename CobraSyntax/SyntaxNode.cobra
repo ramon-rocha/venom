@@ -90,6 +90,12 @@ class SyntaxNode
 	This is the base class from which all other nodes in the syntax tree inherit.
 	"""
 
+	# doesn't work due to compiler bug
+	/#invariant
+		_firstToken.charNum <= _lastToken.charNum
+		all for c in .children get _firstToken.charNum <= c.firstToken
+		all for c in .children get c.lastToken <= _lastToken.charNum #/
+
 	shared
 		def parse(stream as ITokenStream) as ISyntaxNode
 			throw NotImplementedException()

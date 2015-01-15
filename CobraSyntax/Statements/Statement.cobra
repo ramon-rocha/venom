@@ -125,7 +125,15 @@ class StatementClause
 			_statements = StatementList()
 
 	def toCobraSource as String is override
-		sb = StringBuilder(_firstToken.text)
-		for s in _statements, sb.append(s.toCobraSource)
-		sb.append(_lastToken.text)
-		return sb.toTechString
+		sb = StringBuilder()
+
+		if _firstToken.text.length <> 0
+			sb.append(_firstToken.text)
+		
+		for s in _statements
+			sb.append(s.toCobraSource)
+
+		if _lastToken.text.length <> 0
+			sb.append(_lastToken.text)
+		
+		return sb.toString

@@ -1,6 +1,11 @@
 namespace Venom.CobraSyntax
 
-class IdentifierExpression inherits Expression
+class IdentifierExpression
+	inherits Expression
+	adds NamedBehavior
+
+	invariant
+		.name == .identifier.name
 
 	get identifier from var as Identifier
 	get typeClause from var as LocalDeclarationTypeClause?
@@ -30,6 +35,7 @@ class IdentifierExpression inherits Expression
 	cue init(id as Identifier, clause as LocalDeclarationTypeClause?)
 		base.init(id, nil)
 		_identifier = id
+		_name = id.name
 		if clause
 			_typeClause = clause
 			_addChild(clause)
@@ -63,4 +69,4 @@ class LocalDeclarationTypeClause inherits SyntaxNode
 		_addChild(typeId)
 
 	def toCobraSource as String is override
-		return "as [_typeIdentifier.toString]"
+		return "as [_typeIdentifier.name.toString]"

@@ -2,15 +2,37 @@ namespace Venom.CobraSyntax
 
 class IdentifierExpression inherits Expression
 
-	def parse(stream as ITokenStream) as IdentifierExpression is new, shared
-		require stream.token.kind == TokenKind.Identifier
-		return IdentifierExpression(Identifier.parse(stream))
+	get identifier from var as Identifier
+	get typeClause from var as LocalDeclarationTypeClause?
 
-	cue init(id as Identifier)
+	def parse(stream as ITokenStream) as IdentifierExpression is new, shared
+		require
+			stream.token.kind == TokenKind.Identifier
+		test
+			source = "foo"
+			stream = TokenStream(source, 'test.cobra')
+			ie = IdentifierExpression.parse(stream)
+			assert ie.identifier.name == "foo"
+			assert ie.typeClause == nil
+		test
+			source = "foo as String"
+			stream = TokenStream(source, 'test.cobra')
+			ie = IdentifierExpression.parse(stream)
+			assert ie.identifier.name == "foo"
+			assert ie.typeClause <> nil
+			assert ie.typeClause.typeIdentifier.name == "String"
+		body
+			id = Identifier.parse(stream)
+			if stream.token.kind == TokenKind.AsKeyword
+				clause = LocalDeclarationTypeClause.parse(stream) to ?
+			return IdentifierExpression(id, clause)
+
+	cue init(id as Identifier, clause as LocalDeclarationTypeClause?)
 		base.init(id, nil)
 		_identifier = id
-	
-	get identifier from var as Identifier
+		if clause
+			_typeClause = clause
+			_addChild(clause)
 
 	def _toPrettyString as String is override
 		sb = StringBuilder(base._toPrettyString)
@@ -18,4 +40,27 @@ class IdentifierExpression inherits Expression
 		return sb.toString
 	
 	def toCobraSource as String is override
-		return _identifier.toCobraSource
+		sb = StringBuilder(_identifier.toCobraSource)
+		if _typeClause <> nil
+			sb.append(" [_typeClause.toCobraSource]")
+		return sb.toString
+
+class LocalDeclarationTypeClause inherits SyntaxNode
+
+	get asKeyword from var as Cobra.Compiler.IToken
+	get typeIdentifier from var as TypeIdentifier
+
+	def parse(stream as ITokenStream) as LocalDeclarationTypeClause is new, shared
+		require stream.token.kind == TokenKind.AsKeyword
+		kw = stream.expect(TokenKind.AsKeyword)
+		id = TypeIdentifier.parse(stream)
+		return LocalDeclarationTypeClause(kw, id)
+
+	cue init(kw as Cobra.Compiler.IToken, typeId as TypeIdentifier)
+		base.init(kw, nil)
+		_asKeyword = kw
+		_typeIdentifier = typeId
+		_addChild(typeId)
+
+	def toCobraSource as String is override
+		return "as [_typeIdentifier.toString]"

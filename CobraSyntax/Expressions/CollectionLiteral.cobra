@@ -60,11 +60,13 @@ class CollectionLiteral
 			branch startToken.kind
 				on TokenKind.ListStart, return ListLiteral(startToken, expressions, endToken)
 				on TokenKind.ArrayStart, return ArrayLiteral(startToken, expressions, endToken)
+				on TokenKind.SetStart, return SetLiteral(startToken, expressions, endToken)
 				else, throw NotImplementedException("TODO: Handle dictionary and set literals")
 
 	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
 		base.init(startToken, endToken, nil)
 		_elements = ExpressionList(elements)
+		_isSpaceAgnostic = true
 	
 	get elements from var as IReadOnlyList<of IExpression>
 
@@ -97,3 +99,15 @@ class ArrayLiteral inherits CollectionLiteral
 			endToken.kind == TokenKind.ArrayEnd
 		body
 			base.init(startToken, elements, endToken)
+
+class SetLiteral inherits CollectionLiteral
+	"""
+	A literal set expression such as {1, 2, 3}
+	"""
+	pass
+
+class DictionaryLiteral inherits CollectionLiteral
+	"""
+	A literal dictionary expression such as {1:'one', 2:'two', 3:'three'}
+	"""
+	pass

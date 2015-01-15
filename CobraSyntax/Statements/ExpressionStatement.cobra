@@ -6,6 +6,9 @@ class ExpressionStatement
 	adds StatementBehavior
 	implements IExpression, IStatement
 
+	invariant
+		.isSpaceAgnostic == .expression.isSpaceAgnostic
+
 	get expression from var as IExpression
 
 	def parse(stream as ITokenStream) as IStatement is new, shared
@@ -29,16 +32,71 @@ class ExpressionStatement
 			assert member.arguments.count == 1
 			assert member.arguments[0] inherits StringLiteral
 			assert member.lastToken.kind == TokenKind.CallEnd
+
+		test hangingIndent
+			# make sure space agnostic expressions with leftover dedents don't mess up following statements
+			source =
+			"weekdays = {\n" +
+			"       'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'\n" +
+			"    }\n" +
+			"\n" +
+			"weekends = {\n" +
+			"    'Saturday', 'Sunday'\n" +
+			"    }"
+			stream = TokenStream(source, 'test.cobra')
+			
+			stmt1 = ExpressionStatement.parse(stream) to ExpressionStatement
+			assert stmt1.extraTokens.count == 0
+			expr1 = stmt1.expression to AssignmentExpression
+			assert expr1.rightExpression inherits SetLiteral
+			
+			stmt2 = ExpressionStatement.parse(stream) to ExpressionStatement
+			assert stmt2.extraTokens.count == 0
+			expr2 = stmt2.expression to AssignmentExpression
+			assert expr2.rightExpression inherits SetLiteral
+		
+		test spaceAgnosticDedent
+			# handle leftover indents
+			source =
+			"    weekdays = {\n" +
+			"'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'\n" +
+			"}\n" +
+			"\n" +
+			"    weekends = {\n" +
+			"'Saturday', 'Sunday'\n" +
+			"}"
+			stream = TokenStream(source, 'test.cobra')
+			stream.grab
+
+			stmt1 = ExpressionStatement.parse(stream) to ExpressionStatement
+			assert stmt1.extraTokens.count == 0
+			expr1 = stmt1.expression to AssignmentExpression
+			assert expr1.rightExpression inherits SetLiteral
+
+			stmt2 = ExpressionStatement.parse(stream) to ExpressionStatement
+			assert stmt2.extraTokens.count == 0
+			expr2 = stmt2.expression to AssignmentExpression
+			assert expr2.rightExpression inherits SetLiteral
 		body
+			indentLevel = stream.indentLevel
 			expr = Expression.parse(stream)
+				
 			skipped = stream.skipTo(TokenKind.EndOfLine)
 			lastToken = skipped.last
 			skipped.remove(lastToken)
+
+			if expr.isSpaceAgnostic
+				howMany = Math.abs(indentLevel - stream.indentLevel)
+				whitespaceKind = if(indentLevel > stream.indentLevel, TokenKind.Indent, TokenKind.Dedent)
+				stream.skipBlankLines
+				for i in howMany, stream.expect(whitespaceKind)
+
 			return ExpressionStatement(expr, lastToken, skipped)
 
 	cue init(expr as IExpression, lastToken as Cobra.Compiler.IToken, extraTokens as TokenList?)
 		ensure expr in _children
 		base.init(expr, extraTokens)
 		_expression = expr
+		_isSpaceAgnostic = expr.isSpaceAgnostic
 		if lastToken.charNum > _lastToken.charNum
 			_lastToken = lastToken

@@ -101,6 +101,7 @@ class BinaryOperatorExpression inherits Expression
 		_leftExpression, _operatorToken, _rightExpression = left, op, right
 		_addChild(left)
 		_addChild(right)
+		_isSpaceAgnostic = op.kind in .implicitLineContinuationKinds
 	
 	get operatorToken from var as Cobra.Compiler.IToken
 	get leftExpression from var as IExpression

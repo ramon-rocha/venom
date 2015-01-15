@@ -3,10 +3,20 @@ namespace Venom.CobraSyntax
 
 interface IExpression
 	inherits ISyntaxNode
-	pass
 
+	get isSpaceAgnostic as bool
+		"""
+		Indicates if whitespace (end-of-lines, indents, and dedents) is significant
+		to this expression.
+
+		Whitespace is not significant inside collection literals and most binary
+		operator expressions.
+		"""
+	
 mixin ExpressionBehavior
-	pass
+
+	var _isSpaceAgnostic as bool is protected = false
+	get isSpaceAgnostic from var
 
 class Expression
 	implements IExpression
@@ -18,6 +28,7 @@ class Expression
 	
 	If possible, do not put an implementation in this class.  Put it in ExpressionBehavior.
 	"""
+
 	def parse(stream as ITokenStream) as IExpression is new, shared
 		test
 			source = "x = 1 + 2 * 3"

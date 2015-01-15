@@ -133,7 +133,7 @@ class CobraParser
 			return LibraryName(Cobra.Compiler.Token.empty, _stream.skipToNextLine)
 	
 	def _makeIdentifierExpression as IdentifierExpression
-		return IdentifierExpression(Identifier.parse(_stream to !))
+		return IdentifierExpression.parse(_stream to !)
 	
 	def _makeClassDeclaration as ClassDeclaration
 		# todo

@@ -43,7 +43,7 @@ class Expression
 			addExpr = assignExpr.rightExpression to AdditionExpression
 			assert addExpr.leftExpression inherits MultiplicationExpression
 			assert addExpr.rightExpression inherits MultiplicationExpression
-		test whiteSpaceAgnostic
+		test whitespaceAgnostic
 			source = "x = \n\t1 * 2 + \n 3 * \n\t\t 1" # same as previous test
 			stream = TokenStream(source, 'test.cobra')
 			assignExpr  = Expression.parse(stream) to AssignmentExpression
@@ -126,8 +126,8 @@ class Expression
 				isRightAssoc = Cobra.Compiler.OperatorSpecs.rightAssoc.containsKey(opKind)
 				nextMinPrecedence = if(isRightAssoc, precedence, precedence + 1)
 				if opKind in BinaryOperatorExpression.implicitLineContinuationKinds _
-				and not stream implements IWhiteSpaceAgnosticTokenStream
-					right = _parse(WhiteSpaceAgnosticTokenStreamWrapper(stream), nextMinPrecedence, nil)
+				and not stream implements IWhitespaceAgnosticTokenStream
+					right = _parse(WhitespaceAgnosticTokenStreamWrapper(stream), nextMinPrecedence, nil)
 				else
 					right = _parse(stream, nextMinPrecedence, nil)
 			
@@ -188,7 +188,7 @@ class Expression
 			else
 				trace stream.token  # TODO : see CobraParser line 3109
 		
-		return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty)) # TODO
+		return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty), nil) # TODO
 
 	def toCobraSource as String is override
 		return "TODO"

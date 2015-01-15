@@ -30,8 +30,8 @@ class ParenthesizedExpression inherits Expression
 			assert left.firstToken.lineNum < right.lastToken.lineNum
 		body
 			openParen = stream.expect(TokenKind.OpenParenthesis)
-			if not stream implements IWhiteSpaceAgnosticTokenStream
-				stream = WhiteSpaceAgnosticTokenStreamWrapper(stream)
+			if not stream implements IWhitespaceAgnosticTokenStream
+				stream = WhitespaceAgnosticTokenStreamWrapper(stream)
 			expr = Expression.parse(stream)
 			closeParen = stream.expect(TokenKind.CloseParenthesis)
 			return ParenthesizedExpression(openParen, expr, closeParen)

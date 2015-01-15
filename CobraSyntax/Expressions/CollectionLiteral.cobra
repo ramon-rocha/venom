@@ -43,8 +43,8 @@ class CollectionLiteral
 			assert list.elements.count == 3
 			assert all for e in list.elements get e inherits IntegerLiteral
 		body
-			if not stream implements IWhiteSpaceAgnosticTokenStream
-				stream = WhiteSpaceAgnosticTokenStreamWrapper(stream)
+			if not stream implements IWhitespaceAgnosticTokenStream
+				stream = WhitespaceAgnosticTokenStreamWrapper(stream)
 			
 			startToken = stream.grab
 			endKind = .endMap[startToken.kind]

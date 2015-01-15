@@ -302,14 +302,14 @@ class TokenStream
 
 
 
-interface IWhiteSpaceAgnosticTokenStream
+interface IWhitespaceAgnosticTokenStream
 	inherits ITokenStream
 	"""
 	Provides the same functionality as an ITokenStream but ignores all EOL, INDENT, and DEDENT tokens.
 	"""
 
-class WhiteSpaceAgnosticTokenStreamWrapper
-	implements IWhiteSpaceAgnosticTokenStream
+class WhitespaceAgnosticTokenStreamWrapper
+	implements IWhitespaceAgnosticTokenStream
 	"""
 	Wraps an existing ITokenStream object but ignores all INDENT, EOL, or DEDENT tokens.
 
@@ -319,7 +319,7 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 
 	readonly
 		var _wrappedStream as ITokenStream
-		var _whiteSpaceTokens as IReadOnlyList<of String> is shared = [
+		var _whitespaceTokens as IReadOnlyList<of String> is shared = [
 			TokenKind.EndOfLine, TokenKind.Indent, TokenKind.Dedent
 		]
 
@@ -332,7 +332,7 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 
 	def peek(howFar = 1, skipComments = true) as ICobraToken
 		ensure
-			result.kind not in _whiteSpaceTokens
+			result.kind not in _whitespaceTokens
 			_wrappedStream.token is old _wrappedStream.token
 		test
 			source =
@@ -341,7 +341,7 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 			"    'Thursday', 'Friday'\n" +
 			"}"
 			wrappedStream = TokenStream(source, 'test.cobra')
-			stream = WhiteSpaceAgnosticTokenStreamWrapper(wrappedStream)
+			stream = WhitespaceAgnosticTokenStreamWrapper(wrappedStream)
 			assert stream.peek(0).kind == wrappedStream.peek(0).kind == TokenKind.Identifier
 			assert stream.peek(1).kind == wrappedStream.peek(1).kind == TokenKind.AssignmentOperator
 			assert stream.peek(2).kind == wrappedStream.peek(2).kind == TokenKind.SetStart
@@ -355,22 +355,22 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 			assert stream.peek(3).kind == wrappedStream.peek(5).kind == TokenKind.SingleQuotedString
 		body
 			token = _wrappedStream.peek(howFar, skipComments)
-			while token.kind in _whiteSpaceTokens
+			while token.kind in _whitespaceTokens
 				howFar += 1
 				token = _wrappedStream.peek(howFar, skipComments)
 			return token
 	
 	def grab as ICobraToken
-		ensure result.kind not in _whiteSpaceTokens
-		_skipWhiteSpace
+		ensure result.kind not in _whitespaceTokens
+		_skipWhitespace
 		return _wrappedStream.grab
 	
 	def replace(token as ICobraToken)
-		_skipWhiteSpace
+		_skipWhitespace
 		_wrappedStream.replace(token)
 
 	def grabOptional(kind as String) as ICobraToken?
-		require kind not in _whiteSpaceTokens
+		require kind not in _whitespaceTokens
 		if .token.kind == kind
 			return .grab
 		return nil
@@ -407,7 +407,7 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 		return tokens
 
 	def skipTo(kind as String) as TokenList
-		require kind not in _whiteSpaceTokens
+		require kind not in _whitespaceTokens
 		skippedTokens = TokenList()
 		while .token is not Cobra.Compiler.Token.empty
 			token = .grab
@@ -423,10 +423,10 @@ class WhiteSpaceAgnosticTokenStreamWrapper
 		return skippedTokens
 	
 	def skipBlankLines
-		_skipWhiteSpace
+		_skipWhitespace
 
-	def _skipWhiteSpace
-		while _wrappedStream.token.kind in _whiteSpaceTokens
+	def _skipWhitespace
+		while _wrappedStream.token.kind in _whitespaceTokens
 			_wrappedStream.grab
 	
 	def toTechString as String

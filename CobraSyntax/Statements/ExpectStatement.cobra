@@ -3,9 +3,12 @@ namespace Venom.CobraSyntax
 
 class ExpectStatement
 	inherits Statement
+	implements IStatementContainer
 	adds StatementContainerBehavior
+
+	get expectKeyword as Cobra.Compiler.IToken
+		return _firstToken
 	
-	get expectKeyword from var as Cobra.Compiler.IToken
 	get exceptionTypeIdentifier from var as TypeIdentifier
 
 	def parse(stream as ITokenStream) as ExpectStatement is new, shared
@@ -33,7 +36,6 @@ class ExpectStatement
 		clause as StatementClause
 	)
 		base.init(expectKeyword, skipped)
-		_expectKeyword = expectKeyword
 		_exceptionTypeIdentifier = typeId
 		_addChild(typeId)
 		_clause = clause

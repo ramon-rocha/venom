@@ -122,15 +122,13 @@ class TryCatchStatement
 
 			return TryCatchStatement(tryClause, catchClauses, successClause, finallyClause)
 
-class TryClause inherits StatementClause
+class TryClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get tryKeyword as Cobra.Compiler.IToken
 		return _firstToken
-
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
 
 	def parse(stream as ITokenStream) as TryClause is new, shared
 		require stream.token.kind == TokenKind.TryKeyword
@@ -140,26 +138,25 @@ class TryClause inherits StatementClause
 		return TryClause(tryKeyword, clause)
 
 	cue init(tryKeyword as Cobra.Compiler.IToken, clause as StatementClause)
-		base.init(tryKeyword, clause.lastToken)
+		base.init(tryKeyword, clause.lastToken, nil)
 		_clause = clause
 		_addChild(clause)
 
+	def toCobraSource as String is override
+		return "TODO"
 
-class CatchClause inherits StatementClause # TODO inherits ClauseDecorator
+
+class CatchClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get catchKeyword as Cobra.Compiler.IToken
 		return _firstToken
 	
 	get exceptionIdentifier from var as Identifier?
-
 	get asKeyword from var as Cobra.Compiler.IToken?
-
 	get exceptionType from var as TypeIdentifier?
-
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
 
 	def parse(stream as ITokenStream) as CatchClause is new, shared
 		require stream.token.kind == TokenKind.CatchKeyword
@@ -184,7 +181,7 @@ class CatchClause inherits StatementClause # TODO inherits ClauseDecorator
 		exceptionType as TypeIdentifier?,
 		clause as StatementClause
 	)
-		base.init(catchKeyword, clause.lastToken)
+		base.init(catchKeyword, clause.lastToken, nil)
 		if exceptionIdentifier
 			_exceptionIdentifier = exceptionIdentifier
 			_addChild(exceptionIdentifier)
@@ -195,16 +192,17 @@ class CatchClause inherits StatementClause # TODO inherits ClauseDecorator
 		_clause = clause
 		_addChild(clause)
 
+	def toCobraSource as String is override
+		return "TODO"
 
-class SuccessClause inherits StatementClause
+
+class SuccessClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get successKeyword as Cobra.Compiler.IToken
 		return _firstToken
-
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
 
 	def parse(stream as ITokenStream) as SuccessClause is new, shared
 		require stream.token.kind == TokenKind.SuccessKeyword
@@ -214,19 +212,20 @@ class SuccessClause inherits StatementClause
 		return SuccessClause(successKeyword, clause)
 
 	cue init(successKeyword as Cobra.Compiler.IToken, clause as StatementClause)
-		base.init(successKeyword, clause.lastToken)
+		base.init(successKeyword, clause.lastToken, nil)
 		_clause = clause
 		_addChild(clause)
 
-class FinallyClause inherits StatementClause
+	def toCobraSource as String is override
+		return "TODO"
+
+class FinallyClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get finallyKeyword as Cobra.Compiler.IToken
 		return _firstToken
-
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
 
 	def parse(stream as ITokenStream) as FinallyClause is new, shared
 		require stream.token.kind == TokenKind.FinallyKeyword
@@ -236,6 +235,9 @@ class FinallyClause inherits StatementClause
 		return FinallyClause(finallyKeyword, clause)
 
 	cue init(finallyKeyword as Cobra.Compiler.IToken, clause as StatementClause)
-		base.init(finallyKeyword, clause.lastToken)
+		base.init(finallyKeyword, clause.lastToken, nil)
 		_clause = clause
 		_addChild(clause)
+
+	def toCobraSource as String is override
+		return "TODO"

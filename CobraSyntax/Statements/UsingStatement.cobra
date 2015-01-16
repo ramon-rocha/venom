@@ -3,9 +3,12 @@ namespace Venom.CobraSyntax
 
 class UsingStatement
 	inherits Statement
+	implements IStatementContainer
 	adds StatementContainerBehavior
+
+	get usingKeyword as Cobra.Compiler.IToken
+		return _firstToken
 	
-	get usingKeyword from var as Cobra.Compiler.IToken
 	get resourceName from var as Identifier
 	get assignmentToken from var as Cobra.Compiler.IToken
 	get resourceExpression from var as IExpression
@@ -36,15 +39,14 @@ class UsingStatement
 			return UsingStatement(keyword, name, equals, resource, clause, skipped)
 
 	cue init(
-		keyword as Cobra.Compiler.IToken,
+		usingKeyword as Cobra.Compiler.IToken,
 		resourceName as Identifier,
 		equals as Cobra.Compiler.IToken,
 		resource as IExpression,
 		clause as StatementClause,
 		skipped as TokenList
 	)
-		base.init(keyword, clause.lastToken, skipped)
-		_usingKeyword = keyword
+		base.init(usingKeyword, clause.lastToken, skipped)
 		_resourceName = resourceName
 		_addChild(resourceName)
 		_assignmentToken = equals

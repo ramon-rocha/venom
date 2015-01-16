@@ -103,22 +103,20 @@ class BranchStatement inherits Statement
 		if _elseClause, sb.append(_elseClause.toCobraSource)
 		return sb.toString
 
-class BranchOnClause inherits StatementClause
+class BranchOnClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get onKeyword as Cobra.Compiler.IToken
 		return _firstToken
-	
+
 	get unexpectedExpressions from var as IReadOnlyList<of IExpression>
 	get values from var as IReadOnlyList<of IExpression>
 	get orTokens from var as IReadOnlyTokenList
 
 	invariant
 		.orTokens.count == .values.count - 1
-
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
 
 	def parse(stream as ITokenStream) as BranchOnClause is new, shared
 		require
@@ -174,16 +172,14 @@ class BranchOnClause inherits StatementClause
 		sb.append(_clause)
 		return sb.toString
 
-class BranchElseClause inherits StatementClause
+class BranchElseClause
+	inherits SyntaxNode
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get elseKeyword as Cobra.Compiler.IToken
 		return _firstToken
 	
-	var _clause as StatementClause
-
-	get statements as IReadOnlyList<of IStatement> is override
-		return _clause.statements
-
 	def parse(stream as ITokenStream) as BranchElseClause is new, shared
 		require
 			stream.token.kind == TokenKind.ElseKeyword

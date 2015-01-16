@@ -3,14 +3,10 @@ namespace Venom.CobraSyntax
 
 interface IStatement
 	inherits ISyntaxNode
-	pass
+
 
 mixin StatementBehavior
-
-	var _endsStatement as IReadOnlyList<of String> is shared, readonly = [
-		TokenKind.EndOfLine,
-		TokenKind.EndOfFile,
-	]
+	pass
 
 
 class Statement
@@ -52,8 +48,16 @@ class Statement
 	def toCobraSource as String is override
 		return "TODO"
 
+interface IStatementContainer
+	inherits ISyntaxNode
+	"""A syntax node that contains other statements as children"""
+
+	get statements as IReadOnlyList<of IStatement>
+		"""The statements contained in this node"""
+
 class StatementClause
 	inherits SyntaxNode
+	implements IStatementContainer
 	"""
 	Part of a more complex statement such as an if statement, while statement, or branch statement.
 	"""

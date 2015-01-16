@@ -271,8 +271,8 @@ class SigDeclaration inherits TypeDeclaration
 			assert s.lastToken == s.dedentToken
 			assert s.docString.content == "Does op on x and y"
 			assert s.signature.parameterDeclarations.count == 2
-			assert s.signature.asKeyword <> nil
-			assert s.signature.returnTypeIdentifier.name == "int"
+			assert s.signature.returnTypeSpecification <> nil
+			assert s.signature.returnTypeSpecification.identifier.name == "int"
 		body
 			return TypeDeclaration.parse(stream) to SigDeclaration
 	

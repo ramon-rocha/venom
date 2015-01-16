@@ -462,8 +462,8 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "Does op on x and y"
 			assert m.signature.parameterDeclarations.count == 2
-			assert m.signature.asKeyword <> nil
-			assert m.signature.returnTypeIdentifier.name == "int"
+			assert m.signature.returnTypeSpecification <> nil
+			assert m.signature.returnTypeSpecification.identifier.name == "int"
 		body
 			defToken = stream.expect(TokenKind.MethodKeyword)
 			id = Identifier.parse(stream)

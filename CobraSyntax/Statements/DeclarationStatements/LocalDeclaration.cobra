@@ -185,8 +185,7 @@ class MethodSignature inherits SyntaxNode
 	A method signature defines the parameters and return type for a method.
 	"""
 	get parameterDeclarations from var as IReadOnlyList<of ParameterDeclaration>
-	get asKeyword from var as Cobra.Compiler.IToken?
-	get returnTypeIdentifier from var as TypeIdentifier?
+	get returnTypeSpecification from var as ExplicitTypeSpecification?
 
 	def parse(stream as ITokenStream) as MethodSignature is new, shared
 		test
@@ -194,29 +193,27 @@ class MethodSignature inherits SyntaxNode
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
 			assert msig.parameterDeclarations.count == 2
-			assert msig.asKeyword == nil
-			assert msig.returnTypeIdentifier == nil
+			assert msig.returnTypeSpecification == nil
 		test
 			source = "x as int, y as int) as List<of String>"
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
-			assert msig.asKeyword <> nil
-			assert msig.returnTypeIdentifier.name == "List<of String>"
+			assert msig.returnTypeSpecification <> nil
+			assert msig.returnTypeSpecification.identifier.name == "List<of String>"
 		body
 			params = List<of ParameterDeclaration>()
 			while stream.token.kind <> TokenKind.CloseParenthesis
 				if params.count <> 0, stream.expect(TokenKind.Comma)
 				params.add(ParameterDeclaration.parse(stream))
 			closeParens = stream.expect(TokenKind.CloseParenthesis)
-			asKeyword = stream.grabOptional(TokenKind.AsKeyword)
-			if asKeyword, returnId = TypeIdentifier.parse(stream) to ?
-			return MethodSignature(params, closeParens, asKeyword, returnId)
+			if stream.token.kind == TokenKind.AsKeyword
+				returnTypeSpec = ExplicitTypeSpecification.parse(stream)
+			return MethodSignature(params, closeParens, returnTypeSpec)
 	
 	cue init(
 		params as IReadOnlyList<of ParameterDeclaration>,
 		closeParens as Cobra.Compiler.IToken,
-		asKeyword as Cobra.Compiler.IToken?,
-		returnTypeId as TypeIdentifier?
+		returnTypeSpec as ExplicitTypeSpecification?
 	)
 		base.init
 		_parameterDeclarations = List<of ParameterDeclaration>(params)
@@ -226,11 +223,9 @@ class MethodSignature inherits SyntaxNode
 			for p in _parameterDeclarations, _addChild(p)
 			
 		_lastToken = closeParens
-		if asKeyword <> nil
-			_asKeyword = _lastToken = asKeyword
-		if returnTypeId <> nil
-			_returnTypeIdentifier = returnTypeId
-			_addChild(returnTypeId)
+		if returnTypeSpec <> nil
+			_returnTypeSpecification = returnTypeSpec
+			_addChild(returnTypeSpec)
 	
 	def toCobraSource as String is override
 		test
@@ -244,7 +239,6 @@ class MethodSignature inherits SyntaxNode
 				if sb.length <> 0, sb.append(", ")
 				sb.append(param.toCobraSource)
 			sb.append(")")
-			if _asKeyword <> nil
-				sb.append(" as ")
-				sb.append(_returnTypeIdentifier.toCobraSource)
+			if _returnTypeSpecification <> nil
+				sb.append(" [_returnTypeSpecification.toCobraSource]")
 			return sb.toString

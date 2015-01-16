@@ -1,7 +1,9 @@
 
 namespace Venom.CobraSyntax
 
-class ForStatement inherits Statement
+class ForStatement
+	inherits Statement
+	adds StatementContainerBehavior
 	
 	get forKeyword from var as Cobra.Compiler.IToken
 	get loopVar from var as IdentifierExpression
@@ -11,7 +13,6 @@ class ForStatement inherits Statement
 	get stopExpression from var as IExpression
 	get colon2 from var as Cobra.Compiler.IToken?
 	get stepExpression from var as IExpression?
-	get clause from var as StatementClause
 
 	invariant
 		.colon1 <> nil implies .startExpression <> nil
@@ -33,7 +34,7 @@ class ForStatement inherits Statement
 			assert stmt.stopExpression inherits IntegerLiteral
 			assert stmt.colon2 == nil
 			assert stmt.stepExpression == nil
-			assert stmt.clause.statements.count == 1
+			assert stmt.statements.count == 1
 			assert stmt.lastToken == stmt.lastToken
 		test
 			source =
@@ -46,7 +47,7 @@ class ForStatement inherits Statement
 			assert stmt.stopExpression inherits IntegerLiteral
 			assert stmt.colon2 == nil
 			assert stmt.stepExpression == nil
-			assert stmt.clause.statements.count == 1
+			assert stmt.statements.count == 1
 			assert stmt.lastToken == stmt.lastToken
 		test
 			source =

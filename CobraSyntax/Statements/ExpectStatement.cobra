@@ -1,11 +1,12 @@
 
 namespace Venom.CobraSyntax
 
-class ExpectStatement inherits Statement
+class ExpectStatement
+	inherits Statement
+	adds StatementContainerBehavior
 	
 	get expectKeyword from var as Cobra.Compiler.IToken
 	get exceptionTypeIdentifier from var as TypeIdentifier
-	get clause from var as StatementClause
 
 	def parse(stream as ITokenStream) as ExpectStatement is new, shared
 		require
@@ -15,7 +16,7 @@ class ExpectStatement inherits Statement
 			stream = TokenStream(source, 'test.cobra')
 			stmt = ExpectStatement.parse(stream)
 			assert stmt.exceptionTypeIdentifier.name == "FormatException"
-			assert stmt.clause.statements.count == 1
+			assert stmt.statements.count == 1
 		body
 			kw = stream.expect(TokenKind.ExpectKeyword)
 			id = TypeIdentifier.parse(stream)

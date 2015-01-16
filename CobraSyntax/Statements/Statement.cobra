@@ -131,3 +131,10 @@ class StatementClause
 			sb.append(s.toCobraSource)
 		sb.append(_lastToken.text)
 		return sb.toString
+
+
+mixin StatementContainerBehavior
+	
+	var _clause as StatementClause is protected
+	get statements as IReadOnlyList<of IStatement>
+		return _clause.statements

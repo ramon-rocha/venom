@@ -1,13 +1,14 @@
 
 namespace Venom.CobraSyntax
 
-class UsingStatement inherits Statement
+class UsingStatement
+	inherits Statement
+	adds StatementContainerBehavior
 	
 	get usingKeyword from var as Cobra.Compiler.IToken
 	get resourceName from var as Identifier
 	get assignmentToken from var as Cobra.Compiler.IToken
 	get resourceExpression from var as IExpression
-	get clause from var as StatementClause
 
 	def parse(stream as ITokenStream) as UsingStatement is new, shared
 		require
@@ -20,7 +21,7 @@ class UsingStatement inherits Statement
 			stmt = UsingStatement.parse(stream)
 			assert stmt.resourceName.name == "font1"
 			assert stmt.resourceExpression inherits CallExpression
-			assert stmt.clause.statements.count == 1
+			assert stmt.statements.count == 1
 			assert stmt.lastToken.kind == TokenKind.Dedent
 		body
 			keyword = stream.expect(TokenKind.UsingKeyword)

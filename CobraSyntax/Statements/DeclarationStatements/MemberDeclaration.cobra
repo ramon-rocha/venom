@@ -18,6 +18,14 @@ class MemberDeclaration
 	type definitions, fields, properties, and methods. However, this does not
 	include local variables, method parameters, or use directives.
 	"""
+
+	get identifier from var as Identifier
+	get indentToken from var as Cobra.Compiler.IToken?
+	get dedentToken from var as Cobra.Compiler.IToken?
+
+	invariant
+		_indentToken implies _dedentToken
+		_dedentToken implies _indentToken
 	
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
@@ -25,8 +33,8 @@ class MemberDeclaration
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedentToken as Cobra.Compiler.IToken?,
-		children as NodeList?,
-		extraTokens as TokenList?
+		children as ISyntaxNode*?,
+		extraTokens as IReadOnlyTokenList?
 	)
 		require
 			keywordToken.isKeyword
@@ -34,23 +42,21 @@ class MemberDeclaration
 			# member declarations (other than namespaces) that have a doc string must have both an indent and dedent token
 			not (this inherits NamespaceDeclaration) implies _
 				(docString implies (indentToken and dedentToken))
+		ensure
+			dedentToken implies _lastToken == dedentToken
 		body
 			base.init(keywordToken, identifier.firstToken, extraTokens)
 			_identifier = identifier
 			_name = identifier.name
 			_addChild(identifier)
-			_indentToken, _dedentToken = indentToken, dedentToken
+			if dedentToken <> nil
+				_indentToken, _dedentToken = indentToken, dedentToken
+				_lastToken = dedentToken
 			if docString <> nil
 				_addChild(docString)
 				_docString = docString
 			if children <> nil
 				_addChildren(children)
-			if dedentToken <> nil
-				_lastToken = dedentToken
-	
-	get identifier from var as Identifier
-	get indentToken from var as Cobra.Compiler.IToken?
-	get dedentToken from var as Cobra.Compiler.IToken?
 
 
 interface ITypeMemberDeclaration inherits IMemberDeclaration
@@ -61,7 +67,9 @@ class TypeMemberDeclaration
 	inherits MemberDeclaration
 	implements ITypeMemberDeclaration
 	is abstract
-	"""A member declaration that appears inside a type declaration"""
+	"""
+	The base class for a member declaration that appears inside a type declaration
+	"""
 
 	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
 		
@@ -202,13 +210,14 @@ class FieldDeclaration inherits TypeMemberDeclaration
 	
 	get varKeyword from var as Cobra.Compiler.IToken
 
-	#TODO: create AssignmentClause class
 	get asKeyword from var as Cobra.Compiler.IToken?
 	get typeIdentifier from var as TypeIdentifier?
 
+	#TODO: create AssignmentClause class
 	get equalsTokens from var as IReadOnlyTokenList
 	get initializationExpressions from var as IReadOnlyList<of IExpression>
 
+	# TODO? Create FieldSpecifications?
 	get modifiers from var as IReadOnlyList<of ModifierSpecification>
 	get attributes from var as IReadOnlyList<of AttributeSpecification>
 
@@ -392,50 +401,10 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			_attributes = List<of AttributeSpecification>(attributes)
 			for a in attributes, _addChild(a)
 
-
-class MethodSpecification
-	inherits SyntaxNode
-	"""
-	Contains information about the access modifiers, implemented interfaces,
-	attributes, etc. that a method declaration adheres to.
-	"""
-
-	def parse(stream as ITokenStream) as MethodSpecification? is new, shared
-		# TODO
-		stream.skipBlankLines
-		return nil
-	
-	var _isNames as IList<of String>
-	get isNames from var as IReadOnlyList<of String>
-
-	var _attributes as IList<of String>
-	get attributes from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
-
-	var _interfaces as IList<of TypeIdentifier>
-	get interfaces from var as IReadOnlyList<of TypeIdentifier>
-
-	var _genericConstraints as IList<of ISyntaxNode>
-	get genericConstraints from var as IReadOnlyList<of ISyntaxNode> # TODO: real type
-
-	get indentToken from var as Cobra.Compiler.IToken?
-	get isIndented as bool
-		return _indentToken <> nil
-	
-	cue init
-		# TODO
-		base.init
-		_isNames = List<of String>()
-		_attributes = List<of String>()
-		_interfaces = List<of TypeIdentifier>()
-		_genericConstraints = List<of ISyntaxNode>()
-	
-	def toCobraSource as String is override
-		return "TODO"
-
 class MethodDeclaration inherits TypeMemberDeclaration
 	
 	get signature from var as MethodSignature?
-	get specification from var as MethodSpecification?
+	get specification from var as ISpecifications
 	var _statements as StatementList
 	get statements from var as IReadOnlyList<of IStatement>
 
@@ -469,9 +438,13 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			id = Identifier.parse(stream)
 			if id.firstToken.kind == TokenKind.CallStart
 				signature = MethodSignature.parse(stream) to ?
-			
-			specs = MethodSpecification.parse(stream)
-			if specs == nil or not specs.isIndented
+
+			stream.skipBlankLines
+			specs = Specifications.parse(stream)
+			stream.skipBlankLines
+			if specs.isIndented
+				indent = specs.indentToken
+			else
 				indent = stream.grabOptional(TokenKind.Indent)
 				stream.skipBlankLines
 			
@@ -492,7 +465,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 		defToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		signature as MethodSignature?,
-		specs as MethodSpecification?,
+		specs as ISpecifications,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
@@ -501,7 +474,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 	)
 		require defToken.which == TokenKind.MethodKeyword
 		base.init(defToken, identifier, indent, docString, dedent, nil, extraTokens)
-		if specs <> nil, _specification = specs
+		_specification = specs
 		if signature <> nil
 			_signature = signature
 			_addChild(signature)

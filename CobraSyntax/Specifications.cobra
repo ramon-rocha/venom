@@ -399,15 +399,29 @@ class MixinSpecification inherits SyntaxNode
 			sb.append(t.toCobraSource)
 		return "adds [sb.toString]"
 
-class TypeSpecification
-	inherits SyntaxNode
+interface ISpecifications
+	inherits ISyntaxNode
 	"""
 	Contains information about the access modifiers, base class,
-	implemented interfaces, attributes, etc. that a type declaration
+	implemented interfaces, attributes, etc. that a member declaration
 	adheres to.
 	"""
+	get modifiers as IReadOnlyList<of ModifierSpecification>
+	get baseTypes as IReadOnlyList<of BaseTypeSpecification>
+	get interfaces as IReadOnlyList<of InterfaceSpecification>
+	get attributes as IReadOnlyList<of AttributeSpecification>
+	get mixins as IReadOnlyList<of MixinSpecification>
+	get genericConstraints as IReadOnlyList<of GenericConstraintSpecification>
 
-	get isNames from var as IReadOnlyList<of ModifierSpecification>
+	get indentToken as Cobra.Compiler.IToken?
+	get isIndented as bool
+
+class Specifications
+	inherits SyntaxNode
+	implements ISpecifications
+	# TODO: is abstract
+
+	get modifiers from var as IReadOnlyList<of ModifierSpecification>
 	get baseTypes from var as IReadOnlyList<of BaseTypeSpecification>
 	get interfaces from var as IReadOnlyList<of InterfaceSpecification>
 	get attributes from var as IReadOnlyList<of AttributeSpecification>
@@ -418,6 +432,9 @@ class TypeSpecification
 	get isIndented as bool
 		return _indentToken <> nil
 
+	invariant
+		_lastToken.kind <> TokenKind.Dedent
+
 	var _specKeywords as IReadOnlyList<of String> is shared, readonly = [
 		TokenKind.IsKeyword,
 		TokenKind.InheritsKeyword,
@@ -427,15 +444,15 @@ class TypeSpecification
 		TokenKind.WhereKeyword
 	]
 
-	def parse(stream as ITokenStream) as TypeSpecification is new, shared
+	def parse(stream as ITokenStream) as ISpecifications is new, shared
 		test
 			source = "class Foo is abstract inherits Bar\n\tpass"
 			stream = TokenStream(source, 'test.cobra')
 			stream.grab
 			stream.grab
-			spec = TypeSpecification.parse(stream)
+			spec = Specifications.parse(stream)
 			assert not spec.isIndented
-			assert spec.isNames.count == 1
+			assert spec.modifiers.count == 1
 			assert spec.attributes.count == 0
 			assert spec.genericConstraints.count == 0
 			assert spec.baseTypes.count == 1
@@ -454,18 +471,18 @@ class TypeSpecification
 			"    pass"
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipToNextLine
-			spec = TypeSpecification.parse(stream)
+			spec = Specifications.parse(stream)
 			assert spec.isIndented
-			assert spec.isNames.count == 1
-			assert spec.isNames[0].modifierTokens.count == 2
+			assert spec.modifiers.count == 1
+			assert spec.modifiers[0].modifierTokens.count == 2
 			assert spec.attributes.count == 1
 			assert spec.attributes[0].attributes.count == 2
 			assert spec.genericConstraints.count == 1
 			assert spec.baseTypes.count == 1
 			assert spec.mixins.count == 1
 			assert spec.interfaces.count == 1
-			assert spec.indentToken.lineNum == spec.isNames[0].firstToken.lineNum
-			assert spec.indentToken.colNum < spec.isNames[0].firstToken.colNum
+			assert spec.indentToken.lineNum == spec.modifiers[0].firstToken.lineNum
+			assert spec.indentToken.colNum < spec.modifiers[0].firstToken.colNum
 		test
 			source =
 			"class Foo<of T> where T must be IComparable inherits Bar\n" +
@@ -478,11 +495,11 @@ class TypeSpecification
 			"    pass"
 			stream = TokenStream(source, 'test.cobra')
 			stream.skipTo(TokenKind.GenericIdentifierEnd)
-			spec = TypeSpecification.parse(stream)
+			spec = Specifications.parse(stream)
 			assert spec.isIndented
 			assert spec.genericConstraints.count == 2
 			assert spec.baseTypes.count == 1
-			assert spec.isNames.count == 1
+			assert spec.modifiers.count == 1
 			assert spec.attributes.count == 1
 			assert spec.mixins.count == 1
 			assert spec.interfaces.count == 1
@@ -528,7 +545,7 @@ class TypeSpecification
 
 				kind = stream.token.kind
 
-			return TypeSpecification(indent, mods, bases, ints, atts, mixins, constraints)
+			return Specifications(indent, mods, bases, ints, atts, mixins, constraints)
 	
 	cue init(
 		indent as Cobra.Compiler.IToken?,
@@ -541,7 +558,7 @@ class TypeSpecification
 		base.init
 		if indent <> nil
 			_indentToken = _firstToken = indent
-		_isNames = List<of ModifierSpecification>(mods)
+		_modifiers = List<of ModifierSpecification>(mods)
 		for c as ISyntaxNode in mods, _addChild(c)
 		_baseTypes = List<of BaseTypeSpecification>(bases)
 		for c in bases, _addChild(c)

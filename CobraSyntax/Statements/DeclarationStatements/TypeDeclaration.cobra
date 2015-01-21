@@ -25,7 +25,7 @@ class TypeDeclaration
 		member declarations unless they are overriden in this type.
 		"""
 	
-	get specification from var as TypeSpecification?
+	get specification from var as ISpecifications
 	get passStatement from var as PassStatement?
 
 	var _typeMap as IReadOnlyDictionary<of String, Type> is readonly, shared = {
@@ -45,7 +45,7 @@ class TypeDeclaration
 			signature = MethodSignature.parse(stream) to ?
 		
 		stream.skipBlankLines
-		specs = TypeSpecification.parse(stream)
+		specs = Specifications.parse(stream)
 		stream.skipBlankLines
 		if specs.isIndented
 			indent = specs.indentToken
@@ -84,7 +84,7 @@ class TypeDeclaration
 	cue init(
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
-		specs as TypeSpecification?,
+		specs as ISpecifications,
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		passStmt as PassStatement?,
@@ -96,9 +96,8 @@ class TypeDeclaration
 		body
 			base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, nil)
 
-			if specs <> nil
-				_specification = specs
-				_addChild(specs)
+			_specification = specs
+			_addChild(specs)
 			
 			if passStmt <> nil
 				_passStatement = passStmt
@@ -282,7 +281,7 @@ class SigDeclaration inherits TypeDeclaration
 		keywordToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		signature as MethodSignature?,
-		specs as TypeSpecification?,
+		specs as ISpecifications,
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedentToken as Cobra.Compiler.IToken?,

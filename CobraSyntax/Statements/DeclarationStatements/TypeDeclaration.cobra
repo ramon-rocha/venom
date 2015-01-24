@@ -71,7 +71,7 @@ class TypeDeclaration
 			# TODO: remove this
 			skipped = TokenList()
 			while decl == nil
-				skipped.add(stream.grab)
+				#skipped.add(stream.grab)
 				decl = TypeMemberDeclaration.parse(stream)
 			trace skipped
 

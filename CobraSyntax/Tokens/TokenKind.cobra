@@ -57,6 +57,7 @@ class TokenKind
 
 	#region Misc. Keywords
 	const AddsKeyword = 'ADDS'
+	const BodyKeyword = 'BODY'
 	const WhereKeyword = 'WHERE'
 	const MustKeyword = 'MUST'
 	const BeKeyword = 'BE'

@@ -83,7 +83,10 @@ class TypeMemberDeclaration
 			return ModifierBlock.parse(stream)
 		
 		branch kind
-			on TokenKind.CueKeyword, return nil # TODO
+			on TokenKind.CueKeyword
+				# TODO
+				stream.skipTo(TokenKind.Dedent)
+				return nil
 			on TokenKind.MethodKeyword, return MethodDeclaration.parse(stream)
 			on TokenKind.GetterKeyword, return nil # TODO
 			on TokenKind.SetterKeyword, return nil # TODO
@@ -405,8 +408,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 	
 	get signature from var as MethodSignature?
 	get specification from var as ISpecifications
-	var _statements as StatementList
-	get statements from var as IReadOnlyList<of IStatement>
+	get methodBody from var as MethodBody
 
 	def parse(stream as ITokenStream) as MethodDeclaration is new, shared
 		require
@@ -418,18 +420,25 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			assert m.name == "foo"
 			assert m.signature == nil
 			assert m.dedentToken.charNum > m.indentToken.charNum
-			assert m.statements.count == 1
-			assert m.statements.first inherits PassStatement
+			assert m.methodBody.bodyKeyword == nil
+			assert m.methodBody.statements.count == 1
+			assert m.methodBody.statements.first inherits PassStatement
 			assert m.docString == nil
 		test
-			source = 'def binOp(x as int, y as int) as int\n\t"""Does op on x and y"""'
+			source =
+			'def binOp(x as int, y as int) as int\n' +
+			'    """Does op on x and y"""\n' +
+			'    return .op(x, y)'
 			stream = TokenStream(source, "test.cobra")
+			#print stream.toTechString
 			m = MethodDeclaration.parse(stream)
 			assert m.name == "binOp"
 			assert m.indentToken and m.dedentToken
 			assert m.indentToken <> m.dedentToken
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "Does op on x and y"
+			assert m.methodBody.statements.count == 1
+			assert m.methodBody.statements[0] inherits ReturnStatement
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification <> nil
 			assert m.signature.returnTypeSpecification.identifier.name == "int"
@@ -452,14 +461,11 @@ class MethodDeclaration inherits TypeMemberDeclaration
 				docString = DocString.parse(stream)
 				stream.skipBlankLines
 			
-			statements = StatementList()
-			while not stream.token.endsBlock
-				stmt = Statement.parse(stream)
-				statements.add(stmt)
+			methodBody = MethodBody.parse(stream)
 	
 			stream.skipBlankLines
 			dedent = stream.expect(TokenKind.Dedent)
-			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, statements, nil)
+			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, methodBody, nil)
 
 	cue init(
 		defToken as Cobra.Compiler.IToken,
@@ -469,7 +475,7 @@ class MethodDeclaration inherits TypeMemberDeclaration
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
-		statements as StatementList,
+		methodBody as MethodBody,
 		extraTokens as TokenList?
 	)
 		require defToken.which == TokenKind.MethodKeyword
@@ -478,20 +484,45 @@ class MethodDeclaration inherits TypeMemberDeclaration
 		if signature <> nil
 			_signature = signature
 			_addChild(signature)
-		_statements = StatementList(statements)
-		for s in _statements
-			_addChild(s)
+		_methodBody = methodBody
+		_addChild(methodBody)
+
+
+class MethodBody
+	inherits SyntaxNode
+	adds StatementContainerBehavior
+
+	get bodyKeyword from var as Cobra.Compiler.IToken?
+
+	cue init(
+		bodyKeyword as Cobra.Compiler.IToken?,
+		statements as IStatement*
+	)
+		base.init
+		stmts = StatementList(statements)
+		if bodyKeyword <> nil
+			_firstToken = bodyKeyword
+		else
+			_firstToken = stmts.first.firstToken
+		_lastToken = stmts.last.lastToken
+		_clause = StatementClause(_firstToken, _lastToken, stmts)
+		_addChild(_clause)
 	
-	/#
-	var _statements as IReadOnlyList<of IStatement>? = nil
-	get statements as IReadOnlyList<of IStatement>
-		if _statements == nil
-			stmts = List<of IStatement>(_children.count)
-			for node in _bodySection
-				if node implements IStatement, stmts.add(node)
-			_statements = stmts
-		return _statements to !
-	#/
+	def parse(stream as ITokenStream) as MethodBody is new, shared
+		bodyKeyword = stream.grabOptional(TokenKind.BodyKeyword)
+		if bodyKeyword <> nil
+			stream.skipBlankLines
+			stream.expect(TokenKind.Indent)
+		
+		stmts = StatementList()
+		while not stream.token.endsBlock
+			stmts.add(Statement.parse(stream))
+			stream.skipBlankLines
+
+		return MethodBody(bodyKeyword, stmts)
+
+	def toCobraSource as String is override
+		return "TODO"
 
 interface INamespaceMemberDeclaration inherits IMemberDeclaration
 	"""

@@ -430,7 +430,6 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			'    """Does op on x and y"""\n' +
 			'    return .op(x, y)'
 			stream = TokenStream(source, "test.cobra")
-			#print stream.toTechString
 			m = MethodDeclaration.parse(stream)
 			assert m.name == "binOp"
 			assert m.indentToken and m.dedentToken

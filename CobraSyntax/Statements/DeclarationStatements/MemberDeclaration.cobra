@@ -404,12 +404,79 @@ class FieldDeclaration inherits TypeMemberDeclaration
 			_attributes = List<of AttributeSpecification>(attributes)
 			for a in attributes, _addChild(a)
 
-class MethodDeclaration inherits TypeMemberDeclaration
-	
+interface IMethodDeclaration
+	inherits ITypeMemberDeclaration
+
+	get signature as MethodSignature?
+	get specification as ISpecifications
+	get body as MethodBody
+
+class BaseMethodDeclaration
+	inherits TypeMemberDeclaration
+	implements IMethodDeclaration
+	is abstract
+
 	get signature from var as MethodSignature?
 	get specification from var as ISpecifications
-	get methodBody from var as MethodBody
+	get body from var as MethodBody
 
+	var _typeMap as IReadOnlyDictionary<of String, Type> is shared, readonly = {
+		TokenKind.MethodKeyword : MethodDeclaration,
+		TokenKind.CueKeyword : CueDeclaration
+	}
+
+	def _parse(stream as ITokenStream, expectedKind as String) as IMethodDeclaration is shared
+		require
+			expectedKind in _typeMap.keys
+			stream.token.kind == expectedKind
+		body
+			kwToken = stream.expect(expectedKind)
+			id = Identifier.parse(stream)
+			if id.firstToken.kind == TokenKind.CallStart
+				signature = MethodSignature.parse(stream) to ?
+
+			stream.skipBlankLines
+			specs = Specifications.parse(stream)
+			stream.skipBlankLines
+			if specs.isIndented
+				indent = specs.indentToken
+			else
+				indent = stream.grabOptional(TokenKind.Indent)
+				stream.skipBlankLines
+			
+			if stream.token.startsDocString
+				docString = DocString.parse(stream)
+				stream.skipBlankLines
+			
+			methodBody = MethodBody.parse(stream)
+	
+			stream.skipBlankLines
+			dedent = stream.expect(TokenKind.Dedent)
+			typ = _typeMap[expectedKind]
+			return typ(kwToken, id, signature, specs, indent, docString, dedent, methodBody, nil)
+
+	cue init(
+		kwToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		signature as MethodSignature?,
+		specs as ISpecifications,
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
+		methodBody as MethodBody,
+		extraTokens as TokenList?
+	)
+		require kwToken.which in _typeMap.keys
+		base.init(kwToken, identifier, indent, docString, dedent, nil, extraTokens)
+		_specification = specs
+		if signature <> nil
+			_signature = signature
+			_addChild(signature)
+		_body = methodBody
+		_addChild(methodBody)
+
+class MethodDeclaration inherits BaseMethodDeclaration
+	
 	def parse(stream as ITokenStream) as MethodDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.MethodKeyword
@@ -420,9 +487,9 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			assert m.name == "foo"
 			assert m.signature == nil
 			assert m.dedentToken.charNum > m.indentToken.charNum
-			assert m.methodBody.bodyKeyword == nil
-			assert m.methodBody.statements.count == 1
-			assert m.methodBody.statements.first inherits PassStatement
+			assert m.body.bodyKeyword == nil
+			assert m.body.statements.count == 1
+			assert m.body.statements.first inherits PassStatement
 			assert m.docString == nil
 		test
 			source =
@@ -436,61 +503,15 @@ class MethodDeclaration inherits TypeMemberDeclaration
 			assert m.indentToken <> m.dedentToken
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "Does op on x and y"
-			assert m.methodBody.statements.count == 1
-			assert m.methodBody.statements[0] inherits ReturnStatement
+			assert m.body.statements.count == 1
+			assert m.body.statements[0] inherits ReturnStatement
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification <> nil
 			assert m.signature.returnTypeSpecification.identifier.name == "int"
 		body
-			defToken = stream.expect(TokenKind.MethodKeyword)
-			id = Identifier.parse(stream)
-			if id.firstToken.kind == TokenKind.CallStart
-				signature = MethodSignature.parse(stream) to ?
+			return _parse(stream, TokenKind.MethodKeyword) to MethodDeclaration
 
-			stream.skipBlankLines
-			specs = Specifications.parse(stream)
-			stream.skipBlankLines
-			if specs.isIndented
-				indent = specs.indentToken
-			else
-				indent = stream.grabOptional(TokenKind.Indent)
-				stream.skipBlankLines
-			
-			if stream.token.startsDocString
-				docString = DocString.parse(stream)
-				stream.skipBlankLines
-			
-			methodBody = MethodBody.parse(stream)
-	
-			stream.skipBlankLines
-			dedent = stream.expect(TokenKind.Dedent)
-			return MethodDeclaration(defToken, id, signature, specs, indent, docString, dedent, methodBody, nil)
-
-	cue init(
-		defToken as Cobra.Compiler.IToken,
-		identifier as Identifier,
-		signature as MethodSignature?,
-		specs as ISpecifications,
-		indent as Cobra.Compiler.IToken?,
-		docString as DocString?,
-		dedent as Cobra.Compiler.IToken?,
-		methodBody as MethodBody,
-		extraTokens as TokenList?
-	)
-		require defToken.which == TokenKind.MethodKeyword
-		base.init(defToken, identifier, indent, docString, dedent, nil, extraTokens)
-		_specification = specs
-		if signature <> nil
-			_signature = signature
-			_addChild(signature)
-		_methodBody = methodBody
-		_addChild(methodBody)
-
-class CueDeclaration inherits TypeMemberDeclaration
-	
-	get signature from var as MethodSignature?
-	get specification from var as ISpecifications
-	get methodBody from var as MethodBody
+class CueDeclaration inherits BaseMethodDeclaration
 
 	def parse(stream as ITokenStream) as CueDeclaration is new, shared
 		require
@@ -502,9 +523,9 @@ class CueDeclaration inherits TypeMemberDeclaration
 			assert m.name == "init"
 			assert m.signature == nil
 			assert m.dedentToken.charNum > m.indentToken.charNum
-			assert m.methodBody.bodyKeyword == nil
-			assert m.methodBody.statements.count == 1
-			assert m.methodBody.statements.first inherits PassStatement
+			assert m.body.bodyKeyword == nil
+			assert m.body.statements.count == 1
+			assert m.body.statements.first inherits PassStatement
 			assert m.docString == nil
 		test
 			source =
@@ -517,54 +538,12 @@ class CueDeclaration inherits TypeMemberDeclaration
 			assert m.indentToken <> m.dedentToken
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "A doc string"
-			assert m.methodBody.statements.count == 1
-			assert m.methodBody.statements[0] inherits ExpressionStatement # what should this really be?
+			assert m.body.statements.count == 1
+			assert m.body.statements[0] inherits ExpressionStatement # what should this really be?
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification == nil
 		body
-			cueToken = stream.expect(TokenKind.CueKeyword)
-			id = Identifier.parse(stream)
-			if id.firstToken.kind == TokenKind.CallStart
-				signature = MethodSignature.parse(stream) to ?
-
-			stream.skipBlankLines
-			specs = Specifications.parse(stream)
-			stream.skipBlankLines
-			if specs.isIndented
-				indent = specs.indentToken
-			else
-				indent = stream.grabOptional(TokenKind.Indent)
-				stream.skipBlankLines
-			
-			if stream.token.startsDocString
-				docString = DocString.parse(stream)
-				stream.skipBlankLines
-			
-			methodBody = MethodBody.parse(stream)
-	
-			stream.skipBlankLines
-			dedent = stream.expect(TokenKind.Dedent)
-			return CueDeclaration(cueToken, id, signature, specs, indent, docString, dedent, methodBody, nil)
-
-	cue init(
-		cueToken as Cobra.Compiler.IToken,
-		identifier as Identifier,
-		signature as MethodSignature?,
-		specs as ISpecifications,
-		indent as Cobra.Compiler.IToken?,
-		docString as DocString?,
-		dedent as Cobra.Compiler.IToken?,
-		methodBody as MethodBody,
-		extraTokens as TokenList?
-	)
-		require cueToken.which == TokenKind.CueKeyword
-		base.init(cueToken, identifier, indent, docString, dedent, nil, extraTokens)
-		_specification = specs
-		if signature <> nil
-			_signature = signature
-			_addChild(signature)
-		_methodBody = methodBody
-		_addChild(methodBody)
+			return _parse(stream, TokenKind.CueKeyword) to CueDeclaration
 
 
 class MethodBody

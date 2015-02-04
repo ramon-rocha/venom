@@ -80,7 +80,7 @@ class ExpressionStatement
 		body
 			indentLevel = stream.indentLevel
 			expr = Expression.parse(stream)
-				
+
 			skipped = stream.skipTo(TokenKind.EndOfLine)
 			lastToken = skipped.last
 			skipped.remove(lastToken)

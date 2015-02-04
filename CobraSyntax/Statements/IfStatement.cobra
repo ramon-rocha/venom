@@ -65,6 +65,36 @@ class IfStatement inherits Statement
 			assert stmt.falseClause.statements.count == 1
 			assert stmt.falseClause.statements[0] inherits IfStatement
 			assert stmt.lastToken is stmt.falseClause.statements[0].lastToken
+		test codeFromCobraBasics
+			source =
+			"if a > b\n" +
+			"    print 'a is greater'\n" +
+			"    print 'b is smaller'\n" +
+			"\n" +
+			"# If-else statement\n" +
+			"# See also: 'Make An If Else Ladder' How To\n" +
+			"if a > b\n" +
+			"    print 'a is greater'\n" +
+			"else\n" +
+			"    print 'a is not greater'\n" +
+			"\n" +
+			" # Can put target on same line if the target is just one statement\n" +
+			"if a > b, print 'a is greater'\n" +
+			"else, print 'b is greater or equal'\n"
+			stream = TokenStream(source, 'test.cobra')
+
+			stmt1 = IfStatement.parse(stream)
+			assert stmt1.trueClause.statements.count == 2
+			assert stmt1.falseClause == nil
+			assert stmt1.lastToken.kind == TokenKind.Dedent
+			stream.skipBlankLines
+
+			stmt2 = IfStatement.parse(stream)
+			assert stmt2.falseClause <> nil
+			stream.skipBlankLines
+
+			stmt3 = IfStatement.parse(stream)
+			assert stmt3.falseClause <> nil
 		body
 			ifKeyword = stream.expect(TokenKind.IfKeyword)
 			condition = Expression.parse(stream)

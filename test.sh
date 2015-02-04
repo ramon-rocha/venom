@@ -1,6 +1,8 @@
 cp lib/ICSharpCode.NRefactory.dll .
 cp lib/Mono.Cecil.dll .
 
+xbuild
+
 cobra -test \
 -color \
 -lib:lib \

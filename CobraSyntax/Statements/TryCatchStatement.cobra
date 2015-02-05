@@ -27,7 +27,7 @@ class TryCatchStatement
 			_finallyClause = finallyClause
 			_addChild(finallyClause)
 
-	def parse(stream as ITokenStream) as TryCatchStatement? is new, shared
+	def parse(stream as ITokenStream) as TryCatchStatement is new, shared
 		require
 			stream.token.kind == TokenKind.TryKeyword
 		test

@@ -67,14 +67,6 @@ class TypeDeclaration
 		memberDecls = List<of ITypeMemberDeclaration>()
 		while not stream.token.endsBlock
 			decl = TypeMemberDeclaration.parse(stream)
-
-			# TODO: remove this
-			skipped = TokenList()
-			while decl == nil
-				#skipped.add(stream.grab)
-				decl = TypeMemberDeclaration.parse(stream)
-			trace skipped
-
 			memberDecls.add(decl)
 		
 		stream.skipBlankLines

@@ -40,8 +40,9 @@ class Statement
 			on TokenKind.ReturnKeyword, return ReturnStatement.parse(stream)
 			on TokenKind.ThrowKeyword, return ThrowStatement.parse(stream)
 			on TokenKind.TraceKeyword, return TraceStatement.parse(stream)
-			on TokenKind.TryKeyword, return TryCatchStatement.parse(stream) to !
+			on TokenKind.TryKeyword, return TryCatchStatement.parse(stream)
 			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
+			on TokenKind.WhileKeyword, return WhileStatement.parse(stream)
 			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
 			else, return ExpressionStatement.parse(stream)
 

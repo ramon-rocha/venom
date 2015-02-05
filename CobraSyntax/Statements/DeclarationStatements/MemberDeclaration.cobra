@@ -83,10 +83,7 @@ class TypeMemberDeclaration
 			return ModifierBlock.parse(stream)
 		
 		branch kind
-			on TokenKind.CueKeyword
-				# TODO
-				stream.skipTo(TokenKind.Dedent)
-				return nil
+			on TokenKind.CueKeyword, return CueDeclaration.parse(stream)
 			on TokenKind.MethodKeyword, return MethodDeclaration.parse(stream)
 			on TokenKind.GetterKeyword, return nil # TODO
 			on TokenKind.SetterKeyword, return nil # TODO

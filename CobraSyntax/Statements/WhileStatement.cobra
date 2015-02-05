@@ -3,5 +3,73 @@
 
 namespace Venom.CobraSyntax
 
-class WhileStatement inherits Statement
-	pass
+class WhileStatement
+	inherits Statement
+	adds StatementContainerBehavior
+
+	get postKeyword from var as Cobra.Compiler.IToken?
+	get whileKeyword from var as Cobra.Compiler.IToken
+	get condition from var as IExpression
+
+	def parse(stream as ITokenStream) as WhileStatement is new, shared
+		require
+			stream.token.kind in @[TokenKind.PostKeyword, TokenKind.WhileKeyword]
+		test
+			source =
+			"while true, print 'Hola!'"
+			stream = TokenStream(source, 'test.cobra')
+			loop = WhileStatement.parse(stream)
+			assert loop.lastToken.kind == TokenKind.EndOfLine
+			assert loop.postKeyword == nil
+			assert loop.statements.count == 1
+		test
+			source =
+			"while true\n" +
+			"    x += 1\n" +
+			"    print x"
+			stream = TokenStream(source, 'test.cobra')
+			loop = WhileStatement.parse(stream)
+			assert loop.lastToken.kind == TokenKind.Dedent
+			assert loop.postKeyword == nil
+			assert loop.statements.count == 2
+		test
+			source =
+			"post while true\n" +
+			"    x += 1\n" +
+			"    print x"
+			stream = TokenStream(source, 'test.cobra')
+			loop = WhileStatement.parse(stream)
+			assert loop.lastToken.kind == TokenKind.Dedent
+			assert loop.postKeyword <> nil
+			assert loop.statements.count == 2
+		body
+			postKeyword = stream.grabOptional(TokenKind.PostKeyword)
+			whileKeyword = stream.expect(TokenKind.WhileKeyword)
+			condition = Expression.parse(stream)
+
+			skippedTokens = TokenList()
+			if not stream.token.kind == TokenKind.Comma
+				skippedTokens.addRange(stream.skipToNextLine)
+				stream.skipBlankLines
+
+			clause = StatementClause.parse(stream)
+
+			return WhileStatement(postKeyword, whileKeyword, condition, clause)
+
+	cue init(
+		postKeyword as Cobra.Compiler.IToken?,
+		whileKeyword as Cobra.Compiler.IToken,
+		condition as IExpression,
+		clause as StatementClause
+	)
+		base.init(whileKeyword, nil)
+		if postKeyword <> nil
+			_postKeyword = _firstToken = postKeyword
+		_whileKeyword = whileKeyword
+
+		_condition = condition
+		_addChild(condition)
+
+		_clause = clause
+		_lastToken = clause.lastToken
+		_addChild(_clause)

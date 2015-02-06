@@ -231,7 +231,8 @@ class TokenKind
 			.NonMembershipCheckOperator: 35,
 			
 			.LogicalAndOperator: 30,
-			.LogicalOrOperator: 30,
+
+			.LogicalOrOperator: 25,
 			
 			.ImplicationOperator: 20,
 			

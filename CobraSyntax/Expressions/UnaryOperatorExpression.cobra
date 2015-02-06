@@ -18,7 +18,7 @@ class UnaryOperatorExpression inherits Expression
 		op = stream.grab
 		kind = op.kind
 		prec = TokenKind.unaryOperatorPrecedence[kind]
-		expr = _parse(stream, prec, nil)
+		expr = _parse(stream, prec, nil, TokenKind.binaryOperatorPrecedence)
 		return _unaryTypeMap[kind](op, expr)
 
 	cue init(op as Cobra.Compiler.IToken, expr as IExpression)

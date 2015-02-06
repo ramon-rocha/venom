@@ -63,7 +63,13 @@ class Expression
 			assert addExpr.leftExpression inherits MultiplicationExpression
 			assert addExpr.rightExpression inherits MultiplicationExpression
 		body
-			return _parse(stream, 0, nil)
+			return .parse(stream, TokenKind.binaryOperatorPrecedence)
+
+	def parse(
+		stream as ITokenStream,
+		precedenceMap as IReadOnlyDictionary<of String, int>
+	) as IExpression is shared
+		return _parse(stream, 0, nil, precedenceMap)
 	
 	def _getOperatorKind(stream as ITokenStream) as String is shared
 		"""
@@ -89,10 +95,12 @@ class Expression
 		
 		return opKind
 
-	var _precedenceMap as IReadOnlyDictionary<of String, int>
-		is readonly, shared = TokenKind.binaryOperatorPrecedence
-
-	def _parse(stream as ITokenStream, minPrecedence as int, leftExpr as IExpression?) as IExpression is shared
+	def _parse(
+		stream as ITokenStream,
+		minPrecedence as int,
+		leftExpr as IExpression?,
+		precedenceMap as IReadOnlyDictionary<of String, int>
+	) as IExpression is shared
 		"""
 		Uses the precedence climbing algorithm to parse expressions.
 		See: http://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
@@ -103,29 +111,30 @@ class Expression
 			# i = number.parse('3.14')
 			stream.replace(stream.token.copy(TokenKind.Identifier))
 		#/
-		
 		left = leftExpr ? _parse(stream)
 
 		while true
 			
 			opKind = _getOperatorKind(stream)
-			precedence = try _precedenceMap[opKind] catch get -1
+			precedence = try precedenceMap[opKind] catch get -1
 			if precedence < minPrecedence
 				break
 			
 			if opKind == TokenKind.IndexerStart
 				indexer = IndexerExpression.parse(stream)
-				return _parse(stream, minPrecedence, IndexedExpression(left, indexer))
+				left = IndexedExpression(left, indexer)
+				return _parse(stream, minPrecedence, left, precedenceMap)
 
 			else if opKind == TokenKind.OpenParenthesis
 				openParen = stream.grab
 				args = CommaSeparatedExpressions.parse(stream)
 				closeParen = stream.expect(TokenKind.CloseParenthesis)
-				return _parse(stream, minPrecedence, ImplicitCallExpression(left, openParen, args, closeParen))
+				left = ImplicitCallExpression(left, openParen, args, closeParen)
+				return _parse(stream, minPrecedence, left, precedenceMap)
 			
 			opToken = stream.grab
 			assert opKind == opToken.kind
-			assert _precedenceMap.containsKey(opKind)
+			assert precedenceMap.containsKey(opKind)
 
 			right as IExpression? = nil
 			if opKind == TokenKind.TypeCastOperator or opKind == TokenKind.NilCoalescingCastOperator
@@ -138,9 +147,9 @@ class Expression
 				nextMinPrecedence = if(isRightAssoc, precedence, precedence + 1)
 				if opKind in BinaryOperatorExpression.implicitLineContinuationKinds _
 				and not stream implements IWhitespaceAgnosticTokenStream
-					right = _parse(WhitespaceAgnosticTokenStreamWrapper(stream), nextMinPrecedence, nil)
+					right = _parse(WhitespaceAgnosticTokenStreamWrapper(stream), nextMinPrecedence, nil, precedenceMap)
 				else
-					right = _parse(stream, nextMinPrecedence, nil)
+					right = _parse(stream, nextMinPrecedence, nil, precedenceMap)
 			
 			binOpType = BinaryOperatorExpression.typeMap[opKind]
 			left =  binOpType(left, opToken, right)

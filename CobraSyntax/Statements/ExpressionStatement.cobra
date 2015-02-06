@@ -81,6 +81,19 @@ class ExpressionStatement
 			indentLevel = stream.indentLevel
 			expr = Expression.parse(stream)
 
+			#region TODO this should be in a separate method, maybe Expression.parse
+			comma = stream.grabOptional(TokenKind.Comma)
+			if comma <> nil
+				# a, b, c = 1, 2, 3
+				# p1, p2, p3 = for p in triangle.points get p
+				exprs = CommaSeparatedExpressions.parse(stream, TokenKind.AssignmentOperator)
+				leftExpressions = ExpressionList(exprs.expressions)
+				leftExpressions.insert(0, expr)
+				assignToken = stream.expect(TokenKind.AssignmentOperator)
+				rightExpressions = CommaSeparatedExpressions.parse(stream, TokenKind.EndOfLine).expressions
+				trace for e in leftExpressions get (e to IdentifierExpression).name, assignToken, for e in rightExpressions get (e to IdentifierExpression).name
+			#endregion
+
 			skipped = stream.skipTo(TokenKind.EndOfLine)
 			lastToken = skipped.last
 			skipped.remove(lastToken)

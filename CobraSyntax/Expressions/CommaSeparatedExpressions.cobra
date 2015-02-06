@@ -13,7 +13,14 @@ class CommaSeparatedExpressions
 		list = CommaSeparatedExpressions()
 		exprs = list.expressions to ExpressionList
 		commas = list.commas to TokenList
+
+		# change the precedence of the stop kind to avoid parsing this:
+		# a, b = c, d  --> (a) (b = c) (d)
+		defaultMap = TokenKind.binaryOperatorPrecedence to IDictionary<of String, int>
+		precedenceMap = Dictionary<of String, int>(defaultMap)
+		precedenceMap[stopKind] = -1
+
 		while stream.token.kind <> stopKind
 			if exprs.count <> 0, commas.add(stream.expect(TokenKind.Comma))
-			exprs.add(Expression.parse(stream))
+			exprs.add(Expression.parse(stream, precedenceMap))
 		return list

@@ -5,8 +5,16 @@ class CollectionLiteral
 	inherits LiteralExpression
 	is abstract
 	"""
-	The base class for list, dictionary, and other collection-like literals
+	The base class for list, dictionary, and other collection-like literals.
 	"""
+
+	# COBRA INTERNAL ERROR / ArgumentNullException / Argument cannot be null.; Parameter name: obj
+	/#invariant
+		all for k in .validStartKinds get .endMap.containsKey(k)#/
+
+	invariant
+		(.commas.count <= .elements.count) _
+		or (.commas.count == 1 and .elements.count == 0)
 
 	get elements from var as IReadOnlyList<of IExpression>
 	get commas from var as IReadOnlyTokenList
@@ -23,14 +31,6 @@ class CollectionLiteral
 			TokenKind.ArrayStart : TokenKind.ArrayEnd,
 			TokenKind.SetStart : TokenKind.SetEnd,
 		}
-
-	# COBRA INTERNAL ERROR / ArgumentNullException / Argument cannot be null.; Parameter name: obj
-	/#invariant
-		all for k in .validStartKinds get .endMap.containsKey(k)#/
-
-	invariant
-		(.commas.count <= .elements.count) _
-		or (.commas.count == 1 and .elements.count == 0)
 
 	def parse(stream as ITokenStream) as CollectionLiteral is new, shared
 		require
@@ -69,7 +69,6 @@ class CollectionLiteral
 			stream = TokenStream(source, 'test.cobra')
 			dict = CollectionLiteral.parse(stream) to DictionaryLiteral
 			assert dict.elements.count == 6
-			trace dict.keys, dict.values
 			assert dict.keys.count == dict.values.count == 3
 			assert all for e in dict.keys get e inherits StringLiteral
 			assert all for e in dict.values get e inherits IntegerLiteral

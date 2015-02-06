@@ -217,10 +217,4 @@ class CobraParser
 				throw FallThroughException()
 	
 	def _makeListLiteral as ListLiteral
-		# todo
-		require _stream.token.kind == TokenKind.OpenBracket
-		openBracket = _stream.grab
-		skippedTokens = _stream.skipTo(TokenKind.CloseBracket)
-		closeBracket = skippedTokens.last
-		skippedTokens.remove(skippedTokens.last)
-		return ListLiteral(openBracket, ExpressionList(), closeBracket)
+		return ListLiteral.parse(_stream to !) to ListLiteral

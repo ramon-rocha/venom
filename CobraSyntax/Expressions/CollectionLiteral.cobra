@@ -7,6 +7,10 @@ class CollectionLiteral
 	"""
 	The base class for list, dictionary, and other collection-like literals
 	"""
+
+	get elements from var as IReadOnlyList<of IExpression>
+	get commas from var as IReadOnlyTokenList
+
 	shared, readonly
 		var validStartKinds as IReadOnlyList<of String> = [
 			TokenKind.ListStart,
@@ -24,6 +28,10 @@ class CollectionLiteral
 	/#invariant
 		all for k in .validStartKinds get .endMap.containsKey(k)#/
 
+	invariant
+		(.commas.count <= .elements.count) _
+		or (.commas.count == 1 and .elements.count == 0)
+
 	def parse(stream as ITokenStream) as CollectionLiteral is new, shared
 		require
 			stream.token.kind in .validStartKinds
@@ -33,6 +41,7 @@ class CollectionLiteral
 			list = CollectionLiteral.parse(stream)
 			assert list inherits ListLiteral
 			assert list.elements.count == 0
+			assert list.commas.count == 0
 			assert list.firstToken.kind == TokenKind.ListStart
 			assert list.lastToken.kind == TokenKind.ListEnd
 		test
@@ -41,34 +50,99 @@ class CollectionLiteral
 			list = CollectionLiteral.parse(stream)
 			assert list inherits ListLiteral
 			assert list.elements.count == 3
+			assert list.commas.count == 2
 			assert all for e in list.elements get e inherits IntegerLiteral
+		test
+			source = r'[1, 2, 3,]'
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list.elements.count == list.commas.count == 3
+		test
+			source = "{1, 2, 3}"
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list inherits SetLiteral
+			assert list.elements.count == 3
+			assert all for e in list.elements get e inherits IntegerLiteral
+		test
+			source = "{'a':1, 'b':2, 'c':3}"
+			stream = TokenStream(source, 'test.cobra')
+			dict = CollectionLiteral.parse(stream) to DictionaryLiteral
+			assert dict.elements.count == 6
+			trace dict.keys, dict.values
+			assert dict.keys.count == dict.values.count == 3
+			assert all for e in dict.keys get e inherits StringLiteral
+			assert all for e in dict.values get e inherits IntegerLiteral
+		test
+			source = "{,}"
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list inherits SetLiteral
+			assert list.elements.count == 0
+		test
+			source = "{:}"
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list inherits DictionaryLiteral
+			assert list.elements.count == 0
+		test
+			source = "{}"
+			stream = TokenStream(source, 'test.cobra')
+			list = CollectionLiteral.parse(stream)
+			assert list inherits DictionaryLiteral
+			assert list.elements.count == 0
 		body
 			if not stream implements IWhitespaceAgnosticTokenStream
 				stream = WhitespaceAgnosticTokenStreamWrapper(stream)
 			
 			startToken = stream.grab
+			colons = TokenList()
+			commas = TokenList()
+			expressions = ExpressionList()
 			endKind = .endMap[startToken.kind]
 
-			expressions = ExpressionList()
+			if startToken.kind == TokenKind.SetStart
+				if stream.token.kind == TokenKind.Comma # empty set
+					commas.add(stream.grab)
+					return SetLiteral(startToken, expressions, commas, stream.expect(endKind))
+				if stream.token.kind == TokenKind.Colon _
+				or stream.token.kind == TokenKind.SetEnd # empty dictionary
+					colon = stream.grabOptional(TokenKind.Colon)
+					if colon <> nil, colons.add(colon)
+					return DictionaryLiteral(startToken, expressions, colons, commas, stream.expect(endKind))
+			
 			while stream.token.kind <> endKind
-				if expressions.count <> 0, stream.expect(TokenKind.Comma)
+				if expressions.count <> 0
+					commas.add(stream.expect(TokenKind.Comma))
 				if stream.token.kind == endKind, break
 				expressions.add(Expression.parse(stream))
+				colon = stream.grabOptional(TokenKind.Colon)
+				if colon <> nil
+					colons.add(colon)
+					expressions.add(Expression.parse(stream))
+				if stream.token.isEOF or stream.token is Cobra.Compiler.Token.empty, break # missing closing token
 			
-			endToken = stream.grab
+			endToken = stream.expect(endKind)
 
 			branch startToken.kind
-				on TokenKind.ListStart, return ListLiteral(startToken, expressions, endToken)
-				on TokenKind.ArrayStart, return ArrayLiteral(startToken, expressions, endToken)
-				on TokenKind.SetStart, return SetLiteral(startToken, expressions, endToken)
+				on TokenKind.ListStart, return ListLiteral(startToken, expressions, commas, endToken)
+				on TokenKind.ArrayStart, return ArrayLiteral(startToken, expressions, commas, endToken)
+				on TokenKind.SetStart
+					if colons.count > 0, return DictionaryLiteral(startToken, expressions, colons, commas, endToken)
+					return SetLiteral(startToken, expressions, commas, endToken)
 				else, throw NotImplementedException("TODO: Handle dictionary and set literals")
 
-	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+	cue init(
+		startToken as Cobra.Compiler.IToken,
+		elements as IExpression*,
+		commas as Cobra.Compiler.IToken*,
+		endToken as Cobra.Compiler.IToken
+	)
 		base.init(startToken, endToken, nil)
 		_elements = ExpressionList(elements)
+		for e in elements, _addChild(e)
+		_commas = TokenList(commas)
 		_isSpaceAgnostic = true
-	
-	get elements from var as IReadOnlyList<of IExpression>
 
 	def toCobraSource as String is override
 		sb = StringBuilder()
@@ -82,32 +156,90 @@ class ListLiteral inherits CollectionLiteral
 	"""
 	A literal list expression such as [1, 2, 3]
 	"""
-	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+	cue init(
+		startToken as Cobra.Compiler.IToken,
+		elements as IExpression*,
+		commas as Cobra.Compiler.IToken*,
+		endToken as Cobra.Compiler.IToken
+	)
 		require
 			startToken.kind == TokenKind.ListStart
 			endToken.kind == TokenKind.ListEnd
 		body
-			base.init(startToken, elements, endToken)
+			base.init(startToken, elements, commas, endToken)
 
 class ArrayLiteral inherits CollectionLiteral
 	"""
 	A literal array expression such as @[1, 2, 3]
 	"""
-	cue init(startToken as Cobra.Compiler.IToken, elements as ExpressionList, endToken as Cobra.Compiler.IToken)
+	cue init(
+		startToken as Cobra.Compiler.IToken,
+		elements as IExpression*,
+		commas as Cobra.Compiler.IToken*,
+		endToken as Cobra.Compiler.IToken
+	)
 		require
 			startToken.kind == TokenKind.ArrayStart
 			endToken.kind == TokenKind.ArrayEnd
 		body
-			base.init(startToken, elements, endToken)
+			base.init(startToken, elements, commas, endToken)
 
 class SetLiteral inherits CollectionLiteral
 	"""
 	A literal set expression such as {1, 2, 3}
 	"""
-	pass
+	cue init(
+		startToken as Cobra.Compiler.IToken,
+		elements as IExpression*,
+		commas as Cobra.Compiler.IToken*,
+		endToken as Cobra.Compiler.IToken
+	)
+		require
+			startToken.kind == TokenKind.SetStart
+			endToken.kind == TokenKind.SetEnd
+		body
+			base.init(startToken, elements, commas, endToken)
+	
 
 class DictionaryLiteral inherits CollectionLiteral
 	"""
 	A literal dictionary expression such as {1:'one', 2:'two', 3:'three'}
 	"""
-	pass
+
+	get colons from var as IReadOnlyTokenList
+
+	var _keys as List<of IExpression>? = nil
+	get keys as IReadOnlyList<of IExpression>
+		if _keys == nil
+			_keys = List<of IExpression>(_elements.count // 2)
+			for i in _elements.count
+				if i % 2 == 0, _keys.add(_elements[i])
+		return _keys to !
+
+	var _values as List<of IExpression>? = nil
+	get values as IReadOnlyList<of IExpression>
+		if _values == nil
+			_values = List<of IExpression>(_elements.count // 2)
+			for i in _elements.count
+				if i % 2 <> 0, _values.add(_elements[i])
+		return _values to !
+
+	invariant
+		(.elements.count == .colons.count * 2) _
+		or (.elements.count == 0 and .colons.count == 1) # {:}
+
+		.elements.count % 2 == 0
+
+	cue init(
+		startToken as Cobra.Compiler.IToken,
+		elements as IExpression*,
+		colons as Cobra.Compiler.IToken*,
+		commas as Cobra.Compiler.IToken*,
+		endToken as Cobra.Compiler.IToken
+	)
+		require
+			startToken.kind == TokenKind.SetStart
+			endToken.kind == TokenKind.SetEnd
+		body
+			base.init(startToken, elements, commas, endToken)
+			_colons = TokenList(colons)

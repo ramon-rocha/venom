@@ -1,5 +1,5 @@
 ﻿
 namespace Venom.CobraSyntax
 
-class ExpressionList inherits List<of IExpression>
-	pass
+class ExpressionList
+	inherits List<of IExpression>

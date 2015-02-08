@@ -44,7 +44,11 @@ class Statement
 			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
 			on TokenKind.WhileKeyword, return WhileStatement.parse(stream)
 			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
-			else, return ExpressionStatement.parse(stream)
+			else
+				originalIndent = stream.indentLevel
+				expr = Expression.parse(stream)
+				if stream.token.kind == TokenKind.Comma, return MultipleTargetAssignmentStatement.parse(stream, expr)
+				return ExpressionStatement.parse(stream, expr, originalIndent)
 
 	def toCobraSource as String is override
 		return "TODO"

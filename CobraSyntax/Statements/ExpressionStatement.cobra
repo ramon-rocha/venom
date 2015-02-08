@@ -80,31 +80,21 @@ class ExpressionStatement
 		body
 			indentLevel = stream.indentLevel
 			expr = Expression.parse(stream)
+			return .parse(stream, expr, indentLevel)
 
-			#region TODO this should be in a separate method, maybe Expression.parse
-			comma = stream.grabOptional(TokenKind.Comma)
-			if comma <> nil
-				# a, b, c = 1, 2, 3
-				# p1, p2, p3 = for p in triangle.points get p
-				exprs = CommaSeparatedExpressions.parse(stream, TokenKind.AssignmentOperator)
-				leftExpressions = ExpressionList(exprs.expressions)
-				leftExpressions.insert(0, expr)
-				assignToken = stream.expect(TokenKind.AssignmentOperator)
-				rightExpressions = CommaSeparatedExpressions.parse(stream, TokenKind.EndOfLine).expressions
-				trace for e in leftExpressions get (e to IdentifierExpression).name, assignToken, for e in rightExpressions get (e to IdentifierExpression).name
-			#endregion
+	def parse(stream as ITokenStream, expression as IExpression, originalIndentLevel as int) as IStatement is shared
+		skipped = stream.skipTo(TokenKind.EndOfLine)
+		lastToken = skipped.last
+		skipped.remove(lastToken)
 
-			skipped = stream.skipTo(TokenKind.EndOfLine)
-			lastToken = skipped.last
-			skipped.remove(lastToken)
+		if expression.isSpaceAgnostic
+			howMany = Math.abs(originalIndentLevel - stream.indentLevel)
+			whitespaceKind = if(originalIndentLevel > stream.indentLevel, TokenKind.Indent, TokenKind.Dedent)
+			stream.skipBlankLines
+			for i in howMany, stream.expect(whitespaceKind)
 
-			if expr.isSpaceAgnostic
-				howMany = Math.abs(indentLevel - stream.indentLevel)
-				whitespaceKind = if(indentLevel > stream.indentLevel, TokenKind.Indent, TokenKind.Dedent)
-				stream.skipBlankLines
-				for i in howMany, stream.expect(whitespaceKind)
-
-			return ExpressionStatement(expr, lastToken, skipped)
+		return ExpressionStatement(expression, lastToken, skipped)
+		
 
 	cue init(expr as IExpression, lastToken as Cobra.Compiler.IToken, extraTokens as TokenList?)
 		ensure expr in _children

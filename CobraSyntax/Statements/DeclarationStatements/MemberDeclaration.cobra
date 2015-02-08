@@ -536,7 +536,7 @@ class CueDeclaration inherits BaseMethodDeclaration
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "A doc string"
 			assert m.body.statements.count == 1
-			assert m.body.statements[0] inherits ExpressionStatement # what should this really be?
+			assert m.body.statements[0] inherits MultipleTargetAssignmentStatement
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification == nil
 		body

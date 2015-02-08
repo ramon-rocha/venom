@@ -1,1 +1,73 @@
 ﻿
+namespace Venom.CobraSyntax
+
+class MultipleTargetAssignmentStatement
+	inherits Statement
+	"""
+	A statement that assigns to multiple variables at once.
+
+	Example: a, b, c = 1, 2, 3
+	"""
+
+	invariant
+		.rightExpressions.count <= .leftExpressions.count
+
+	get leftExpressions from var as IReadOnlyList<of IExpression>
+	get leftCommas from var as IReadOnlyTokenList
+	get assignmentOperator from var as Cobra.Compiler.IToken
+	get rightExpressions from var as IReadOnlyList<of IExpression>
+	get rightCommas from var as IReadOnlyTokenList
+
+	def parse(stream as ITokenStream, firstExpression as IExpression) as MultipleTargetAssignmentStatement is shared
+		require
+			stream.token.kind == TokenKind.Comma
+		ensure
+			result.leftExpressions.first == firstExpression
+		test
+			source = "a, b, c = 1, 2, 3"
+			stream = TokenStream(source, 'test.cobra')
+			expr = Expression.parse(stream)
+			assert stream.token.kind == TokenKind.Comma
+			stmt = MultipleTargetAssignmentStatement.parse(stream, expr)
+			assert stmt.leftExpressions.count == stmt.rightExpressions.count == 3
+			assert stmt.leftCommas.count == stmt.rightCommas.count == 2
+			assert all for e in stmt.leftExpressions get e inherits IdentifierExpression
+			assert all for e in stmt.rightExpressions get e inherits IntegerLiteral
+		body
+			leftExprs = List<of IExpression>()
+			leftExprs.add(firstExpression)
+			comma = stream.expect(TokenKind.Comma)
+			leftCommas = TokenList()
+			leftCommas.add(comma)
+
+			exprs = CommaSeparatedExpressions.parse(stream, TokenKind.AssignmentOperator)
+			leftExprs.addRange(exprs.expressions)
+			leftCommas.addRange(exprs.commas)
+
+			assignToken = stream.expect(TokenKind.AssignmentOperator)
+
+			rightExprs = List<of IExpression>()
+			rightCommas = TokenList()
+			exprs = CommaSeparatedExpressions.parse(stream, TokenKind.EndOfLine)
+			rightExprs.addRange(exprs.expressions)
+			rightCommas.addRange(exprs.commas)
+
+			return MultipleTargetAssignmentStatement(leftExprs, leftCommas, assignToken, rightExprs, rightCommas)
+
+	cue init(
+		leftExprs as IExpression*,
+		leftCommas as Cobra.Compiler.IToken*,
+		assignToken as Cobra.Compiler.IToken,
+		rightExprs as IExpression*,
+		rightCommas as Cobra.Compiler.IToken*
+	)
+		base.init
+		_leftExpressions = List<of IExpression>(leftExprs)
+		for e in leftExprs, _addChild(e)
+		_firstToken = _leftExpressions.first.firstToken
+		_leftCommas = TokenList(leftCommas)
+		_assignmentOperator = assignToken
+		_rightExpressions = List<of IExpression>(rightExprs)
+		for e in rightExprs, _addChild(e)
+		_lastToken = _rightExpressions.last.lastToken
+		_rightCommas = TokenList(rightCommas)

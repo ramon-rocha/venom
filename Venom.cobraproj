@@ -100,6 +100,8 @@
     <Compile Include="CobraSyntax\Expressions\CommaSeparatedExpressions.cobra" />
     <Compile Include="CobraSyntax\Statements\TryCatchStatement.cobra" />
     <Compile Include="CobraSyntax\Specifications.cobra" />
+    <Compile Include="CobraSyntax\Statements\MultipleTargetAssignmentStatement.cobra" />
+    <Compile Include="Extensions.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

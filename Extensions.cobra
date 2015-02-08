@@ -1,1 +1,10 @@
 ﻿
+namespace Venom
+
+extend IReadOnlyList<of T>
+
+	def first as T
+		return (this to IList<of T>).first
+
+	def last as T
+		return (this to IList<of T>).last

@@ -62,6 +62,16 @@ class Expression
 			addExpr = assignExpr.rightExpression to AdditionExpression
 			assert addExpr.leftExpression inherits MultiplicationExpression
 			assert addExpr.rightExpression inherits MultiplicationExpression
+		test explicit_line_continuation_with_whitespace_agnostic_expression
+			source =
+			"b = a * _\n" +
+			"10"
+			stream = TokenStream(source, 'test.cobra')
+			assert stream.indentLevel == 0
+			expr = Expression.parse(stream) to AssignmentExpression
+			right = expr.rightExpression to MultiplicationExpression
+			assert right.rightExpression inherits IntegerLiteral
+			assert stream.indentLevel == 0
 		body
 			return .parse(stream, TokenKind.binaryOperatorPrecedence)
 

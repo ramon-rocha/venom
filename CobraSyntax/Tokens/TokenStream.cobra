@@ -183,13 +183,43 @@ class TokenStream
 			assert stream.peek(0, true).kind <> TokenKind.Comment
 			assert stream.token.kind <> TokenKind.Comment
 			assert stream.peek(0) is stream.token
+		test explicitLineContinuation_andComments_areNotImplicitlyVisible
+			source =
+			"print _ # comment\n" +
+			"x\n" +
+			"print _ # another comment\n" +
+			"y\n"
+			stream = TokenStream(source, 'test.cobra')
+			assert stream.peek(0).text == "print"
+			assert stream.peek(1).text == "x"
+			assert stream.peek(2).text == "\n"
+			assert stream.peek(3).text == "print"
+			assert stream.peek(4).text == "y"
+			assert stream.peek(5).text == "\n"
+			assert stream.grab.text == "print"
+			assert stream.grab.text == "x"
+			assert stream.grab.text == "\n"
+			assert stream.grab.text == "print"
+			assert stream.grab.text == "y"
+			assert stream.grab.text == "\n"
 		body
-			index = _currentIndex + howFar
+			index = _currentIndex
+			eolSkipCount = 0
 			while index < _tokenCount
 				token = _tokens[index]
 				if skipComments and token.kind == TokenKind.Comment
 					index += 1
+				else if token.text == "_" # explicit line continuation
+					index += 1
+					eolSkipCount += 1
+				else if eolSkipCount > 0 and token.kind == TokenKind.EndOfLine
+					index += 1
+					eolSkipCount -= 1
+				else if howFar <> 0
+					index += 1
+					howFar -= 1
 				else
+					# TODO?: If eolSkipCount > 0, .recordError("Unexpected line continuation character")
 					return token
 				
 			return _emptyToken
@@ -220,10 +250,15 @@ class TokenStream
 			assert token is stream.grab
 		
 		body
-			# The order here is important. Don't increment the index
-			# and then read .token or we will be off by one.
 			t = .token
-			_currentIndex += 1
+
+			# We can't just add 1 to _currentIndex because .token may have skipped some tokens.
+			# In particular, this would mess up explicit line continuations since they appear
+			# in the token stream as identifiers which are skipped and which cause an EOL to be skipped.
+			tokens = _tokens to TokenList
+			index = tokens.indexOf(t, _currentIndex)
+			if index == -1, index = _tokenCount - 1
+			_currentIndex = index + 1
 
 			if t.kind == TokenKind.Indent
 				_indentLevel += 1

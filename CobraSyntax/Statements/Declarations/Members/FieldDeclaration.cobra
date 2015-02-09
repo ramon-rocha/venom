@@ -1,0 +1,197 @@
+﻿
+namespace Venom.CobraSyntax
+
+class FieldDeclaration inherits TypeMemberDeclaration
+	
+	get varKeyword from var as Cobra.Compiler.IToken
+
+	get asKeyword from var as Cobra.Compiler.IToken?
+	get typeIdentifier from var as TypeIdentifier?
+
+	#TODO: create AssignmentClause class
+	get equalsTokens from var as IReadOnlyTokenList
+	get initializationExpressions from var as IReadOnlyList<of IExpression>
+
+	# TODO? Create FieldSpecifications?
+	get modifiers from var as IReadOnlyList<of ModifierSpecification>
+	get attributes from var as IReadOnlyList<of AttributeSpecification>
+
+	var specKinds as IReadOnlyList<of String> is readonly, shared = [
+		TokenKind.AssignmentOperator,
+		TokenKind.IsKeyword,
+		TokenKind.HasKeyword
+	]
+
+	def parse(stream as ITokenStream) as FieldDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.FieldKeyword
+		test
+			source = "var x"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword == nil
+			assert field.typeIdentifier == nil
+			assert field.equalsTokens.count == field.initializationExpressions.count == 0
+			assert field.modifiers.count == field.attributes.count == 0
+			assert field.docString == nil
+		test
+			source = "var x = 1"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword == nil
+			assert field.typeIdentifier == nil
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits IntegerLiteral
+			assert field.modifiers.count == field.attributes.count == 0
+			assert field.docString == nil
+		test
+			source = "var x as number = 1.0"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword <> nil
+			assert field.typeIdentifier.qualifiedName == "number"
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits FractionLiteral
+			assert field.modifiers.count == field.attributes.count == 0
+			assert field.docString == nil
+		test
+			source = "var x as number is readonly = 1.0"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword <> nil
+			assert field.typeIdentifier.qualifiedName == "number"
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits FractionLiteral
+			assert field.modifiers.count == 1
+			assert field.attributes.count == 0
+			assert field.docString == nil
+		test
+			source =
+			"var x = 1.0\n" +
+			"    is readonly\n" +
+			"    has Obsolete('use y instead')"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword == nil
+			assert field.typeIdentifier == nil
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits FractionLiteral
+			assert field.modifiers.count == 1
+			assert field.attributes.count == 1
+			assert field.docString == nil
+		test
+			source =
+			"var x\n" +
+			"    = 1.0\n" +
+			"    is readonly\n" +
+			'    """the docstring goes here"""'
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "x"
+			assert field.asKeyword == nil
+			assert field.typeIdentifier == nil
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits FractionLiteral
+			assert field.modifiers.count == 1
+			assert field.attributes.count == 0
+			assert field.docString <> nil
+		test
+			source =
+			ns"var oneTwoThree as IReadOnlyList<of int> is shared, readonly = [\n" +
+			"    1,\n" +
+			"    2,\n" +
+			"    3,\n" +
+			"]\n" +
+			"    has Counted"
+			stream = TokenStream(source, 'test.cobra')
+			field = FieldDeclaration.parse(stream)
+			assert field.name == field.identifier.name == "oneTwoThree"
+			assert field.asKeyword <> nil
+			assert field.typeIdentifier.qualifiedName == "IReadOnlyList<of int>"
+			assert field.equalsTokens.count == 1
+			assert field.initializationExpressions[0] inherits ListLiteral
+			assert field.modifiers.count == 1
+			assert field.attributes.count == 1
+			assert field.docString == nil
+		body
+			varKeyword = stream.expect(TokenKind.FieldKeyword)
+			id = Identifier.parse(stream)
+			asToken = stream.grabOptional(TokenKind.AsKeyword)
+			if asToken <> nil
+				typeId = TypeIdentifier.parse(stream) to ?
+
+			equals = TokenList()
+			inits = ExpressionList()
+			mods = List<of ModifierSpecification>()
+			atts = List<of AttributeSpecification>()
+
+			while stream.token.kind in .specKinds
+				branch stream.token.kind
+					on TokenKind.AssignmentOperator
+						equals.add(stream.grab)
+						inits.add(Expression.parse(stream))
+					on TokenKind.IsKeyword
+						mods.add(ModifierSpecification.parse(stream))
+					on TokenKind.HasKeyword
+						atts.add(AttributeSpecification.parse(stream))
+
+			stream.skipBlankLines
+			indent = stream.grabOptional(TokenKind.Indent)
+			if indent <> nil
+				while stream.token.kind in .specKinds
+					branch stream.token.kind
+						on TokenKind.AssignmentOperator
+							equals.add(stream.grab)
+							inits.add(Expression.parse(stream))
+						on TokenKind.IsKeyword
+							mods.add(ModifierSpecification.parse(stream))
+						on TokenKind.HasKeyword
+							atts.add(AttributeSpecification.parse(stream))
+					stream.skipBlankLines
+				
+				if stream.token.startsDocString
+					docString = DocString.parse(stream) to ?
+					stream.skipBlankLines
+				dedent = stream.expect(TokenKind.Dedent)
+
+			return FieldDeclaration(
+				varKeyword, id, asToken, typeId, equals, inits, indent, docString, dedent, mods, atts
+			)
+
+	cue init(
+		varKeyword as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		asKeyword as Cobra.Compiler.IToken?,
+		typeId as TypeIdentifier?,
+		equalsTokens as Cobra.Compiler.IToken*,
+		initExprs as IExpression*,
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
+		mods as ModifierSpecification*,
+		attributes as AttributeSpecification*
+	)
+		require
+			varKeyword.which == TokenKind.FieldKeyword
+			asKeyword <> nil implies typeId <> nil
+		body
+			base.init(varKeyword, identifier, indent, docString, dedent, nil, nil)
+			_varKeyword = varKeyword
+			_identifier = identifier
+			if asKeyword
+				_asKeyword, _typeIdentifier = asKeyword, typeId
+				_addChild(typeId to !)
+			_equalsTokens = TokenList(equalsTokens)
+			_initializationExpressions = ExpressionList(initExprs)
+			for e in initExprs, _addChild(e)
+			_indentToken, _dedentToken = indent, dedent
+			_docString = docString
+			_modifiers = List<of ModifierSpecification>(mods)
+			for m in mods, _addChild(m)
+			_attributes = List<of AttributeSpecification>(attributes)
+			for a in attributes, _addChild(a)

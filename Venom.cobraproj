@@ -53,10 +53,7 @@
     <Compile Include="CobraSyntax\Expressions\IdentifierExpression.cobra" />
     <Compile Include="CobraSyntax\Expressions\ExpressionList.cobra" />
     <Compile Include="CobraCompilerSettings.cobra" />
-    <Compile Include="CobraSyntax\Statements\DeclarationStatements\LocalDeclaration.cobra" />
     <Compile Include="CobraSyntax\Parser\CobraParser.cobra" />
-    <Compile Include="CobraSyntax\Statements\DeclarationStatements\TypeDeclaration.cobra" />
-    <Compile Include="CobraSyntax\Statements\DeclarationStatements\MemberDeclaration.cobra" />
     <Folder Include="CobraSyntax\Tokens\" />
     <Compile Include="CobraSyntax\Tokens\CobraTokenizer.cobra" />
     <Compile Include="CobraSyntax\Tokens\TokenStream.cobra" />
@@ -102,6 +99,14 @@
     <Compile Include="CobraSyntax\Specifications.cobra" />
     <Compile Include="CobraSyntax\Statements\MultipleTargetAssignmentStatement.cobra" />
     <Compile Include="Extensions.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\LocalDeclaration.cobra" />
+    <Folder Include="CobraSyntax\Statements\Declarations\Members\" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\MemberDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\TypeDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\ModifierBlock.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\FieldDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\MethodDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\CueDeclaration.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

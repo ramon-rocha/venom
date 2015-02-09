@@ -1,0 +1,120 @@
+
+namespace Venom.CobraSyntax
+
+interface IMemberDeclaration
+	inherits IStatement, INamedNode, IDocumentable
+	"""
+	A statement that declares a member of a type or namespace
+	"""
+	pass
+
+class MemberDeclaration
+	inherits Statement
+	implements IMemberDeclaration
+	adds NamedBehavior, DocumentationBehavior
+	is abstract
+	"""
+	This is the base class for member declarations.  This includes namespaces,
+	type definitions, fields, properties, and methods. However, this does not
+	include local variables, method parameters, or use directives.
+	"""
+
+	get identifier from var as Identifier
+	get indentToken from var as Cobra.Compiler.IToken?
+	get dedentToken from var as Cobra.Compiler.IToken?
+
+	invariant
+		_indentToken implies _dedentToken
+		_dedentToken implies _indentToken
+	
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		indentToken as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
+		children as ISyntaxNode*?,
+		extraTokens as IReadOnlyTokenList?
+	)
+		require
+			keywordToken.isKeyword
+
+			# member declarations (other than namespaces) that have a doc string must have both an indent and dedent token
+			not (this inherits NamespaceDeclaration) implies _
+				(docString implies (indentToken and dedentToken))
+		ensure
+			dedentToken implies _lastToken == dedentToken
+		body
+			base.init(keywordToken, identifier.firstToken, extraTokens)
+			_identifier = identifier
+			_name = identifier.name
+			_addChild(identifier)
+			if dedentToken <> nil
+				_indentToken, _dedentToken = indentToken, dedentToken
+				_lastToken = dedentToken
+			if docString <> nil
+				_addChild(docString)
+				_docString = docString
+			if children <> nil
+				_addChildren(children)
+
+
+interface ITypeMemberDeclaration inherits IMemberDeclaration
+	"""A member declaration that appears inside a type declaration"""
+	pass
+
+class TypeMemberDeclaration
+	inherits MemberDeclaration
+	implements ITypeMemberDeclaration
+	is abstract
+	"""
+	The base class for a member declaration that appears inside a type declaration
+	"""
+
+	def parse(stream as ITokenStream) as ITypeMemberDeclaration? is new, shared
+		
+		stream.skipBlankLines
+		kind = stream.token.kind
+
+		if kind in TokenKind.typeDeclarationKeywords
+			return TypeDeclaration.parse(stream)
+		
+		else if kind in TokenKind.modifierKeywords
+			return ModifierBlock.parse(stream)
+		
+		branch kind
+			on TokenKind.CueKeyword, return CueDeclaration.parse(stream)
+			on TokenKind.MethodKeyword, return MethodDeclaration.parse(stream)
+			on TokenKind.GetterKeyword, return nil # TODO
+			on TokenKind.SetterKeyword, return nil # TODO
+			on TokenKind.PropertyKeyword, return nil # TODO
+			on TokenKind.FieldKeyword, return FieldDeclaration.parse(stream)
+			on TokenKind.ConstKeyword, return nil # TODO
+			on TokenKind.InvariantKeyord, return nil # TODO
+			on TokenKind.EventKeyword, return nil # TODO
+			on TokenKind.TestKeyword, return nil # TODO
+		
+		return nil # TODO
+
+
+interface INamespaceMemberDeclaration inherits IMemberDeclaration
+	"""
+	A declaration statement for a member of a namespace
+	"""
+	pass
+
+class NamespaceDeclaration
+	inherits MemberDeclaration
+	implements INamespaceMemberDeclaration
+	"""
+	This node repesents a namespace declaration
+	"""
+	
+	cue init(
+		nsToken as Cobra.Compiler.IToken,
+		identifier as QualifiedIdentifier,
+		children as NodeList?,
+		extraTokens as TokenList? = nil
+	)
+		require nsToken.which == TokenKind.NamespaceKeyword
+		base.init(nsToken, identifier, nil, nil, nil, children, extraTokens) # TODO

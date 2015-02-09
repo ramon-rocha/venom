@@ -1,0 +1,36 @@
+﻿
+namespace Venom.CobraSyntax
+
+class CueDeclaration inherits BaseMethodDeclaration
+
+	def parse(stream as ITokenStream) as CueDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.CueKeyword
+		test
+			source = "cue init\n\tpass\n"
+			stream = TokenStream(source, "test.cobra")
+			m = CueDeclaration.parse(stream)
+			assert m.name == "init"
+			assert m.signature == nil
+			assert m.dedentToken.charNum > m.indentToken.charNum
+			assert m.body.bodyKeyword == nil
+			assert m.body.statements.count == 1
+			assert m.body.statements.first inherits PassStatement
+			assert m.docString == nil
+		test
+			source =
+			'cue init(x as int, y as int)\n' +
+			'    """A doc string"""\n' +
+			'    _x, _y = x, y'
+			stream = TokenStream(source, "test.cobra")
+			m = CueDeclaration.parse(stream)
+			assert m.indentToken and m.dedentToken
+			assert m.indentToken <> m.dedentToken
+			assert m.lastToken == m.dedentToken
+			assert m.docString.content == "A doc string"
+			assert m.body.statements.count == 1
+			assert m.body.statements[0] inherits MultipleTargetAssignmentStatement
+			assert m.signature.parameterDeclarations.count == 2
+			assert m.signature.returnTypeSpecification == nil
+		body
+			return _parse(stream, TokenKind.CueKeyword) to CueDeclaration

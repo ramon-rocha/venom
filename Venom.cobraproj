@@ -107,6 +107,7 @@
     <Compile Include="CobraSyntax\Statements\Declarations\Members\FieldDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\MethodDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\CueDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\NamespaceDeclaration.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

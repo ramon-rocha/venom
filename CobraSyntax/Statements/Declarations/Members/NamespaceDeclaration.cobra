@@ -1,0 +1,24 @@
+﻿
+namespace Venom.CobraSyntax
+
+interface INamespaceMemberDeclaration inherits IMemberDeclaration
+	"""
+	A declaration statement for a member of a namespace
+	"""
+	pass
+
+class NamespaceDeclaration
+	inherits MemberDeclaration
+	implements INamespaceMemberDeclaration
+	"""
+	This node repesents a namespace declaration
+	"""
+	
+	cue init(
+		nsToken as Cobra.Compiler.IToken,
+		identifier as QualifiedIdentifier,
+		children as NodeList?,
+		extraTokens as TokenList? = nil
+	)
+		require nsToken.which == TokenKind.NamespaceKeyword
+		base.init(nsToken, identifier, nil, nil, nil, children, extraTokens) # TODO

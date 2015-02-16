@@ -8,15 +8,6 @@ extend ICobraToken
 	def kind as String
 		return .which
 	
-	def endsBlock as bool
-		"""
-		Returns 'true' if this token terminates an indented block
-		"""
-		kind = .which
-		return kind == TokenKind.Dedent _
-			or kind == TokenKind.EndOfFile _
-			or this is Cobra.Compiler.Token.empty
-	
 	def isMissing as bool
 		"""
 		When 'true' this indicates that this token was not found in a Cobra source file

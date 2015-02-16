@@ -99,15 +99,13 @@ class StatementClause
 			assert clause.statements[1] inherits ExpressionStatement
 		body
 			comma = stream.grabOptional(TokenKind.Comma)
-			stmts = StatementList()
 			if comma <> nil
+				stmts = StatementList()
 				stmts.add(Statement.parse(stream))
 				return StatementClause(comma, stmts[0].lastToken, stmts)
 			
 			indent = stream.expect(TokenKind.Indent)
-			while not stream.token.endsBlock
-				stmts.add(Statement.parse(stream))
-				stream.skipBlankLines
+			stmts = StatementList.parse(stream)
 			dedent = stream.grab
 			
 			return StatementClause(indent, dedent, stmts)

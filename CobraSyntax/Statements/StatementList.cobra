@@ -1,5 +1,26 @@
 ﻿
 namespace Venom.CobraSyntax
 
-class StatementList inherits List<of IStatement>
-	pass
+extend Cobra.Compiler.IToken
+
+	def endsBlock as bool
+		"""
+		Returns 'true' if this token terminates an indented block
+		"""
+		kind = .which
+		return kind == TokenKind.Dedent _
+			or kind == TokenKind.EndOfFile _
+			or this is Cobra.Compiler.Token.empty
+
+class StatementList
+	inherits List<of IStatement>
+	"""
+	Not an actual syntax node, only for convenience.
+	"""
+
+	def parse(stream as ITokenStream) as StatementList is shared
+		stmts = StatementList()
+		while not stream.token.endsBlock
+			stmts.add(Statement.parse(stream))
+			stream.skipBlankLines
+		return stmts

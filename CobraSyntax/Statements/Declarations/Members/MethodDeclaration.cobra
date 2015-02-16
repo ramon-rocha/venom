@@ -135,12 +135,7 @@ class MethodBody
 		if bodyKeyword <> nil
 			stream.skipBlankLines
 			stream.expect(TokenKind.Indent)
-		
-		stmts = StatementList()
-		while not stream.token.endsBlock
-			stmts.add(Statement.parse(stream))
-			stream.skipBlankLines
-
+		stmts = StatementList.parse(stream)
 		return MethodBody(bodyKeyword, stmts)
 
 	cue init(bodyKeyword as Cobra.Compiler.IToken?, statements as IStatement*)

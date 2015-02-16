@@ -1,0 +1,61 @@
+﻿
+namespace Venom.CobraSyntax
+
+class TestDefinition
+	inherits SyntaxNode
+	adds StatementContainerBehavior #, NamedBehavior
+
+	invariant
+		.testKeyword.kind == TokenKind.TestKeyword
+
+	get testKeyword from var as Cobra.Compiler.IToken
+	get identifier from var as Identifier?
+
+	def parse(stream as ITokenStream) as TestDefinition is new, shared
+		require
+			stream.token.kind == TokenKind.TestKeyword
+		test
+			source =
+			"test\n" +
+			"    soMeta = true\n" +
+			"    assert soMeta"
+			stream = TokenStream(source, 'test.cobra')
+			testDef = TestDefinition.parse(stream)
+			assert testDef.identifier == nil
+			assert testDef.statements.count == 2
+		test
+			source =
+			"test tests_can_be_parsed\n" +
+			"    soMeta = true\n" +
+			"    assert soMeta"
+			stream = TokenStream(source, 'test.cobra')
+			testDef = TestDefinition.parse(stream)
+			assert testDef.identifier.name == "tests_can_be_parsed"
+			assert testDef.statements.count == 2
+		body
+			kw = stream.expect(TokenKind.TestKeyword)
+			if stream.token.kind <> TokenKind.EndOfLine
+				id = Identifier.parse(stream) to ?
+			stream.skipBlankLines
+			indent = stream.expect(TokenKind.Indent)
+			stmts = StatementList.parse(stream)
+			dedent = stream.expect(TokenKind.Dedent)
+			return TestDefinition(kw, id, indent, stmts, dedent)
+
+	cue init(
+		testKeyword as Cobra.Compiler.IToken,
+		id as Identifier?,
+		indent as Cobra.Compiler.IToken,
+		statements as IStatement*,
+		dedent as Cobra.Compiler.IToken
+	)
+		base.init(testKeyword, dedent, nil)
+		_testKeyword = testKeyword
+		if id <> nil
+			_identifier = id
+			_addChild(id)
+		_clause = StatementClause(indent, dedent, StatementList(statements))
+		_addChild(_clause)
+
+	def toCobraSource as String is override
+		return "TODO"

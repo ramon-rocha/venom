@@ -78,13 +78,29 @@ class MethodDeclaration inherits BaseMethodDeclaration
 		require
 			stream.token.kind == TokenKind.MethodKeyword
 		test
-			source = "def foo\n\tpass\n"
+			source =
+			"def foo\n" +
+			"    pass"
 			stream = TokenStream(source, "test.cobra")
 			m = MethodDeclaration.parse(stream)
 			assert m.name == "foo"
 			assert m.signature == nil
 			assert m.dedentToken.charNum > m.indentToken.charNum
 			assert m.body.bodyKeyword == nil
+			assert m.body.statements.count == 1
+			assert m.body.statements.first inherits PassStatement
+			assert m.docString == nil
+		test
+			source =
+			"def foo\n" +
+			"    body\n" +
+			"        pass"
+			stream = TokenStream(source, "test.cobra")
+			m = MethodDeclaration.parse(stream)
+			assert m.name == "foo"
+			assert m.signature == nil
+			assert m.dedentToken.charNum > m.indentToken.charNum
+			assert m.body.bodyKeyword <> nil
 			assert m.body.statements.count == 1
 			assert m.body.statements.first inherits PassStatement
 			assert m.docString == nil
@@ -114,20 +130,6 @@ class MethodBody
 
 	get bodyKeyword from var as Cobra.Compiler.IToken?
 
-	cue init(
-		bodyKeyword as Cobra.Compiler.IToken?,
-		statements as IStatement*
-	)
-		base.init
-		stmts = StatementList(statements)
-		if bodyKeyword <> nil
-			_firstToken = bodyKeyword
-		else
-			_firstToken = stmts.first.firstToken
-		_lastToken = stmts.last.lastToken
-		_clause = StatementClause(_firstToken, _lastToken, stmts)
-		_addChild(_clause)
-	
 	def parse(stream as ITokenStream) as MethodBody is new, shared
 		bodyKeyword = stream.grabOptional(TokenKind.BodyKeyword)
 		if bodyKeyword <> nil
@@ -140,6 +142,18 @@ class MethodBody
 			stream.skipBlankLines
 
 		return MethodBody(bodyKeyword, stmts)
+
+	cue init(bodyKeyword as Cobra.Compiler.IToken?, statements as IStatement*)
+		require bodyKeyword implies bodyKeyword.kind == TokenKind.BodyKeyword
+		base.init
+		stmts = StatementList(statements)
+		if bodyKeyword <> nil
+			_bodyKeyword = _firstToken = bodyKeyword
+		else
+			_firstToken = stmts.first.firstToken
+		_lastToken = stmts.last.lastToken
+		_clause = StatementClause(_firstToken, _lastToken, stmts)
+		_addChild(_clause)
 
 	def toCobraSource as String is override
 		return "TODO"

@@ -1,7 +1,7 @@
 ﻿
 namespace Venom.CobraSyntax
 
-class TestDefinition
+class TestDeclaration
 	inherits SyntaxNode
 	adds StatementContainerBehavior #, NamedBehavior
 
@@ -11,7 +11,7 @@ class TestDefinition
 	get testKeyword from var as Cobra.Compiler.IToken
 	get identifier from var as Identifier?
 
-	def parse(stream as ITokenStream) as TestDefinition is new, shared
+	def parse(stream as ITokenStream) as TestDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.TestKeyword
 		test
@@ -20,7 +20,7 @@ class TestDefinition
 			"    soMeta = true\n" +
 			"    assert soMeta"
 			stream = TokenStream(source, 'test.cobra')
-			testDef = TestDefinition.parse(stream)
+			testDef = TestDeclaration.parse(stream)
 			assert testDef.identifier == nil
 			assert testDef.statements.count == 2
 		test
@@ -29,7 +29,7 @@ class TestDefinition
 			"    soMeta = true\n" +
 			"    assert soMeta"
 			stream = TokenStream(source, 'test.cobra')
-			testDef = TestDefinition.parse(stream)
+			testDef = TestDeclaration.parse(stream)
 			assert testDef.identifier.name == "tests_can_be_parsed"
 			assert testDef.statements.count == 2
 		body
@@ -40,7 +40,7 @@ class TestDefinition
 			indent = stream.expect(TokenKind.Indent)
 			stmts = StatementList.parse(stream)
 			dedent = stream.expect(TokenKind.Dedent)
-			return TestDefinition(kw, id, indent, stmts, dedent)
+			return TestDeclaration(kw, id, indent, stmts, dedent)
 
 	cue init(
 		testKeyword as Cobra.Compiler.IToken,

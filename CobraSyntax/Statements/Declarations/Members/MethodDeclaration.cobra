@@ -15,6 +15,7 @@ class BaseMethodDeclaration
 
 	get signature from var as MethodSignature?
 	get specification from var as ISpecifications
+	get tests from var as IReadOnlyList<of TestDeclaration>
 	get body from var as MethodBody
 
 	var _typeMap as IReadOnlyDictionary<of String, Type> is shared, readonly = {
@@ -45,12 +46,19 @@ class BaseMethodDeclaration
 				docString = DocString.parse(stream)
 				stream.skipBlankLines
 			
+			# TODO: parse contracts (e.g. require and ensure)
+
+			tests = List<of TestDeclaration>()
+			while stream.token.kind == TokenKind.TestKeyword
+				tests.add(TestDeclaration.parse(stream))
+				stream.skipBlankLines
+
 			methodBody = MethodBody.parse(stream)
 	
 			stream.skipBlankLines
 			dedent = stream.expect(TokenKind.Dedent)
 			typ = _typeMap[expectedKind]
-			return typ(kwToken, id, signature, specs, indent, docString, dedent, methodBody, nil)
+			return typ(kwToken, id, signature, specs, indent, docString, dedent, tests, methodBody, nil)
 
 	cue init(
 		kwToken as Cobra.Compiler.IToken,
@@ -60,6 +68,7 @@ class BaseMethodDeclaration
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
+		tests as TestDeclaration*,
 		methodBody as MethodBody,
 		extraTokens as TokenList?
 	)
@@ -69,6 +78,8 @@ class BaseMethodDeclaration
 		if signature <> nil
 			_signature = signature
 			_addChild(signature)
+		_tests = List<of TestDeclaration>(tests)
+		for t in tests, _addChild(t)
 		_body = methodBody
 		_addChild(methodBody)
 
@@ -86,6 +97,7 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			assert m.name == "foo"
 			assert m.signature == nil
 			assert m.dedentToken.charNum > m.indentToken.charNum
+			assert m.tests.count == 0
 			assert m.body.bodyKeyword == nil
 			assert m.body.statements.count == 1
 			assert m.body.statements.first inherits PassStatement
@@ -121,6 +133,23 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification <> nil
 			assert m.signature.returnTypeSpecification.identifier.name == "int"
+		test tests
+			source =
+			'def binOp(x as int, y as int) as int is shared\n' +
+			'    """Does op on x and y"""\n' +
+			'    test\n' +
+			'        assert .op(1, 2) == 3\n' +
+			'    test\n' +
+			'        assert .op(4, 5) == 6\n' +
+			'    body\n' +
+			'        return .op(x, y)'
+			stream = TokenStream(source, "test.cobra")
+			m = MethodDeclaration.parse(stream)
+			assert m.lastToken == m.dedentToken
+			assert m.docString.content == "Does op on x and y"
+			assert m.tests.count == 2
+			assert m.body.bodyKeyword <> nil
+			assert m.body.statements.count == 1
 		body
 			return _parse(stream, TokenKind.MethodKeyword) to MethodDeclaration
 

@@ -89,15 +89,6 @@ interface ITokenStream
 		Otherwise, return a token representing the one that is missing.
 		"""
 
-	def expect(kinds as IReadOnlyList<of String>) as TokenList
-		"""
-		Iterates through the given list of expected kinds and grabs tokens from
-		the stream that match.  If the current token doesn't match an expected
-		kind, then a token representing the one that is missing is created.
-		All tokens either grabbed from the stream or created because they were missing
-		are returned in a list.
-		"""
-
 	def skipTo(kind as String) as TokenList
 		"""
 		Consumes and returns all tokens up to and including the given kind.
@@ -309,13 +300,6 @@ class TokenStream
 		)
 		return missingToken
 
-	def expect(kinds as IReadOnlyList<of String>) as TokenList
-		require kinds.count > 0
-		tokens = TokenList(kinds.count)
-		for kind in kinds
-			tokens.add(.expect(kind))
-		return tokens
-
 	def skipTo(kind as String) as TokenList
 		skippedTokens = TokenList()
 		while .token is not _emptyToken
@@ -442,13 +426,6 @@ class WhitespaceAgnosticTokenStreamWrapper
 			t.fileName, t.lineNum, t.colNum, t.charNum, kind, "", nil, true
 		)
 		return missingToken
-
-	def expect(kinds as IReadOnlyList<of String>) as TokenList
-		require kinds.count > 0
-		tokens = TokenList(kinds.count)
-		for kind in kinds
-			tokens.add(.expect(kind))
-		return tokens
 
 	def skipTo(kind as String) as TokenList
 		require kind not in _whitespaceKinds

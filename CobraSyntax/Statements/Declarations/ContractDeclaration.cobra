@@ -1,1 +1,124 @@
 ﻿
+namespace Venom.CobraSyntax
+
+interface IContractDeclaration
+	inherits ISyntaxNode
+
+	get keyword as Cobra.Compiler.IToken
+	get indent as Cobra.Compiler.IToken?
+	get expressions as IReadOnlyList<of IExpression>
+	get dedent as Cobra.Compiler.IToken?
+
+class BaseContractDeclaration
+	inherits SyntaxNode
+	implements IContractDeclaration
+	is abstract
+	"""
+	The base class for "require", "ensure" and "invariant" contracts
+	"""
+
+	var _validKinds as IReadOnlyDictionary<of String, Type> is readonly, shared = {
+		TokenKind.InvariantKeyord: InvariantDeclaration,
+		TokenKind.RequireKeyword: RequireDeclaration,
+		TokenKind.EnsureKeyword: EnsureDeclaration
+	}
+
+	get keyword from var as Cobra.Compiler.IToken
+	get indent from var as Cobra.Compiler.IToken?
+	get expressions from var as IReadOnlyList<of IExpression>
+	get dedent from var as Cobra.Compiler.IToken?
+
+	def parse(stream as ITokenStream) as IContractDeclaration is new, shared
+		require
+			stream.token.kind in TokenKind.contractKeywords
+		test
+			source = "require 1 + 1 == 2"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract inherits RequireDeclaration
+			assert contract.indent == contract.dedent == nil
+			assert contract.expressions.count == 1
+			assert contract.expressions[0] inherits EqualityComparisonExpression
+		test
+			source =
+			"require\n" +
+			"    1 + 1 == 2\n" +
+			"    true or false"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract.indent <> nil
+			assert contract.dedent <> nil
+			assert contract.expressions.count == 2
+		test
+			source = "ensure true <> false"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract inherits EnsureDeclaration
+		test
+			source = "invariant true"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract inherits InvariantDeclaration
+		body
+			keyword = stream.grabOneOf(TokenKind.contractKeywords)
+			stream.skipBlankLines
+
+			indent = stream.grabOptional(TokenKind.Indent)
+			exprs = ExpressionList()
+			if indent
+				while not stream.token.endsBlock
+					exprs.add(Expression.parse(stream))
+					stream.skipBlankLines
+				dedent = stream.expect(TokenKind.Dedent) to ?
+			else
+				exprs.add(Expression.parse(stream))
+
+			typ = _validKinds[keyword.kind]
+			return typ(keyword, indent, exprs, dedent)
+
+	cue init(
+		keyword as Cobra.Compiler.IToken,
+		indent as Cobra.Compiler.IToken?,
+		expressions as IExpression*,
+		dedent as Cobra.Compiler.IToken?
+	)
+		require
+			keyword.kind in TokenKind.contractKeywords
+			dedent <> nil implies indent <> nil
+			indent <> nil implies dedent <> nil
+		ensure
+			.dedent == nil implies .indent == nil
+		body
+			base.init(keyword, nil)
+			_keyword = keyword
+			if dedent <> nil
+				_dedent = _lastToken = dedent
+				_indent = indent
+			_expressions = ExpressionList(expressions)
+			for e in _expressions, _addChild(e)
+
+	def toCobraSource as String is override
+		if _indent == nil
+			e = _expressions[0]
+			return "[_keyword.text] [e.toCobraSource]"
+
+		sb = StringBuilder(_keyword.text)
+		# TODO: indent
+		for e in _expressions, sb.appendLine(e.toCobraSource)
+		return sb.toString
+
+class InvariantDeclaration
+	inherits BaseContractDeclaration
+	invariant # much meta
+		.keyword.kind == TokenKind.InvariantKeyord
+
+class RequireDeclaration
+	inherits BaseContractDeclaration
+	invariant
+		.keyword.kind == TokenKind.RequireKeyword
+
+
+class EnsureDeclaration
+	inherits BaseContractDeclaration
+	invariant
+		.keyword.kind == TokenKind.EnsureKeyword

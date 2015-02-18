@@ -427,3 +427,12 @@ class TokenKind
 			They are sometimes called "is names" since they ususally follow the "is" keyword.
 			However, they can also be used sometimes to start an indented block.
 			"""
+
+		var contractKeywords as IReadOnlyList<of String> = [
+			.InvariantKeyord,
+			.RequireKeyword,
+			.EnsureKeyword
+		]
+			"""
+			These are the keywords used to start a contract declaration.
+			"""

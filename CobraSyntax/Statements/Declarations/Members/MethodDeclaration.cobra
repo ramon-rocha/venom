@@ -15,6 +15,8 @@ class BaseMethodDeclaration
 
 	get signature from var as MethodSignature?
 	get specification from var as ISpecifications
+	get requireContract from var as RequireDeclaration?
+	get ensureContract from var as EnsureDeclaration?
 	get tests from var as IReadOnlyList<of TestDeclaration>
 	get body from var as MethodBody
 
@@ -46,7 +48,13 @@ class BaseMethodDeclaration
 				docString = DocString.parse(stream)
 				stream.skipBlankLines
 			
-			# TODO: parse contracts (e.g. require and ensure)
+			if stream.token.kind == TokenKind.RequireKeyword
+				req = RequireDeclaration.parse(stream) to ?
+				stream.skipBlankLines
+
+			if stream.token.kind == TokenKind.EnsureKeyword
+				ens = EnsureDeclaration.parse(stream) to ?
+				stream.skipBlankLines
 
 			tests = List<of TestDeclaration>()
 			while stream.token.kind == TokenKind.TestKeyword
@@ -58,7 +66,7 @@ class BaseMethodDeclaration
 			stream.skipBlankLines
 			dedent = stream.expect(TokenKind.Dedent)
 			typ = _typeMap[expectedKind]
-			return typ(kwToken, id, signature, specs, indent, docString, dedent, tests, methodBody, nil)
+			return typ(kwToken, id, signature, specs, indent, docString, req, ens, tests, methodBody, dedent, nil)
 
 	cue init(
 		kwToken as Cobra.Compiler.IToken,
@@ -67,14 +75,22 @@ class BaseMethodDeclaration
 		specs as ISpecifications,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
-		dedent as Cobra.Compiler.IToken?,
+		reqContract as RequireDeclaration?,
+		ensContract as EnsureDeclaration?,
 		tests as TestDeclaration*,
 		methodBody as MethodBody,
+		dedent as Cobra.Compiler.IToken?,
 		extraTokens as TokenList?
 	)
 		require kwToken.which in _typeMap.keys
 		base.init(kwToken, identifier, indent, docString, dedent, nil, extraTokens)
 		_specification = specs
+		if reqContract <> nil
+			_requireContract = reqContract
+			_addChild(reqContract)
+		if ensContract <> nil
+			_ensureContract = ensContract
+			_addChild(ensContract)
 		if signature <> nil
 			_signature = signature
 			_addChild(signature)
@@ -137,6 +153,10 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			source =
 			'def binOp(x as int, y as int) as int is shared\n' +
 			'    """Does op on x and y"""\n' +
+			'    require x > 0\n' +
+			'    ensure\n' +
+			'        y < 0 implies result > 0\n' +
+			'        y == 0 implies result == 0\n' +
 			'    test\n' +
 			'        assert .op(1, 2) == 3\n' +
 			'    test\n' +
@@ -147,6 +167,8 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			m = MethodDeclaration.parse(stream)
 			assert m.lastToken == m.dedentToken
 			assert m.docString.content == "Does op on x and y"
+			assert m.requireContract <> nil and m.requireContract.indent == nil
+			assert m.ensureContract <> nil and m.ensureContract.expressions.count == 2
 			assert m.tests.count == 2
 			assert m.body.bodyKeyword <> nil
 			assert m.body.statements.count == 1

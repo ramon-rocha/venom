@@ -180,6 +180,14 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 			if _defaultValue, sb.append(" = [_defaultValue.toCobraSource]")
 			return sb.toString
 
+extend Cobra.Compiler.IToken
+
+	def endsMethodSignature as bool
+		return .kind == TokenKind.CloseParenthesis or
+		.kind == TokenKind.EndOfLine or
+		.kind == TokenKind.EndOfFile or
+		this is Cobra.Compiler.Token.empty
+
 class MethodSignature inherits SyntaxNode
 	"""
 	A method signature defines the parameters and return type for a method.
@@ -202,16 +210,16 @@ class MethodSignature inherits SyntaxNode
 			assert msig.returnTypeSpecification.identifier.name == "List<of String>"
 		body
 			params = List<of ParameterDeclaration>()
-			while stream.token.kind <> TokenKind.CloseParenthesis
+			while not stream.token.endsMethodSignature
 				if params.count <> 0, stream.expect(TokenKind.Comma)
 				params.add(ParameterDeclaration.parse(stream))
 			closeParens = stream.expect(TokenKind.CloseParenthesis)
 			if stream.token.kind == TokenKind.AsKeyword
-				returnTypeSpec = ExplicitTypeSpecification.parse(stream)
+				returnTypeSpec = ExplicitTypeSpecification.parse(stream) to ?
 			return MethodSignature(params, closeParens, returnTypeSpec)
 	
 	cue init(
-		params as IReadOnlyList<of ParameterDeclaration>,
+		params as ParameterDeclaration*,
 		closeParens as Cobra.Compiler.IToken,
 		returnTypeSpec as ExplicitTypeSpecification?
 	)

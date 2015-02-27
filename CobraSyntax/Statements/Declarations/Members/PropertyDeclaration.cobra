@@ -1,0 +1,473 @@
+﻿
+namespace Venom.CobraSyntax
+
+extend Cobra.Compiler.IToken
+
+	def endsPropertySignature as bool
+		return .kind == TokenKind.CloseBracket or
+		.kind == TokenKind.EndOfLine or
+		.kind == TokenKind.EndOfFile or
+		this is Cobra.Compiler.Token.empty
+
+
+class PropertySignature
+	inherits MethodSignature
+
+	get openBracket from var as Cobra.Compiler.IToken?
+	get closeBracket from var as Cobra.Compiler.IToken?
+
+	get fromKeyword from var as Cobra.Compiler.IToken?
+	get backingField from var as Cobra.Compiler.IToken?
+		"""
+		The identifier for the backing field for this property or the 'var' keyword
+		"""
+
+	invariant
+		.openBracket <> nil implies _
+			.openBracket.kind == TokenKind.OpenBracket
+		
+		.closeBracket <> nil implies _
+			.closeBracket.kind == TokenKind.CloseBracket
+
+		.backingField <> nil implies _
+			(.backingField.kind == TokenKind.Identifier or .backingField.kind == TokenKind.FieldKeyword) _
+			and .fromKeyword <> nil
+
+	def parse(stream as ITokenStream) as PropertySignature is new, shared
+		test
+			source = ""
+			stream = TokenStream(source, 'test.cobra')
+			psig = PropertySignature.parse(stream)
+			assert psig.openBracket == psig.closeBracket == nil
+			assert psig.parameterDeclarations.count == 0
+			assert psig.fromKeyword == psig.backingField == nil
+			assert psig.returnTypeSpecification == nil
+		test
+			source = ns"[i as int] as int"
+			stream = TokenStream(source, 'test.cobra')
+			psig = PropertySignature.parse(stream)
+			assert psig.openBracket <> nil
+			assert psig.closeBracket <> nil
+			assert psig.parameterDeclarations.count == 1
+			param = psig.parameterDeclarations[0]
+			assert param.name == "i"
+			assert param.typeIdentifier.name == "int"
+			assert psig.fromKeyword == psig.backingField == nil
+			assert psig.returnTypeSpecification.identifier.name == "int"
+		test
+			source = "from var as String"
+			stream = TokenStream(source, 'test.cobra')
+			psig = PropertySignature.parse(stream)
+			assert psig.openBracket == psig.closeBracket == nil
+			assert psig.parameterDeclarations.count == 0
+			assert psig.fromKeyword <> nil
+			assert psig.backingField.kind == TokenKind.FieldKeyword
+			assert psig.backingField.text == "var"
+			assert psig.returnTypeSpecification.identifier.name == "String"
+		test
+			source = "from _name as String"
+			stream = TokenStream(source, 'test.cobra')
+			psig = PropertySignature.parse(stream)
+			assert psig.openBracket == psig.closeBracket == nil
+			assert psig.parameterDeclarations.count == 0
+			assert psig.fromKeyword <> nil
+			assert psig.backingField.kind == TokenKind.Identifier
+			assert psig.backingField.text == "_name"
+			assert psig.returnTypeSpecification.identifier.name == "String"
+		body
+			openBracket = stream.grabOptional(TokenKind.OpenBracket)
+			params = List<of ParameterDeclaration>()
+			if openBracket <> nil
+				while not stream.token.endsPropertySignature
+					if params.count <> 0, stream.expect(TokenKind.Comma)
+					params.add(ParameterDeclaration.parse(stream))
+				closeBracket = stream.expect(TokenKind.CloseBracket)
+			
+			fromKeyword = stream.grabOptional(TokenKind.FromKeyword)
+			if fromKeyword <> nil
+				backingField = stream.grabOneOf([TokenKind.Identifier, TokenKind.FieldKeyword]) to ?
+
+			if stream.token.kind == TokenKind.AsKeyword
+				returnTypeSpec = ExplicitTypeSpecification.parse(stream) to ?
+			
+			return PropertySignature(openBracket, params, closeBracket, fromKeyword, backingField, returnTypeSpec)
+
+	cue init(
+		openBracket as Cobra.Compiler.IToken?,
+		params as ParameterDeclaration*,
+		closeBracket as Cobra.Compiler.IToken?,
+		fromKeyword as Cobra.Compiler.IToken?,
+		backingField as Cobra.Compiler.IToken?,
+		returnTypeSpec as ExplicitTypeSpecification?
+	)
+		base.init(params, Cobra.Compiler.Token.empty, returnTypeSpec)
+		if openBracket <> nil
+			_openBracket = _firstToken = openBracket
+		if closeBracket <> nil, _closeBracket = closeBracket
+		if fromKeyword <> nil, _fromKeyword = fromKeyword
+		if backingField <> nil, _backingField = backingField
+		if returnTypeSpec == nil or _lastToken == Cobra.Compiler.Token.empty
+			lastToken = backingField ? fromKeyword ? closeBracket ? openBracket
+			if lastToken <> nil
+				_lastToken = lastToken
+			else if _parameterDeclarations.count <> 0
+				_lastToken = _parameterDeclarations.last.lastToken
+
+	def toCobraSource as String is override
+		return "TODO"
+
+class PropertyBody
+	inherits SyntaxNode
+
+	get getter from var as GetAccessor?
+	get setter from var as SetAccessor?
+
+	def toCobraSource as String is override
+		return "TODO"
+
+class PropertyDeclaration
+	inherits TypeMemberDeclaration
+
+	# http://cobra-language.com/trac/cobra/wiki/Property
+	# http://cobra-language.com/trac/cobra/wiki/Properties
+
+	get keyword from var as Cobra.Compiler.IToken
+
+	get fromKeyword from var as Cobra.Compiler.IToken?
+	get fromIdExpr from var as IdentifierExpression? # meta
+
+	get signature from var as PropertySignature?
+	get specification from var as ISpecifications
+
+	get assignToken from var as Cobra.Compiler.IToken?
+	get initExpr from var as IExpression?
+
+	get requireContract from var as RequireDeclaration?
+	get ensureContract from var as EnsureDeclaration?
+	get tests from var as IReadOnlyList<of TestDeclaration>
+	get body from var as PropertyBody?
+
+	def parse(stream as ITokenStream) as ISyntaxNode? is new, shared
+		require
+			stream.token.kind in TokenKind.propertyKeywords
+		test
+			source =
+			'pro name as String\n' +
+			'    """\n' +
+			'    The name of the person. Setting the name trims preceding and\n' +
+			'    trailing whitespace from the value.\n' +
+			'    """\n' +
+			'    get\n' +
+			'        return _name\n' +
+			'    set\n' +
+			'        # `value` is an implicit argument in all property setters:\n' +
+			'        _name = value.trim'
+			stream = TokenStream(source, 'test.cobra')
+			/#prop = PropertyDeclaration.parse(stream)
+			assert prop.name == "name"
+			assert prop.hasDocString
+			assert prop.docString.content.startsWith("The name of the person.")#/
+			/#assert prop.body.getter.bodyKeyword == nil
+			assert prop.body.getter.statements.count == 1
+			assert prop.body.getter.statements[0] inherits ReturnStatement
+			assert prop.body.setter.statements.count == 1
+			assert prop.body.setter.statements[0] inherits ExpressionStatement#/
+		test
+			source =
+			'pro name as String\n' +
+			'    """\n' +
+			'    The name of the person. Setting the name trims preceding and\n' +
+			'    trailing whitespace from the value.\n' +
+			'    """\n' +
+			'    get\n' +
+			'        body\n' +
+			'            return _name\n' +
+			'    set\n' +
+			'        body\n' +
+			'            # `value` is an implicit argument in all property setters:\n' +
+			'            _name = value.trim'
+			stream = TokenStream(source, 'test.cobra')
+			/#prop = PropertyDeclaration.parse(stream)
+			assert prop.name == "name"
+			assert prop.hasDocString
+			assert prop.docString.content.startsWith("The name of the person.")#/
+			# TODO use prop.getAccessor.body.bodyKeyword <> nil
+			/#assert prop.body.getter.statements.count == 1
+			assert prop.body.getter.statements[0] inherits ReturnStatement
+			assert prop.body.setter.statements.count == 1
+			assert prop.body.setter.statements[0] inherits ExpressionStatement#/
+		test
+			source = "pro name from var as String"
+			stream = TokenStream(source, 'test.cobra')
+		test
+			source = "pro name from var = ''"
+			stream = TokenStream(source, 'test.cobra')
+		test
+			source = "pro name from var"
+			stream = TokenStream(source, 'test.cobra')
+		test
+			source = "pro nombre from _name"
+			stream = TokenStream(source, 'test.cobra')
+		test
+			# https://msdn.microsoft.com/en-us/library/4bsztef7.aspx
+			source =
+			ns'pro [i as int] as T\n' +
+			ns'    get\n' +
+			ns'        return _foo[i]\n' +
+			ns'    set\n' +
+			ns'        _foo[i] = value'
+			stream = TokenStream(source, 'test.cobra')
+		body
+			return nil
+
+
+class Accessor
+	inherits TypeMemberDeclaration
+	implements IMethodDeclaration
+	is abstract
+	"""
+	The base class for GetAccessor and SetAccessor
+	"""
+
+	# Can we/should we combine this with BaseMethodDeclaration?
+
+	var _signature as PropertySignature
+	get signature as MethodSignature
+		return _signature
+
+	get fromKeyword as Cobra.Compiler.IToken?
+		return _signature.fromKeyword
+
+	get backingField as Cobra.Compiler.IToken?
+		return _signature.backingField
+
+	get specification from var as ISpecifications
+	get requireContract from var as RequireDeclaration?
+	get ensureContract from var as EnsureDeclaration?
+	get tests from var as IReadOnlyList<of TestDeclaration>
+	get body from var as MethodBody
+
+	cue init(
+		kwToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		signature as PropertySignature,
+		specs as ISpecifications,
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		reqContract as RequireDeclaration?,
+		ensContract as EnsureDeclaration?,
+		tests as TestDeclaration*,
+		methodBody as MethodBody,
+		dedent as Cobra.Compiler.IToken?,
+		extraTokens as TokenList?
+	)
+		require kwToken.kind in [TokenKind.GetterKeyword, TokenKind.SetterKeyword]
+		base.init(kwToken, identifier, indent, docString, dedent, nil, extraTokens)
+		if _identifier.name == "" and signature.openBracket <> nil
+			# indexers are implicitly named "item"
+			# https://msdn.microsoft.com/en-us/library/2549tw02.aspx
+			# but does this belong here?
+			_name = "item"
+			
+		_signature = signature
+		_addChild(signature)
+		_specification = specs
+		_addChild(specs)
+		if reqContract <> nil
+			_requireContract = reqContract
+			_addChild(reqContract)
+		if ensContract <> nil
+			_ensureContract = ensContract
+			_addChild(ensContract)
+		_tests = List<of TestDeclaration>(tests)
+		for t in tests, _addChild(t)
+		_body = methodBody
+		_addChild(methodBody)
+
+
+class GetAccessor
+	inherits Accessor
+
+	def parse(stream as ITokenStream) as GetAccessor is new, shared
+		require
+			stream.token.kind == TokenKind.GetterKeyword
+		test
+			source =
+			"get\n" +
+			"    return _name"
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.name == getter.identifier.name == ""
+			assert getter.fromKeyword == getter.backingField == nil
+			assert getter.indentToken <> nil
+			assert getter.dedentToken <> nil
+			assert getter.requireContract == nil
+			assert getter.ensureContract == nil
+			assert getter.tests.count == 0
+			assert getter.body.bodyKeyword == nil
+			assert getter.body.statements.count == 1
+			assert getter.body.statements[0] inherits ReturnStatement
+		test
+			source =
+			"get\n" +
+			"    require\n" +
+			"        _name.length <> 0\n" +
+			"    ensure\n" +
+			"        ' ' not in _name\n" +
+			"    test\n" +
+			"        assert foo.name == 'something'\n" +
+			"    body\n" +
+			"        return _name"
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.name == getter.identifier.name == ""
+			assert getter.fromKeyword == getter.backingField == nil
+			assert getter.indentToken <> nil
+			assert getter.dedentToken <> nil
+			assert getter.requireContract <> nil
+			assert getter.ensureContract <> nil
+			assert getter.tests.count == 1
+			assert getter.body.bodyKeyword <> nil
+			assert getter.body.statements.count == 1
+			assert getter.body.statements[0] inherits ReturnStatement
+		test
+			source = "get name from var as String"
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.name == getter.identifier.name == "name"
+			assert getter.fromKeyword <> nil
+			assert getter.backingField.kind == TokenKind.FieldKeyword
+			assert getter.signature.parameterDeclarations.count == 0
+			assert getter.signature.returnTypeSpecification.identifier.name == "String"
+			assert getter.indentToken == nil
+			assert getter.dedentToken == nil
+		test
+			source =
+			'get goldenRatio as number is protected\n' +
+			'    return 1.618033989'
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.name == getter.identifier.name == "goldenRatio"
+			assert getter.fromKeyword ==  getter.backingField == nil
+			assert getter.signature.parameterDeclarations.count == 0
+			assert getter.signature.returnTypeSpecification.identifier.name == "number"
+			assert getter.specification.modifiers.count == 1
+			assert getter.indentToken <> nil
+			assert getter.dedentToken <> nil
+			assert getter.body.bodyKeyword == nil
+			assert getter.body.statements.count == 1
+		test
+			# https://msdn.microsoft.com/en-us/library/4bsztef7.aspx
+			source =
+			ns"get [i as int] as int\n" +
+			"    return i * 2"
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.name == "item" # https://msdn.microsoft.com/en-us/library/2549tw02.aspx
+			assert getter.fromKeyword ==  getter.backingField == nil
+			assert getter.signature.parameterDeclarations.count == 1
+			param = getter.signature.parameterDeclarations[0]
+			assert param.name == "i"
+			assert param.typeIdentifier.name == "int"
+			assert getter.signature.returnTypeSpecification.identifier.name == "int"
+			assert getter.specification.modifiers.count == 0
+			assert getter.indentToken <> nil
+			assert getter.dedentToken <> nil
+			assert getter.body.bodyKeyword == nil
+			assert getter.body.statements.count == 1
+		body
+			getKeyword = stream.expect(TokenKind.GetterKeyword)
+
+			if stream.token.kind in Identifier.validKinds
+				id = Identifier.parse(stream)
+			else
+				id = Identifier(stream.token.copy(TokenKind.Identifier, ""))
+
+			signature = PropertySignature.parse(stream)
+			stream.skipBlankLines
+
+			specs = Specifications.parse(stream)
+			stream.skipBlankLines
+			if specs.isIndented
+				indent = specs.indentToken
+			else
+				indent = stream.grabOptional(TokenKind.Indent)
+				stream.skipBlankLines
+			
+			if stream.token.startsDocString
+				docString = DocString.parse(stream)
+				stream.skipBlankLines
+			
+			if stream.token.kind == TokenKind.RequireKeyword
+				req = RequireDeclaration.parse(stream) to ?
+				stream.skipBlankLines
+
+			if stream.token.kind == TokenKind.EnsureKeyword
+				ens = EnsureDeclaration.parse(stream) to ?
+				stream.skipBlankLines
+
+			tests = List<of TestDeclaration>()
+			while stream.token.kind == TokenKind.TestKeyword
+				tests.add(TestDeclaration.parse(stream))
+				stream.skipBlankLines
+
+			methodBody = MethodBody.parse(stream)
+	
+			stream.skipBlankLines
+			if indent <> nil
+				dedent = stream.expect(TokenKind.Dedent) to ?
+			
+			return GetAccessor(
+				getKeyword, id, signature, specs,
+				indent,
+				docString,
+				req, ens, tests,
+				methodBody,
+				dedent, nil
+			)
+
+
+	cue init(
+		kwToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		signature as PropertySignature,
+		specs as ISpecifications,
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		reqContract as RequireDeclaration?,
+		ensContract as EnsureDeclaration?,
+		tests as TestDeclaration*,
+		methodBody as MethodBody,
+		dedent as Cobra.Compiler.IToken?,
+		extraTokens as TokenList?
+	)
+		base.init(
+			kwToken, identifier, signature, specs,
+			indent,
+			docString,
+			reqContract, ensContract, tests,
+			methodBody,
+			dedent, extraTokens)
+
+	def toCobraSource as String is override
+		return "TODO"
+
+
+class SetAccessor
+	inherits Accessor
+
+	def parse(stream as ITokenStream) as ISyntaxNode? is new, shared
+		require
+			stream.token.kind == TokenKind.SetterKeyword
+		test
+			source =
+			'set contents as List<of Object>\n' +
+			'    _stuff.clear\n' +
+			'    for item in value\n' +
+			'        _stuff.add(item)'
+			TokenStream(source, 'test.cobra')
+		body
+			return nil
+
+	def toCobraSource as String is override
+		return "TODO"

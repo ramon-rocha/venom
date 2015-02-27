@@ -6,12 +6,18 @@ interface IMethodDeclaration
 
 	get signature as MethodSignature?
 	get specification as ISpecifications
+	get requireContract as RequireDeclaration?
+	get ensureContract as EnsureDeclaration?
+	get tests as IReadOnlyList<of TestDeclaration>
 	get body as MethodBody
 
 class BaseMethodDeclaration
 	inherits TypeMemberDeclaration
 	implements IMethodDeclaration
 	is abstract
+	"""
+	The base class for method and cue declarations (but not get or set accessors)
+	"""
 
 	get signature from var as MethodSignature?
 	get specification from var as ISpecifications
@@ -85,6 +91,7 @@ class BaseMethodDeclaration
 		require kwToken.which in _typeMap.keys
 		base.init(kwToken, identifier, indent, docString, dedent, nil, extraTokens)
 		_specification = specs
+		_addChild(specs)
 		if reqContract <> nil
 			_requireContract = reqContract
 			_addChild(reqContract)
@@ -172,6 +179,7 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			assert m.tests.count == 2
 			assert m.body.bodyKeyword <> nil
 			assert m.body.statements.count == 1
+			assert stream.token.isEOF
 		body
 			return _parse(stream, TokenKind.MethodKeyword) to MethodDeclaration
 
@@ -185,8 +193,9 @@ class MethodBody
 		bodyKeyword = stream.grabOptional(TokenKind.BodyKeyword)
 		if bodyKeyword <> nil
 			stream.skipBlankLines
-			stream.expect(TokenKind.Indent)
+			indent = stream.expect(TokenKind.Indent) to ?
 		stmts = StatementList.parse(stream)
+		if indent <> nil, stream.expect(TokenKind.Dedent)
 		return MethodBody(bodyKeyword, stmts)
 
 	cue init(bodyKeyword as Cobra.Compiler.IToken?, statements as IStatement*)
@@ -195,9 +204,14 @@ class MethodBody
 		stmts = StatementList(statements)
 		if bodyKeyword <> nil
 			_bodyKeyword = _firstToken = bodyKeyword
-		else
+		else if stmts.count > 0
 			_firstToken = stmts.first.firstToken
-		_lastToken = stmts.last.lastToken
+		else
+			_firstToken = Cobra.Compiler.Token.empty
+		if stmts.count > 0
+			_lastToken = stmts.last.lastToken
+		else
+			_lastToken = _firstToken
 		_clause = StatementClause(_firstToken, _lastToken, stmts)
 		_addChild(_clause)
 

@@ -85,9 +85,12 @@ class TypeMemberDeclaration
 		branch kind
 			on TokenKind.CueKeyword, return CueDeclaration.parse(stream)
 			on TokenKind.MethodKeyword, return MethodDeclaration.parse(stream)
-			on TokenKind.GetterKeyword, return nil # TODO
-			on TokenKind.SetterKeyword, return nil # TODO
-			on TokenKind.PropertyKeyword, return nil # TODO
+
+			on TokenKind.GetterKeyword _
+			or TokenKind.SetterKeyword _
+			or TokenKind.PropertyKeyword
+				return PropertyDeclaration.parse(stream) to ITypeMemberDeclaration?
+
 			on TokenKind.FieldKeyword, return FieldDeclaration.parse(stream)
 			on TokenKind.ConstKeyword, return nil # TODO
 			on TokenKind.InvariantKeyord, return nil # TODO

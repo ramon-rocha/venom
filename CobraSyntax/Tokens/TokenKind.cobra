@@ -436,3 +436,12 @@ class TokenKind
 			"""
 			These are the keywords used to start a contract declaration.
 			"""
+
+		var propertyKeywords as IReadOnlyList<of String> = [
+			.PropertyKeyword,
+			.GetterKeyword,
+			.SetterKeyword
+		]
+			"""
+			These are the keywords used to start a property declaration
+			"""

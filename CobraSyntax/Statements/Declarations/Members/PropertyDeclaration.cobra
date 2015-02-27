@@ -116,14 +116,6 @@ class PropertySignature
 	def toCobraSource as String is override
 		return "TODO"
 
-class PropertyBody
-	inherits SyntaxNode
-
-	get getter from var as GetAccessor?
-	get setter from var as SetAccessor?
-
-	def toCobraSource as String is override
-		return "TODO"
 
 class PropertyDeclaration
 	inherits TypeMemberDeclaration
@@ -142,10 +134,11 @@ class PropertyDeclaration
 	get assignToken from var as Cobra.Compiler.IToken?
 	get initExpr from var as IExpression?
 
-	get requireContract from var as RequireDeclaration?
-	get ensureContract from var as EnsureDeclaration?
 	get tests from var as IReadOnlyList<of TestDeclaration>
-	get body from var as PropertyBody?
+
+	get getter from var as GetAccessor?
+	get setter from var as SetAccessor?
+
 
 	def parse(stream as ITokenStream) as ISyntaxNode? is new, shared
 		require
@@ -247,10 +240,18 @@ class Accessor
 	get tests from var as IReadOnlyList<of TestDeclaration>
 	get body from var as MethodBody
 
+	get assignToken from var as Cobra.Compiler.IToken?
+	get initExpr from var as IExpression?
+
+	invariant
+		.initExpr <> nil implies .assignToken <> nil
+
 	cue init(
 		kwToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		signature as PropertySignature,
+		assignToken as Cobra.Compiler.IToken?,
+		initExpr as IExpression?,
 		specs as ISpecifications,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
@@ -268,7 +269,9 @@ class Accessor
 			# https://msdn.microsoft.com/en-us/library/2549tw02.aspx
 			# but does this belong here?
 			_name = "item"
-			
+		if initExpr <> nil
+			_assignToken, _initExpr = assignToken, initExpr
+			_addChild(initExpr)
 		_signature = signature
 		_addChild(signature)
 		_specification = specs
@@ -343,6 +346,22 @@ class GetAccessor
 			assert getter.dedentToken == nil
 		test
 			source =
+			"get name from var = 'Ramon'\n" +
+			"    is new, protected\n" +
+			"    has SomeAttribute(withFoo, andBar)\n" +
+			'    """Has doc string"""\n'
+			stream = TokenStream(source, 'test.cobra')
+			getter = GetAccessor.parse(stream)
+			assert getter.assignToken <> nil
+			assert getter.initExpr inherits StringLiteral
+			assert getter.indentToken <> nil
+			assert getter.specification.modifiers.count <> 0
+			assert getter.specification.attributes.count <> 0
+			assert getter.specification.baseTypes.count == 0
+			assert getter.docString.content == "Has doc string"
+			assert getter.dedentToken <> nil
+		test
+			source =
 			'get goldenRatio as number is protected\n' +
 			'    return 1.618033989'
 			stream = TokenStream(source, 'test.cobra')
@@ -386,6 +405,11 @@ class GetAccessor
 			signature = PropertySignature.parse(stream)
 			stream.skipBlankLines
 
+			assignToken = stream.grabOptional(TokenKind.AssignmentOperator)
+			if assignToken <> nil
+				initExpr = Expression.parse(stream) to ?
+			stream.skipBlankLines
+
 			specs = Specifications.parse(stream)
 			stream.skipBlankLines
 			if specs.isIndented
@@ -418,7 +442,8 @@ class GetAccessor
 				dedent = stream.expect(TokenKind.Dedent) to ?
 			
 			return GetAccessor(
-				getKeyword, id, signature, specs,
+				getKeyword, id, signature, assignToken, initExpr,
+				specs,
 				indent,
 				docString,
 				req, ens, tests,
@@ -431,6 +456,8 @@ class GetAccessor
 		kwToken as Cobra.Compiler.IToken,
 		identifier as Identifier,
 		signature as PropertySignature,
+		assignToken as Cobra.Compiler.IToken?,
+		initExpr as IExpression?,
 		specs as ISpecifications,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
@@ -442,7 +469,8 @@ class GetAccessor
 		extraTokens as TokenList?
 	)
 		base.init(
-			kwToken, identifier, signature, specs,
+			kwToken, identifier, signature, assignToken, initExpr,
+			specs,
 			indent,
 			docString,
 			reqContract, ensContract, tests,

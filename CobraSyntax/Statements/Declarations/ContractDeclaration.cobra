@@ -32,29 +32,6 @@ class BaseContractDeclaration
 		require
 			stream.token.kind in TokenKind.contractKeywords
 		test
-			source = "require 1 + 1 == 2"
-			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
-			assert contract inherits RequireDeclaration
-			assert contract.indent == contract.dedent == nil
-			assert contract.expressions.count == 1
-			assert contract.expressions[0] inherits EqualityComparisonExpression
-		test
-			source =
-			"require\n" +
-			"    1 + 1 == 2\n" +
-			"    true or false"
-			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
-			assert contract.indent <> nil
-			assert contract.dedent <> nil
-			assert contract.expressions.count == 2
-		test
-			source = "ensure true <> false"
-			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
-			assert contract inherits EnsureDeclaration
-		test
 			source = "invariant true"
 			stream = TokenStream(source, 'test.cobra')
 			contract = BaseContractDeclaration.parse(stream)
@@ -117,8 +94,43 @@ class RequireDeclaration
 	invariant
 		.keyword.kind == TokenKind.RequireKeyword
 
+	def parse(stream as ITokenStream) as RequireDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.RequireKeyword
+		test
+			source = "require 1 + 1 == 2"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract inherits RequireDeclaration
+			assert contract.indent == contract.dedent == nil
+			assert contract.expressions.count == 1
+			assert contract.expressions[0] inherits EqualityComparisonExpression
+		test
+			source =
+			"require\n" +
+			"    1 + 1 == 2\n" +
+			"    true or false"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract.indent <> nil
+			assert contract.dedent <> nil
+			assert contract.expressions.count == 2
+		body
+			return BaseContractDeclaration.parse(stream) to RequireDeclaration
+
 
 class EnsureDeclaration
 	inherits BaseContractDeclaration
 	invariant
 		.keyword.kind == TokenKind.EnsureKeyword
+	
+	def parse(stream as ITokenStream) as EnsureDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.EnsureKeyword
+		test
+			source = "ensure true <> false"
+			stream = TokenStream(source, 'test.cobra')
+			contract = BaseContractDeclaration.parse(stream)
+			assert contract inherits EnsureDeclaration
+		body
+			return BaseContractDeclaration.parse(stream) to EnsureDeclaration

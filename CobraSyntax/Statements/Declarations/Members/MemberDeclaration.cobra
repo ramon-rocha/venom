@@ -43,6 +43,7 @@ class MemberDeclaration
 			not (this inherits NamespaceDeclaration) implies _
 				(docString implies (indentToken and dedentToken))
 		ensure
+			_firstToken is keywordToken
 			dedentToken implies _lastToken == dedentToken
 		body
 			base.init(keywordToken, identifier.firstToken, extraTokens)

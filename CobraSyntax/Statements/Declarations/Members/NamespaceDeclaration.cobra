@@ -7,18 +7,117 @@ interface INamespaceMemberDeclaration inherits IMemberDeclaration
 	"""
 	pass
 
+interface INamespaceDeclaration inherits IMemberDeclaration
+	"""
+	A statement that declares a namespace
+	"""
+	get namespaceKeyword as Cobra.Compiler.IToken
+
+	get declarations as IReadOnlyList<of INamespaceMemberDeclaration>
+
+extend Cobra.Compiler.IToken
+
+	def endsNamespaceDeclaration(isIndented as bool) as bool
+		branch .kind
+			on TokenKind.EndOfFile, return true
+			on TokenKind.NamespaceKeyword
+				return not isIndented
+			on TokenKind.Dedent, return true
+		return false
+
 class NamespaceDeclaration
 	inherits MemberDeclaration
-	implements INamespaceMemberDeclaration
+	implements INamespaceDeclaration, INamespaceMemberDeclaration
 	"""
 	This node repesents a namespace declaration
 	"""
-	
+
+	get namespaceKeyword as Cobra.Compiler.IToken
+		return _firstToken
+
+	get declarations from var as IReadOnlyList<of INamespaceMemberDeclaration>
+
+	def parse(stream as ITokenStream) as INamespaceDeclaration is new, shared
+		require
+			stream.token.kind == TokenKind.NamespaceKeyword
+		test
+			source = "namespace Foo"
+			stream = TokenStream(source, 'test.cobra')
+			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
+			assert ns.identifier.name == "Foo"
+			assert ns.indentToken == ns.dedentToken == nil
+			assert not ns.hasDocString
+			assert ns.declarations.count == 0
+		test
+			source =
+			"namespace Foo.Bar\n" +
+			'    """This is a docstring"""\n' +
+			"    class Person\n" +
+			"        pass"
+			stream = TokenStream(source, 'test.cobra')
+			print stream.toTechString
+			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
+			assert ns.identifier.name == "Bar"
+			assert ns.indentToken <> nil
+			assert ns.dedentToken <> nil
+			assert ns.hasDocString
+			assert ns.declarations.count == 1
+			assert ns.declarations[0] inherits ClassDeclaration
+		test
+			source =
+			"namespace Foo\n" +
+			"    namespace Bar\n" +
+			'        """This is a doc string"""\n' +
+			"        class Person\n" +
+			"            pass"
+			stream = TokenStream(source, 'test.cobra')
+			print stream.toTechString
+			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
+			assert ns.identifier.name == "Foo"
+			assert ns.indentToken <> nil
+			assert ns.dedentToken <> nil
+			assert not ns.hasDocString
+			assert ns.declarations.count == 1
+			assert ns.declarations[0] inherits NamespaceDeclaration
+		body
+			keyword = stream.expect(TokenKind.NamespaceKeyword)
+			id = QualifiedIdentifier.parse(stream)
+			skipped = stream.skipToNextLine
+
+			stream.skipBlankLines
+			indent = stream.grabOptional(TokenKind.Indent)
+			stream.skipBlankLines
+
+			if stream.token.startsDocString
+				docString = DocString.parse(stream) to ?
+				stream.skipBlankLines
+			
+			declarations = List<of INamespaceMemberDeclaration>()
+			isIndented = indent <> nil
+			while not stream.token.endsNamespaceDeclaration(isIndented)
+				if stream.token.kind == TokenKind.NamespaceKeyword
+					decl = NamespaceDeclaration.parse(stream) to INamespaceMemberDeclaration
+				else
+					decl = TypeDeclaration.parse(stream)
+				declarations.add(decl)
+				stream.skipBlankLines
+			
+			if isIndented, dedent = stream.expect(TokenKind.Dedent) to ?
+			return NamespaceDeclaration(keyword, id, indent, docString, dedent, declarations, skipped)
+
 	cue init(
-		nsToken as Cobra.Compiler.IToken,
+		keyword as Cobra.Compiler.IToken,
 		identifier as QualifiedIdentifier,
-		children as NodeList?,
-		extraTokens as TokenList? = nil
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
+		declarations as ISyntaxNode*?,
+		extraTokens as IReadOnlyTokenList?
 	)
-		require nsToken.which == TokenKind.NamespaceKeyword
-		base.init(nsToken, identifier, nil, nil, nil, children, extraTokens) # TODO
+		require
+			keyword.which == TokenKind.NamespaceKeyword
+			all for d in declarations get d implements INamespaceMemberDeclaration
+		body
+			base.init(keyword, identifier, indent, docString, dedent, declarations, extraTokens)
+			if declarations <> nil
+				_declarations = List<of INamespaceMemberDeclaration>(declarations to INamespaceMemberDeclaration*)

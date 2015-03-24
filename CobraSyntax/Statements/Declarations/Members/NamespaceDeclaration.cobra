@@ -55,7 +55,6 @@ class NamespaceDeclaration
 			"    class Person\n" +
 			"        pass"
 			stream = TokenStream(source, 'test.cobra')
-			print stream.toTechString
 			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
 			assert ns.identifier.name == "Bar"
 			assert ns.indentToken <> nil
@@ -71,7 +70,6 @@ class NamespaceDeclaration
 			"        class Person\n" +
 			"            pass"
 			stream = TokenStream(source, 'test.cobra')
-			print stream.toTechString
 			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
 			assert ns.identifier.name == "Foo"
 			assert ns.indentToken <> nil

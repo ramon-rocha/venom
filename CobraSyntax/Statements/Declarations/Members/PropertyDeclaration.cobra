@@ -234,16 +234,31 @@ class PropertyDeclaration
 			assert param.name == "i"
 			assert param.asKeyword <> nil
 			assert param.typeIdentifier.name == "int"
+		test
+			source =
+			"get name from var as String\n" +
+			"\n" +
+			"get lowerName as String\n" +
+			"    return _name.toLower"
+			stream = TokenStream(source, 'test.cobra')
+			prop1 = PropertyDeclaration.parse(stream)
+			assert prop1.name == "name"
+			assert prop1.fromKeyword <> nil
+			assert prop1.getter <> nil
+			assert prop1.getter.body.statements.count == 0
+			prop2 = PropertyDeclaration.parse(stream)
+			assert prop2.name == "lowerName"
+			assert prop2.fromKeyword == nil
+			assert prop2.getter <> nil
+			assert prop2.getter.body.statements.count == 1
 		body
 			kind = stream.token.kind
 			if kind == TokenKind.GetterKeyword
 				getter = GetAccessor.parse(stream) to ?
-				keyword = getter.getKeyword
-				id = getter.identifier
+				return PropertyDeclaration(getter)
 			else if kind == TokenKind.SetterKeyword
 				setter = SetAccessor.parse(stream) to ?
-				keyword = setter.setKeyword
-				id = setter.identifier
+				return PropertyDeclaration(setter)
 			else
 				keyword = stream.expect(TokenKind.PropertyKeyword)
 				if stream.token.kind in Identifier.validKinds
@@ -337,6 +352,32 @@ class PropertyDeclaration
 			_setter = setter
 			_addChild(setter)
 
+	cue init(accessor as Accessor)
+		require
+			accessor inherits GetAccessor or accessor inherits SetAccessor
+		ensure
+			accessor inherits GetAccessor implies .setter == nil
+			accessor inherits SetAccessor implies .getter == nil
+		body
+			base.init(
+				accessor.firstToken,
+				Identifier(accessor.identifier.firstToken.copy(TokenKind.Identifier, "")),
+				accessor.indentToken, nil, accessor.dedentToken, nil, nil
+			)
+			# do not make these child nodes or they will have two parents
+			_name = accessor.name
+			_signature = accessor.signature to PropertySignature
+			_specification = accessor.specification
+			_docString = accessor.docString
+			_tests = List<of TestDeclaration>()
+			if accessor inherits GetAccessor
+				_getter = accessor
+			else
+				_setter = accessor to SetAccessor
+			_addChild(accessor)
+
+
+
 class Accessor
 	inherits TypeMemberDeclaration
 	implements IMethodDeclaration
@@ -409,12 +450,13 @@ class Accessor
 		while stream.token.kind == TokenKind.TestKeyword
 			tests.add(TestDeclaration.parse(stream))
 			stream.skipBlankLines
-
-		methodBody = MethodBody.parse(stream)
-
+		
 		stream.skipBlankLines
 		if indent <> nil
+			methodBody = MethodBody.parse(stream)
 			dedent = stream.expect(TokenKind.Dedent) to ?
+		else
+			methodBody = MethodBody(nil, StatementList())
 
 		typ = if(keywordKind == TokenKind.GetterKeyword, GetAccessor, SetAccessor)
 		return typ(

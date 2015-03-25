@@ -224,11 +224,118 @@ class EnumDeclaration inherits TypeDeclaration
 		.dedentToken <> nil
 		.dedentToken.charNum > .indentToken.charNum
 	
+	get ofKeyword from var as Cobra.Compiler.IToken?
+	get integralType from var as TypeIdentifier?
+
 	def parse(stream as ITokenStream) as EnumDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.EnumKeyword
+		test
+			source =
+			"enum Colors has Flags\n" +
+			'    """Some random paint colors"""\n' +
+			"    Red\n" +
+			"    Green\n" +
+			"    Blue\n" +
+			"    Yellow"
+			stream = TokenStream(source, 'test.cobra')
+			e = EnumDeclaration.parse(stream)
+			assert e.ofKeyword == nil
+			assert e.integralType == nil
+			a = e.specification.attributes[0].attributes[0] # TODO cleanup AttributeSpecification
+			assert a.identifier.name == "Flags"
+			assert e.docString <> nil
+			assert e.memberDeclarations.count == 4
+			assert e.memberDeclarations.first.name == "Red"
+			assert e.memberDeclarations.last.name == "Yellow"
+		test
+			source =
+			"enum Days\n" +
+			"    Mon, Tue, Wed, Thu, Fri\n" +
+			"    Sat, Sun"
+			stream = TokenStream(source, 'test.cobra')
+			e = EnumDeclaration.parse(stream)
+			assert e.docString == nil
+			assert e.memberDeclarations.count == 7
+			assert e.memberDeclarations.first.name == "Mon"
+			assert e.memberDeclarations.last.name == "Sun"
+		test
+			source =
+			"enum FooBar\n" +
+			"    of int64\n" +
+			"    Zero = 0x00\n" +
+			"    Ten = 0x0A\n" +
+			"    Eleven = 0x0B\n" +
+			"    Twelve = 0x0C"
+			stream = TokenStream(source, 'test.cobra')
+			e = EnumDeclaration.parse(stream)
+			assert e.ofKeyword <> nil
+			assert e.integralType.name == "int64"
+			assert e.memberDeclarations.count == 4
+			member = e.memberDeclarations[1] to EnumMemberDeclaration
+			assert member.name == "Ten"
+			assert member.assignToken <> nil
+			assert member.explicitValue inherits IntegerLiteral
+			assert member.explicitValue.firstToken.value == 10
+			member = e.memberDeclarations.last to EnumMemberDeclaration
+			assert member.name == "Twelve"
+			assert member.assignToken <> nil
+			assert member.explicitValue inherits IntegerLiteral
+			assert member.explicitValue.firstToken.value == 12
 		body
-			return TypeDeclaration.parse(stream) to EnumDeclaration
+			kw = stream.expect(TokenKind.EnumKeyword)
+			id = Identifier.parse(stream)
+
+			stream.skipBlankLines
+			specs = Specifications.parse(stream)
+			stream.skipBlankLines
+			if specs.isIndented
+				indent = specs.indentToken
+			else
+				indent = stream.expect(TokenKind.Indent)
+				stream.skipBlankLines
+			
+			ofKeyword = stream.grabOptional(TokenKind.OfKeyword)
+			if ofKeyword <> nil
+				intType = TypeIdentifier.parse(stream) to ?
+				stream.skipBlankLines
+			
+			if stream.token.startsDocString
+				docString = DocString.parse(stream)
+				stream.skipBlankLines
+			
+			memberDecls = List<of ITypeMemberDeclaration>()
+			skipped = TokenList()
+			while not stream.token.endsBlock
+				decl = EnumMemberDeclaration.parse(stream)
+				if not stream.grabOptional(TokenKind.Comma)
+					skipped.addRange(stream.skipToNextLine)
+				memberDecls.add(decl)
+			
+			stream.skipBlankLines
+			dedent = stream.expect(TokenKind.Dedent)
+			return EnumDeclaration(kw, id, specs, indent, ofKeyword, intType, docString, dedent, memberDecls)
+
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as Identifier,
+		specs as ISpecifications,
+		indentToken as Cobra.Compiler.IToken?,
+		ofKeyword as Cobra.Compiler.IToken?,
+		integralType as TypeIdentifier?,
+		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
+		memberDecls as IReadOnlyList<of ITypeMemberDeclaration>
+	)
+		require
+			keywordToken.kind == TokenKind.EnumKeyword
+			integralType <> nil implies ofKeyword <> nil
+		body
+			base.init(keywordToken, identifier, specs, indentToken, docString, nil, dedentToken, memberDecls)
+			if integralType <> nil
+				_ofKeyword = ofKeyword
+				_integralType = integralType
+				_addChild(integralType)
 
 class SigDeclaration inherits TypeDeclaration
 	

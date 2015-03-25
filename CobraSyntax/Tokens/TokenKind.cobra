@@ -61,6 +61,7 @@ class TokenKind
 	const WhereKeyword = 'WHERE'
 	const MustKeyword = 'MUST'
 	const BeKeyword = 'BE'
+	const OfKeyword = 'OF'
 	const CallableKeyword = 'CALLABLE'
 	const FromKeyword = 'FROM'
 	const NilKeyword = 'NIL'

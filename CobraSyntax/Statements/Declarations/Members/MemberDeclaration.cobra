@@ -28,7 +28,7 @@ class MemberDeclaration
 		_dedentToken implies _indentToken
 	
 	cue init(
-		keywordToken as Cobra.Compiler.IToken,
+		keywordToken as Cobra.Compiler.IToken?,
 		identifier as Identifier,
 		indentToken as Cobra.Compiler.IToken?,
 		docString as DocString?,
@@ -37,16 +37,16 @@ class MemberDeclaration
 		extraTokens as IReadOnlyTokenList?
 	)
 		require
-			keywordToken.isKeyword
+			keywordToken <> nil implies keywordToken.isKeyword
 
 			# member declarations (other than namespaces) that have a doc string must have both an indent and dedent token
 			not (this inherits NamespaceDeclaration) implies _
 				(docString implies (indentToken and dedentToken))
 		ensure
-			_firstToken is keywordToken
+			_firstToken is keywordToken or _firstToken is identifier.firstToken
 			dedentToken implies _lastToken == dedentToken
 		body
-			base.init(keywordToken, identifier.firstToken, extraTokens)
+			base.init(keywordToken ? identifier.firstToken, identifier.lastToken, extraTokens)
 			_identifier = identifier
 			_name = identifier.name
 			_addChild(identifier)
@@ -99,3 +99,27 @@ class TypeMemberDeclaration
 			on TokenKind.TestKeyword, return nil # TODO return TestDeclaration.parse(stream)
 		
 		return nil # TODO
+
+class EnumMemberDeclaration
+	inherits TypeMemberDeclaration
+	"""
+	An enumeration member declaration.
+	"""
+
+	get assignToken from var as Cobra.Compiler.IToken?
+
+	get explicitValue from var as IExpression?
+
+	def parse(stream as ITokenStream) as EnumMemberDeclaration is new, shared
+		id = Identifier.parse(stream)
+		if stream.token.kind == TokenKind.AssignmentOperator
+			assignToken = stream.grab to ?
+			val = Expression.parse(stream) to ?
+		return EnumMemberDeclaration(id, assignToken, val)
+
+	cue init(id as Identifier, assignToken as Cobra.Compiler.IToken?, val as IExpression?)
+		base.init(nil, id, nil, nil, nil, nil, nil)
+		_assignToken = assignToken
+		if val <> nil
+			_explicitValue = val
+			_addChild(val)

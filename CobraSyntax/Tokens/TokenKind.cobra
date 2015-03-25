@@ -84,6 +84,8 @@ class TokenKind
 	const CatchKeyword = 'CATCH'
 	const FinallyKeyword = 'FINALLY'
 	const SuccessKeyword = 'SUCCESS'
+	const AllKeyword = 'ALL'
+	const OffKeyword = 'OFF'
 	const OnKeyword = 'ON'
 	const ElseKeyword = 'ELSE'
 	#endregion
@@ -157,7 +159,7 @@ class TokenKind
 	const NonMembershipCheckOperator = 'NOTIN'
 
 	const LogicalNotOperator = 'NOT'
-	const LogicalAllOperator = 'ALL'
+	const LogicalAllOperator = .AllKeyword
 	const LogicalAnyOperator = 'ANY'
 	const LogicalAndOperator = 'AND'
 	const LogicalOrOperator = 'OR'

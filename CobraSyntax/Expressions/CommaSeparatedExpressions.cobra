@@ -6,6 +6,10 @@ class CommaSeparatedExpressions
 	Not an actual syntax node, only for convenience.
 	"""
 
+	invariant
+		.expressions.count == 0 implies .commas.count == 0
+		.expressions.count > 0 implies .commas.count == .expressions.count - 1
+
 	get expressions from var as IReadOnlyList<of IExpression> = ExpressionList()
 	get commas from var as IReadOnlyTokenList = TokenList()
 
@@ -20,7 +24,7 @@ class CommaSeparatedExpressions
 		precedenceMap = Dictionary<of String, int>(defaultMap)
 		precedenceMap[stopKind] = -1
 
-		while stream.token.kind <> stopKind
+		while stream.token.kind <> stopKind and not stream.token.isEOF
 			if exprs.count <> 0, commas.add(stream.expect(TokenKind.Comma))
 			exprs.add(Expression.parse(stream, precedenceMap))
 		return list

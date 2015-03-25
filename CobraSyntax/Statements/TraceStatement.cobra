@@ -2,4 +2,98 @@
 namespace Venom.CobraSyntax
 
 class TraceStatement inherits Statement
-	pass
+
+	invariant
+		_firstToken.kind == TokenKind.TraceKeyword
+
+	get traceKeyword as Cobra.Compiler.IToken
+		return _firstToken
+	
+	get allKeyword from var as Cobra.Compiler.IToken?
+	get offKeyword from var as Cobra.Compiler.IToken?
+	get onKeyword from var as Cobra.Compiler.IToken?
+
+	var _expressions as CommaSeparatedExpressions
+	get expressions as IReadOnlyList<of IExpression>
+		return _expressions.expressions
+
+	get commas as IReadOnlyTokenList
+		return _expressions.commas
+
+	def parse(stream as ITokenStream) as TraceStatement is new, shared
+		require
+			stream.token.kind == TokenKind.TraceKeyword
+		test
+			source = "trace"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.allKeyword == stmt.offKeyword == stmt.onKeyword == nil
+			assert stmt.expressions.count == stmt.commas.count == 0
+		test
+			source = "trace all"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.allKeyword <> nil
+			assert stmt.offKeyword == stmt.onKeyword == nil
+			assert stmt.expressions.count == stmt.commas.count == 0
+		test
+			source = "trace off"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.offKeyword <> nil
+			assert stmt.allKeyword == stmt.onKeyword == nil
+			assert stmt.expressions.count == stmt.commas.count == 0
+		test
+			source = "trace on"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.onKeyword <> nil
+			assert stmt.allKeyword == stmt.offKeyword == nil
+			assert stmt.expressions.count == stmt.commas.count == 0
+		test
+			source = "trace foo"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.allKeyword == stmt.offKeyword == stmt.onKeyword == nil
+			assert stmt.expressions.count == 1
+			assert stmt.commas.count == 0
+		test
+			source = "trace foo, bar"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = TraceStatement.parse(stream)
+			assert stmt.allKeyword == stmt.offKeyword == stmt.onKeyword == nil
+			assert stmt.expressions.count == 2
+			assert stmt.commas.count == 1
+		body
+			traceKeyword = stream.expect(TokenKind.TraceKeyword)
+
+			branch stream.token.kind
+				on TokenKind.AllKeyword
+					allKeyword = stream.expect(TokenKind.AllKeyword) to ?
+				on TokenKind.OffKeyword
+					offKeyword = stream.expect(TokenKind.OffKeyword) to ?
+				on TokenKind.OnKeyword
+					onKeyword = stream.expect(TokenKind.OnKeyword) to ?
+				else
+					expressions = CommaSeparatedExpressions.parse(stream, TokenKind.EndOfLine) to ?
+			
+			skipped = stream.skipToNextLine
+
+			return TraceStatement(traceKeyword, allKeyword, offKeyword, onKeyword, expressions, skipped)
+
+	cue init(
+		traceKeyword as Cobra.Compiler.IToken,
+		allKeyword as Cobra.Compiler.IToken?,
+		offKeyword as Cobra.Compiler.IToken?,
+		onKeyword as Cobra.Compiler.IToken?,
+		expressions as CommaSeparatedExpressions?,
+		skipped as IReadOnlyTokenList
+	)
+		base.init(traceKeyword, skipped)
+		_allKeyword, _offKeyword, _onKeyword = allKeyword, offKeyword, onKeyword
+		if expressions <> nil
+			_expressions = expressions
+			for e in .expressions, _addChild(e)
+		else
+			_expressions = CommaSeparatedExpressions()
+

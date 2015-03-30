@@ -6,6 +6,7 @@ class EventDeclaration
 
 	get asKeyword from var as Cobra.Compiler.IToken
 	get signatureTypeId from var as TypeIdentifier
+	get specifications from var as ISpecifications
 
 	def parse(stream as ITokenStream) as EventDeclaration is shared, new
 		require
@@ -15,6 +16,8 @@ class EventDeclaration
 			stream = TokenStream(source, 'test.cobra')
 			evnt = EventDeclaration.parse(stream)
 			assert evnt.identifier.name == "foo"
+			assert evnt.specifications.attributes.count == 0
+			assert evnt.specifications.modifiers.count == 0
 			assert evnt.signatureTypeId.qualifiedName == "Bar.Baz"
 			assert not evnt.hasDocString
 		test
@@ -24,19 +27,38 @@ class EventDeclaration
 			stream = TokenStream(source, 'test.cobra')
 			evnt = EventDeclaration.parse(stream)
 			assert evnt.hasDocString
+		test
+			source =
+			"event foo as Bar.Baz is shared\n" +
+			"    has Obsolete\n" +
+			'    """Lorem ipsum"""'
+			stream = TokenStream(source, 'test.cobra')
+			evnt = EventDeclaration.parse(stream)
+			assert evnt.identifier.name == "foo"
+			assert evnt.specifications.modifiers.count == 1
+			assert evnt.specifications.attributes.count == 1
+			assert evnt.signatureTypeId.qualifiedName == "Bar.Baz"
+			assert evnt.hasDocString
 		body
 			eventKeyword = stream.expect(TokenKind.EventKeyword)
 			id = Identifier.parse(stream)
 			asKeyword = stream.expect(TokenKind.AsKeyword)
 			sigId = TypeIdentifier.parse(stream)
-			skipped = stream.skipToNextLine
+
 			stream.skipBlankLines
-			indent = stream.grabOptional(TokenKind.Indent)
+			specs = Specifications.parse(stream)
+
+			if specs.isIndented
+				indent = specs.indentToken
+			else
+				indent = stream.grabOptional(TokenKind.Indent)
+				stream.skipBlankLines
+			
 			if indent <> nil and stream.token.startsDocString
 				docString = DocString.parse(stream) to ?
 				stream.skipBlankLines
 				dedent = stream.expect(TokenKind.Dedent) to ?
-			return EventDeclaration(eventKeyword, id, asKeyword, sigId, indent, docString, dedent, skipped)
+			return EventDeclaration(eventKeyword, id, asKeyword, sigId, specs, indent, docString, dedent)
 
 
 	cue init(
@@ -44,15 +66,17 @@ class EventDeclaration
 		id as Identifier,
 		asKeyword as Cobra.Compiler.IToken,
 		sigTypeId as TypeIdentifier,
+		specs as ISpecifications,
 		indent as Cobra.Compiler.IToken?,
 		docString as DocString?,
-		dedent as Cobra.Compiler.IToken?,
-		skipped as IReadOnlyTokenList
+		dedent as Cobra.Compiler.IToken?
 	)
 		require
 			eventKeyword.kind == TokenKind.EventKeyword
 		body
-			base.init(eventKeyword, id, indent, docString, dedent, nil, skipped)
+			base.init(eventKeyword, id, indent, docString, dedent, nil, nil)
 			_asKeyword = asKeyword
 			_signatureTypeId = sigTypeId
 			_addChild(_signatureTypeId)
+			_specifications = specs
+			_addChild(specs)

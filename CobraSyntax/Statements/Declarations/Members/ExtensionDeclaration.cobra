@@ -8,26 +8,31 @@ class ExtensionDeclaration
 	The syntax for a declaration that extends an existng type.
 	"""
 
-	# TODO: Add properties and constructor to set backing vars
+	invariant
+		_identifier inherits TypeIdentifier
+
+	get extendedTypeIdentifier as TypeIdentifier
+		return _identifier to TypeIdentifier
+	
+	get memberDeclarations from var as IReadOnlyList<of ITypeMemberDeclaration>
 
 	def parse(stream as ITokenStream) as ExtensionDeclaration is shared, new
 		require
 			stream.token.kind == TokenKind.ExtendKeyword
 		test
 			source =
-			"extend String\n" +
+			"extend System.String\n" +
 			"    def double as String\n" +
 			"        return this + this"
 			stream = TokenStream(source, 'test.cobra')
 			ext = ExtensionDeclaration.parse(stream)
-			assert ext.identifier.name == "String"
-			children = List<of ISyntaxNode>(ext.children)
-			assert children.count == 2
-			assert children[0] inherits QualifiedIdentifier
-			assert children[1] implements IMethodDeclaration
+			assert ext.extendedTypeIdentifier.qualifiedName == "System.String"
+			assert not ext.hasDocString
+			assert ext.memberDeclarations.count == 1
+			assert ext.memberDeclarations[0] implements IMethodDeclaration
 		body
 			kw = stream.expect(TokenKind.ExtendKeyword)
-			id = QualifiedIdentifier.parse(stream)
+			id = TypeIdentifier.parse(stream)
 			stream.skipBlankLines
 
 			indent = stream.expect(TokenKind.Indent)
@@ -43,4 +48,17 @@ class ExtensionDeclaration
 
 			dedent = stream.expect(TokenKind.Dedent)
 
-			return ExtensionDeclaration(kw, id, indent, docString, dedent, decls, nil)
+			return ExtensionDeclaration(kw, id, indent, docString, dedent, decls)
+
+
+	cue init(
+		keywordToken as Cobra.Compiler.IToken,
+		identifier as TypeIdentifier,
+		indentToken as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedentToken as Cobra.Compiler.IToken?,
+		memberDecls as ITypeMemberDeclaration*
+	)
+		base.init(keywordToken, identifier, indentToken, docString, dedentToken, nil, nil)
+		_memberDeclarations = List<of ITypeMemberDeclaration>(memberDecls)
+		for m in _memberDeclarations, _addChild(m)

@@ -58,7 +58,7 @@ class CobraParser
 		
 		token = _stream.token
 		if token.startsDocString
-			docString = DocString.parse(_stream to !)
+			docString = DocString.parse(_stream to !) to ?
 			nodes.add(docString)
 		
 		while _stream.token is not Cobra.Compiler.Token.empty
@@ -99,8 +99,13 @@ class CobraParser
 			
 			if parsedNode <> nil, nodes.add(parsedNode)
 		
-		#return RootNode(nodes)
-		return nodes.first
+		kw = Cobra.Compiler.Token(nodes.first.fileName, 0, 0, 0, TokenKind.NamespaceKeyword, "", nil)
+		id = QualifiedIdentifier(Identifier(kw.copy(TokenKind.Identifier, "global")))
+		decls = List<of INamespaceMemberDeclaration>()
+		for n in nodes
+			if n implements INamespaceMemberDeclaration, decls.add(n)
+		globalNamespace = NamespaceDeclaration(kw, id, nil, docString, nil, decls, nil)
+		return globalNamespace
 	
 	def _makeNamespaceStatement as IStatement?
 		"""

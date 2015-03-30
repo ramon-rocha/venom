@@ -93,11 +93,12 @@ class TypeMemberDeclaration
 				return PropertyDeclaration.parse(stream) to ITypeMemberDeclaration?
 
 			on TokenKind.FieldKeyword, return FieldDeclaration.parse(stream)
-			on TokenKind.ConstKeyword, return nil # TODO
+			on TokenKind.ConstKeyword, return ConstantDeclaration.parse(stream)
 			on TokenKind.InvariantKeyord, return nil # TODO return InvariantDeclaration.parse(stream)
-			on TokenKind.EventKeyword, return nil # TODO
+			on TokenKind.EventKeyword, return EventDeclaration.parse(stream)
 			on TokenKind.TestKeyword, return nil # TODO return TestDeclaration.parse(stream)
 		
+		trace stream.token
 		return nil # TODO
 
 class EnumMemberDeclaration

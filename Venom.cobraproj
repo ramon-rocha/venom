@@ -99,7 +99,6 @@
     <Compile Include="CobraSyntax\Specifications.cobra" />
     <Compile Include="CobraSyntax\Statements\MultipleTargetAssignmentStatement.cobra" />
     <Compile Include="Extensions.cobra" />
-    <Compile Include="CobraSyntax\Statements\Declarations\LocalDeclaration.cobra" />
     <Folder Include="CobraSyntax\Statements\Declarations\Members\" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\MemberDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\TypeDeclaration.cobra" />
@@ -114,6 +113,7 @@
     <Compile Include="CobraSyntax\Statements\Declarations\Members\ExtensionDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\EventDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\ConstantDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\ParameterDeclaration.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

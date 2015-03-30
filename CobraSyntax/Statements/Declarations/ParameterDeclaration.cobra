@@ -1,58 +1,13 @@
 
 namespace Venom.CobraSyntax
 
-interface ILocalDeclaration
-	"""
-	A declaration with only local scope.
-	Can be an AnonmyousMethodDeclaration, LocalVariableDeclaration, or ParameterDeclaration
-	"""
-	pass
-
-class LocalDeclaration
+class ParameterDeclaration
 	inherits SyntaxNode
-	implements ILocalDeclaration
-	is abstract
-	"""
-	The base class for a declaration with only local scope.
-	Can be an AnonmyousMethodDeclaration, LocalVariableDeclaration, or ParameterDeclaration
-	"""
-	pass
-
-interface INamedLocalDeclaration
-	inherits ILocalDeclaration, INamedNode
-	"""
-	A declaration with only local scope that can be identified by a name.
-	Can be an LocalVariableDeclaration, or ParameterDeclaration
-	"""
-
-class NamedLocalDeclaration
-	inherits LocalDeclaration
-	implements INamedLocalDeclaration
 	adds NamedBehavior
-	is abstract
-	"""
-	The base class for a declaration with only local scope that can be identified by name.
-	Can be a LocalVariableDeclaration or ParameterDeclaration
-	"""
-	get identifier from var as Identifier
-
-	cue init(id as Identifier)
-		base.init(id, nil)
-		_identifier = id
-		_name = id.name
-
-class LocalVariableDeclaration inherits NamedLocalDeclaration
-	"""
-	Declares a local variable inside a method
-	"""
-	def toCobraSource as String is override
-		return "TODO"
-
-
-class ParameterDeclaration inherits NamedLocalDeclaration
 	"""
 	Declares a local parameter for a method
 	"""
+	get identifier from var as Identifier
 	get asKeyword from var as Cobra.Compiler.IToken?
 	get modifiers from var as IReadOnlyTokenList
 	get typeIdentifier from var as TypeIdentifier?
@@ -151,8 +106,9 @@ class ParameterDeclaration inherits NamedLocalDeclaration
 		defaultValue as IExpression?
 	)
 		require asKeyword implies typeIdentifier
-		base.init(id)
+		base.init(id, nil)
 		_identifier = id
+		_name = id.name
 		if asKeyword
 			_asKeyword = asKeyword
 			_lastToken = asKeyword

@@ -23,38 +23,64 @@ class MethodSignature inherits SyntaxNode
 			msig = MethodSignature.parse(stream)
 			assert msig.parameterDeclarations.count == 2
 			assert msig.returnTypeSpecification == nil
+			assert msig.firstToken.text == "x"
+			assert msig.lastToken.text == ")"
 		test
 			source = "x as int, y as int) as List<of String>"
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
 			assert msig.returnTypeSpecification <> nil
 			assert msig.returnTypeSpecification.identifier.name == "List<of String>"
+			assert msig.firstToken.text == "x"
+			assert msig.lastToken.text == ">"
+		test
+			source = "as String"
+			stream = TokenStream(source, 'test.cobra')
+			msig = MethodSignature.parse(stream)
+			assert msig.parameterDeclarations.count == 0
+			assert msig.returnTypeSpecification <> nil
+			assert msig.returnTypeSpecification.identifier.name == "String"
+			assert msig.firstToken.text == "as"
+			assert msig.lastToken.text == "String"
 		body
 			params = List<of ParameterDeclaration>()
-			while not stream.token.endsMethodSignature
-				if params.count <> 0, stream.expect(TokenKind.Comma)
-				params.add(ParameterDeclaration.parse(stream))
-			closeParens = stream.expect(TokenKind.CloseParenthesis)
 			if stream.token.kind == TokenKind.AsKeyword
 				returnTypeSpec = ExplicitTypeSpecification.parse(stream) to ?
+			else
+				while not stream.token.endsMethodSignature
+					if params.count <> 0, stream.expect(TokenKind.Comma)
+					params.add(ParameterDeclaration.parse(stream))
+				closeParens = stream.expect(TokenKind.CloseParenthesis) to ?
+				if stream.token.kind == TokenKind.AsKeyword
+					returnTypeSpec = ExplicitTypeSpecification.parse(stream) to ?
+			
 			return MethodSignature(params, closeParens, returnTypeSpec)
 	
 	cue init(
 		params as ParameterDeclaration*,
-		closeParens as Cobra.Compiler.IToken,
+		closeParens as Cobra.Compiler.IToken?,
 		returnTypeSpec as ExplicitTypeSpecification?
 	)
+		require closeParens <> nil or returnTypeSpec <> nil
 		base.init
 		_parameterDeclarations = List<of ParameterDeclaration>(params)
-		if _parameterDeclarations.count == 0, _firstToken = closeParens
-		else
+		if _parameterDeclarations.count <> 0
 			_firstToken = _parameterDeclarations[0].firstToken
 			for p in _parameterDeclarations, _addChild(p)
-			
-		_lastToken = closeParens
+		else
+			if closeParens <> nil
+				_firstToken = closeParens
+			else if returnTypeSpec <> nil
+				_firstToken = returnTypeSpec.asKeyword
+		
 		if returnTypeSpec <> nil
 			_returnTypeSpecification = returnTypeSpec
 			_addChild(returnTypeSpec)
+			assert _lastToken == returnTypeSpec.lastToken
+		else if closeParens <> nil
+			_lastToken = closeParens
+		else
+			throw FallThroughException("Could not determine _lastToken")
 	
 	def toCobraSource as String is override
 		test
@@ -109,7 +135,8 @@ class BaseMethodDeclaration
 		body
 			kwToken = stream.expect(expectedKind)
 			id = Identifier.parse(stream)
-			if id.firstToken.kind == TokenKind.CallStart
+			if id.firstToken.kind == TokenKind.CallStart _
+			or stream.token.kind == TokenKind.AsKeyword
 				signature = MethodSignature.parse(stream) to ?
 
 			stream.skipBlankLines
@@ -210,6 +237,15 @@ class MethodDeclaration inherits BaseMethodDeclaration
 			assert m.body.statements.count == 1
 			assert m.body.statements.first inherits PassStatement
 			assert m.docString == nil
+		test
+			source =
+			"def foo as Bar\n" +
+			"    return Bar()"
+			stream = TokenStream(source, "test.cobra")
+			m = MethodDeclaration.parse(stream)
+			assert m.signature <> nil
+			assert m.signature.parameterDeclarations.count == 0
+			assert m.signature.returnTypeSpecification.identifier.name == "Bar"
 		test
 			source =
 			'def binOp(x as int, y as int) as int\n' +

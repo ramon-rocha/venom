@@ -113,6 +113,7 @@
     <Compile Include="CobraSyntax\Statements\Declarations\Members\PropertyDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\ExtensionDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\Members\EventDeclaration.cobra" />
+    <Compile Include="CobraSyntax\Statements\Declarations\Members\ConstantDeclaration.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

@@ -1,0 +1,58 @@
+﻿
+namespace Venom.CobraSyntax
+
+class EventDeclaration
+	inherits TypeMemberDeclaration
+
+	get asKeyword from var as Cobra.Compiler.IToken
+	get signatureTypeId from var as TypeIdentifier
+
+	def parse(stream as ITokenStream) as EventDeclaration is shared, new
+		require
+			stream.token.kind == TokenKind.EventKeyword
+		test
+			source = "event foo as Bar.Baz"
+			stream = TokenStream(source, 'test.cobra')
+			evnt = EventDeclaration.parse(stream)
+			assert evnt.identifier.name == "foo"
+			assert evnt.signatureTypeId.qualifiedName == "Bar.Baz"
+			assert not evnt.hasDocString
+		test
+			source =
+			"event foo as Bar.Baz\n" +
+			'    """This one has a doc string"""'
+			stream = TokenStream(source, 'test.cobra')
+			evnt = EventDeclaration.parse(stream)
+			assert evnt.hasDocString
+		body
+			eventKeyword = stream.expect(TokenKind.EventKeyword)
+			id = Identifier.parse(stream)
+			asKeyword = stream.expect(TokenKind.AsKeyword)
+			sigId = TypeIdentifier.parse(stream)
+			skipped = stream.skipToNextLine
+			stream.skipBlankLines
+			indent = stream.grabOptional(TokenKind.Indent)
+			if indent <> nil and stream.token.startsDocString
+				docString = DocString.parse(stream) to ?
+				stream.skipBlankLines
+				dedent = stream.expect(TokenKind.Dedent) to ?
+			return EventDeclaration(eventKeyword, id, asKeyword, sigId, indent, docString, dedent, skipped)
+
+
+	cue init(
+		eventKeyword as Cobra.Compiler.IToken,
+		id as Identifier,
+		asKeyword as Cobra.Compiler.IToken,
+		sigTypeId as TypeIdentifier,
+		indent as Cobra.Compiler.IToken?,
+		docString as DocString?,
+		dedent as Cobra.Compiler.IToken?,
+		skipped as IReadOnlyTokenList
+	)
+		require
+			eventKeyword.kind == TokenKind.EventKeyword
+		body
+			base.init(eventKeyword, id, indent, docString, dedent, nil, skipped)
+			_asKeyword = asKeyword
+			_signatureTypeId = sigTypeId
+			_addChild(_signatureTypeId)

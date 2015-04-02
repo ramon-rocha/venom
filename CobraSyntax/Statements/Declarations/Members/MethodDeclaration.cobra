@@ -17,7 +17,7 @@ class MethodSignature inherits SyntaxNode
 	get returnTypeSpecification from var as ExplicitTypeSpecification?
 
 	def parse(stream as ITokenStream) as MethodSignature is new, shared
-		test
+		test without_return_type
 			source = "x as int, y as int)"
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
@@ -25,7 +25,20 @@ class MethodSignature inherits SyntaxNode
 			assert msig.returnTypeSpecification == nil
 			assert msig.firstToken.text == "x"
 			assert msig.lastToken.text == ")"
-		test
+		test is_space_agnostic
+			source =
+			"    x as int,\n" +
+			"    y as int\n" +
+			")"
+			stream = TokenStream(source, 'test.cobra')
+			msig = MethodSignature.parse(stream)
+			assert msig.parameterDeclarations.count == 2
+			assert msig.returnTypeSpecification == nil
+			assert msig.firstToken.text == "x"
+			assert msig.firstToken.lineNum == 1
+			assert msig.lastToken.text == ")"
+			assert msig.lastToken.lineNum == 3
+		test with_return_type
 			source = "x as int, y as int) as List<of String>"
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
@@ -33,7 +46,7 @@ class MethodSignature inherits SyntaxNode
 			assert msig.returnTypeSpecification.identifier.name == "List<of String>"
 			assert msig.firstToken.text == "x"
 			assert msig.lastToken.text == ">"
-		test
+		test without_params
 			source = "as String"
 			stream = TokenStream(source, 'test.cobra')
 			msig = MethodSignature.parse(stream)
@@ -43,6 +56,9 @@ class MethodSignature inherits SyntaxNode
 			assert msig.firstToken.text == "as"
 			assert msig.lastToken.text == "String"
 		body
+			if not stream implements IWhitespaceAgnosticTokenStream
+				stream = WhitespaceAgnosticTokenStreamWrapper(stream)
+			
 			params = List<of ParameterDeclaration>()
 			if stream.token.kind == TokenKind.AsKeyword
 				returnTypeSpec = ExplicitTypeSpecification.parse(stream) to ?

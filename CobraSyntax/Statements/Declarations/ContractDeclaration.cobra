@@ -23,6 +23,8 @@ class BaseContractDeclaration
 		TokenKind.EnsureKeyword: EnsureDeclaration
 	}
 
+	var _inheritanceKeyword as Cobra.Compiler.IToken?
+
 	get keyword from var as Cobra.Compiler.IToken
 	get indent from var as Cobra.Compiler.IToken?
 	get expressions from var as IReadOnlyList<of IExpression>
@@ -30,13 +32,19 @@ class BaseContractDeclaration
 
 	def parse(stream as ITokenStream) as IContractDeclaration is new, shared
 		require
-			stream.token.kind in TokenKind.contractKeywords
+			stream.token.kind in TokenKind.contractKeywords _
+			or stream.token.kind == TokenKind.LogicalOrOperator _
+			or stream.token.kind == TokenKind.LogicalAndOperator
 		test
 			source = "invariant true"
 			stream = TokenStream(source, 'test.cobra')
 			contract = BaseContractDeclaration.parse(stream)
 			assert contract inherits InvariantDeclaration
 		body
+			inheritanceKeyword = stream.grabOptional(TokenKind.LogicalOrOperator)
+			if inheritanceKeyword == nil
+				inheritanceKeyword = stream.grabOptional(TokenKind.LogicalAndOperator)
+			
 			keyword = stream.grabOneOf(TokenKind.contractKeywords)
 			stream.skipBlankLines
 
@@ -51,9 +59,10 @@ class BaseContractDeclaration
 				exprs.add(Expression.parse(stream))
 
 			typ = _validKinds[keyword.kind]
-			return typ(keyword, indent, exprs, dedent)
+			return typ(inheritanceKeyword, keyword, indent, exprs, dedent)
 
 	cue init(
+		inheritanceKeyword as Cobra.Compiler.IToken?,
 		keyword as Cobra.Compiler.IToken,
 		indent as Cobra.Compiler.IToken?,
 		expressions as IExpression*,
@@ -67,6 +76,8 @@ class BaseContractDeclaration
 			.dedent == nil implies .indent == nil
 		body
 			base.init(keyword, nil)
+			if inheritanceKeyword <> nil
+				_inheritanceKeyword = _firstToken = inheritanceKeyword
 			_keyword = keyword
 			if dedent <> nil
 				_dedent = _lastToken = dedent
@@ -88,20 +99,36 @@ class InvariantDeclaration
 	inherits BaseContractDeclaration
 	invariant # much meta
 		.keyword.kind == TokenKind.InvariantKeyord
+		_inheritanceKeyword == nil
 
 class RequireDeclaration
 	inherits BaseContractDeclaration
 	invariant
 		.keyword.kind == TokenKind.RequireKeyword
+		_inheritanceKeyword <> nil implies _inheritanceKeyword.kind == TokenKind.LogicalOrOperator
+
+	get orKeyword  as Cobra.Compiler.IToken?
+		return _inheritanceKeyword
 
 	def parse(stream as ITokenStream) as RequireDeclaration is new, shared
 		require
-			stream.token.kind == TokenKind.RequireKeyword
+			stream.token.kind == TokenKind.RequireKeyword _
+			or stream.token.kind == TokenKind.LogicalOrOperator
 		test
 			source = "require 1 + 1 == 2"
 			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
-			assert contract inherits RequireDeclaration
+			contract = RequireDeclaration.parse(stream)
+			assert contract.indent == contract.dedent == nil
+			assert contract.expressions.count == 1
+			assert contract.expressions[0] inherits EqualityComparisonExpression
+			assert contract.orKeyword == nil
+			assert contract.firstToken.kind == TokenKind.RequireKeyword
+		test
+			source = "or require 1 + 1 == 2"
+			stream = TokenStream(source, 'test.cobra')
+			contract = RequireDeclaration.parse(stream)
+			assert contract.orKeyword <> nil
+			assert contract.firstToken.kind == TokenKind.LogicalOrOperator
 			assert contract.indent == contract.dedent == nil
 			assert contract.expressions.count == 1
 			assert contract.expressions[0] inherits EqualityComparisonExpression
@@ -111,7 +138,7 @@ class RequireDeclaration
 			"    1 + 1 == 2\n" +
 			"    true or false"
 			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
+			contract = RequireDeclaration.parse(stream)
 			assert contract.indent <> nil
 			assert contract.dedent <> nil
 			assert contract.expressions.count == 2
@@ -123,14 +150,26 @@ class EnsureDeclaration
 	inherits BaseContractDeclaration
 	invariant
 		.keyword.kind == TokenKind.EnsureKeyword
-	
+		_inheritanceKeyword <> nil implies _inheritanceKeyword.kind == TokenKind.LogicalAndOperator
+
+	get andKeyword as Cobra.Compiler.IToken?
+		return _inheritanceKeyword
+
 	def parse(stream as ITokenStream) as EnsureDeclaration is new, shared
 		require
-			stream.token.kind == TokenKind.EnsureKeyword
+			stream.token.kind == TokenKind.EnsureKeyword _
+			or stream.token.kind == TokenKind.LogicalAndOperator
 		test
 			source = "ensure true <> false"
 			stream = TokenStream(source, 'test.cobra')
-			contract = BaseContractDeclaration.parse(stream)
-			assert contract inherits EnsureDeclaration
+			contract = EnsureDeclaration.parse(stream)
+			assert contract.andKeyword == nil
+			assert contract.firstToken.kind == TokenKind.EnsureKeyword
+		test
+			source = "and ensure true <> false"
+			stream = TokenStream(source, 'test.cobra')
+			contract = EnsureDeclaration.parse(stream)
+			assert contract.andKeyword <> nil
+			assert contract.firstToken.kind == TokenKind.LogicalAndOperator
 		body
 			return BaseContractDeclaration.parse(stream) to EnsureDeclaration

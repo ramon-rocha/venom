@@ -32,5 +32,23 @@ class CueDeclaration inherits BaseMethodDeclaration
 			assert m.body.statements[0] inherits MultipleTargetAssignmentStatement
 			assert m.signature.parameterDeclarations.count == 2
 			assert m.signature.returnTypeSpecification == nil
+		test is_signature_whitespace_agnostic
+			source =
+			"cue init(\n" +
+			"    x as int,\n" +
+			"    y as int\n" +
+			")\n" +
+			"    base.init(x)"
+			stream = TokenStream(source, 'test.cobra')
+			m = CueDeclaration.parse(stream)
+			assert m.signature.parameterDeclarations.count == 2
+			assert m.signature.returnTypeSpecification == nil
+			assert m.signature.firstToken.lineNum == 2
+			assert m.signature.lastToken.lineNum == 4
+			assert m.body.firstToken.lineNum == m.body.lastToken.lineNum == 5
+			assert m.body.statements.count == 1
+			exprStmt = m.body.statements[0] to ExpressionStatement
+			assert exprStmt.expression inherits MemberAccessExpression
+			assert stream.token.isEOF
 		body
 			return _parse(stream, TokenKind.CueKeyword) to CueDeclaration

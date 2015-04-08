@@ -1,5 +1,61 @@
 ﻿
 namespace Venom.CobraSyntax
 
-class TryCatchExpression inherits Expression
-	pass
+class TryCatchExpression
+	inherits Expression
+
+	get tryKeyword from var as Cobra.Compiler.IToken
+	get tryExpression from var as IExpression
+	get catchKeyword from var as Cobra.Compiler.IToken
+	get exceptionTypeIdentifier from var as TypeIdentifier?
+	get getKeyword from var as Cobra.Compiler.IToken
+	get getExpression from var as IExpression
+
+	def parse(stream as ITokenStream) as TryCatchExpression is new, shared
+		require
+			stream.token.kind == TokenKind.TryKeyword
+		test
+			source = "try int.parse(inVal) catch FormatException get 0"
+			stream = TokenStream(source, 'test.cobra')
+			tryCatchExpr = TryCatchExpression.parse(stream)
+			assert tryCatchExpr.firstToken.kind == TokenKind.TryKeyword
+			assert tryCatchExpr.lastToken.kind == TokenKind.IntegerLiteral
+			assert tryCatchExpr.tryExpression inherits MemberAccessExpression
+			assert tryCatchExpr.catchKeyword.kind == TokenKind.CatchKeyword
+			assert tryCatchExpr.exceptionTypeIdentifier.name == "FormatException"
+			assert tryCatchExpr.getKeyword.kind == TokenKind.GetKeyword
+			assert tryCatchExpr.getExpression inherits IntegerLiteral
+		test
+			source = "try String.format('{1:P}', 0.123) catch get dflt"
+			stream = TokenStream(source, 'test.cobra')
+			tryCatchExpr = TryCatchExpression.parse(stream)
+			assert tryCatchExpr.exceptionTypeIdentifier == nil
+		body
+			tryKeyword = stream.expect(TokenKind.TryKeyword)
+			tryExpr = Expression.parse(stream)
+			catchKeyword = stream.expect(TokenKind.CatchKeyword)
+			if stream.token.kind in Identifier.validKinds
+				exceptionTypeId = TypeIdentifier.parse(stream) to ?
+			getKeyword = stream.expect(TokenKind.GetKeyword)
+			getExpr = Expression.parse(stream)
+			return TryCatchExpression(tryKeyword, tryExpr, catchKeyword, exceptionTypeId, getKeyword, getExpr)
+
+	cue init(
+		tryKeyword as Cobra.Compiler.IToken,
+		tryExpr as IExpression,
+		catchKeyword as Cobra.Compiler.IToken,
+		exceptionTypeId as TypeIdentifier?,
+		getKeyword as Cobra.Compiler.IToken,
+		getExpr as IExpression
+	)
+		base.init(tryKeyword, getExpr.lastToken, nil)
+		_tryKeyword = tryKeyword
+		_tryExpression = tryExpr
+		_addChild(tryExpr)
+		_catchKeyword = catchKeyword
+		if exceptionTypeId <> nil
+			_exceptionTypeIdentifier = exceptionTypeId
+			_addChild(exceptionTypeId)
+		_getKeyword = getKeyword
+		_getExpression = getExpr
+		_addChild(getExpr)

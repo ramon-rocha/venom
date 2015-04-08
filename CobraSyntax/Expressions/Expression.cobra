@@ -115,12 +115,11 @@ class Expression
 		Uses the precedence climbing algorithm to parse expressions.
 		See: http://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
 		"""
-		/# TODO?
 		if stream.token.kind in TokenKind.cobraTypes
 			# handle things like:
-			# i = number.parse('3.14')
+			# number.parse('3.14')
 			stream.replace(stream.token.copy(TokenKind.Identifier))
-		#/
+		
 		left = leftExpr ? _parse(stream)
 
 		while true

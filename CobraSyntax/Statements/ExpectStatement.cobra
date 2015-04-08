@@ -20,6 +20,12 @@ class ExpectStatement
 			stmt = ExpectStatement.parse(stream)
 			assert stmt.exceptionTypeIdentifier.name == "FormatException"
 			assert stmt.statements.count == 1
+		test
+			source = ns"expect ArgumentOutOfRangeException, print ints[5]"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = ExpectStatement.parse(stream)
+			assert stmt.exceptionTypeIdentifier.name == "ArgumentOutOfRangeException"
+			assert stmt.statements.count == 1
 		body
 			kw = stream.expect(TokenKind.ExpectKeyword)
 			id = TypeIdentifier.parse(stream)

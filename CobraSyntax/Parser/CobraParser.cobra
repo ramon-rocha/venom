@@ -128,15 +128,6 @@ class CobraParser
 		_stream.skipTo(TokenKind.Dedent)
 		return nil
 	
-	def _makeLibraryName as LibraryName
-		kind = _stream.token.kind
-		if kind.startsWith('STRING_') and not kind.startsWith('STRING_START')
-			return LibraryName(_stream.grab, _stream.skipToNextLine)
-		else if kind == TokenKind.Identifier
-			return LibraryName(QualifiedIdentifier.parse(_stream to !), _stream.skipToNextLine)
-		else
-			return LibraryName(Cobra.Compiler.Token.empty, _stream.skipToNextLine)
-	
 	def _makeIdentifierExpression as IdentifierExpression
 		return IdentifierExpression.parse(_stream to !)
 	

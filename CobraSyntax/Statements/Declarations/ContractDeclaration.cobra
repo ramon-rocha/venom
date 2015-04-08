@@ -97,9 +97,28 @@ class BaseContractDeclaration
 
 class InvariantDeclaration
 	inherits BaseContractDeclaration
+	implements ITypeMemberDeclaration
+	adds NamedBehavior
+
+	get docString as DocString?
+		return nil
+
 	invariant # much meta
 		.keyword.kind == TokenKind.InvariantKeyord
 		_inheritanceKeyword == nil
+
+	def parse(stream as ITokenStream) as InvariantDeclaration is new, shared
+		return BaseContractDeclaration.parse(stream) to InvariantDeclaration
+
+	cue init(
+		inheritanceKeyword as Cobra.Compiler.IToken?,
+		keyword as Cobra.Compiler.IToken,
+		indent as Cobra.Compiler.IToken?,
+		expressions as IExpression*,
+		dedent as Cobra.Compiler.IToken?
+	)
+		base.init(inheritanceKeyword, keyword, indent, expressions, dedent)
+		_name = ""
 
 class RequireDeclaration
 	inherits BaseContractDeclaration

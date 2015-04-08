@@ -3,13 +3,17 @@ namespace Venom.CobraSyntax
 
 class TestDeclaration
 	inherits SyntaxNode
-	adds StatementContainerBehavior #, NamedBehavior
+	implements ITypeMemberDeclaration
+	adds StatementContainerBehavior, NamedBehavior
 
 	invariant
 		.testKeyword.kind == TokenKind.TestKeyword
 
 	get testKeyword from var as Cobra.Compiler.IToken
 	get identifier from var as Identifier?
+
+	get docString as DocString?
+		return nil
 
 	def parse(stream as ITokenStream) as TestDeclaration is new, shared
 		require
@@ -54,6 +58,9 @@ class TestDeclaration
 		if id <> nil
 			_identifier = id
 			_addChild(id)
+			_name = id.name
+		else
+			_name = ""
 		_clause = StatementClause(indent, dedent, StatementList(statements))
 		_addChild(_clause)
 

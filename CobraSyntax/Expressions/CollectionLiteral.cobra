@@ -129,7 +129,7 @@ class CollectionLiteral
 				on TokenKind.SetStart
 					if colons.count > 0, return DictionaryLiteral(startToken, expressions, colons, commas, endToken)
 					return SetLiteral(startToken, expressions, commas, endToken)
-				else, throw NotImplementedException("TODO: Handle dictionary and set literals")
+				else, throw FallThroughException(startToken.kind)
 
 	cue init(
 		startToken as Cobra.Compiler.IToken,

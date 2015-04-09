@@ -145,6 +145,10 @@ class QualifiedIdentifier inherits Identifier
 	System.Collections.Generic.List<of int>
 	"""
 
+	get left from var as Identifier
+	get dot from var as Cobra.Compiler.IToken?
+	get right from var as Identifier?
+
 	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
 		require
 			stream.token.kind in .validKinds
@@ -200,11 +204,6 @@ class QualifiedIdentifier inherits Identifier
 			else
 				right = QualifiedIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
 			return QualifiedIdentifier(left, dot, right)
-
-
-	get left from var as Identifier
-	get dot from var as Cobra.Compiler.IToken?
-	get right from var as Identifier?
 	
 	cue init(identifier as Identifier)
 		.init(identifier, nil, nil)

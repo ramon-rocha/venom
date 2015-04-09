@@ -95,6 +95,20 @@ class IfStatement inherits Statement
 
 			stmt3 = IfStatement.parse(stream)
 			assert stmt3.falseClause <> nil
+		test condition_changes_indentation_level_but_still_parses
+			source =
+			"    if foo +\n" +
+			"bar\n" +
+			"        print 'Although it looks messed up, this is valid indentation.'"
+			stream = TokenStream(source, 'test.cobra')
+			assert stream.indentLevel == 0
+			stream.expect(TokenKind.Indent)
+			assert stream.indentLevel == 1
+			stmt = IfStatement.parse(stream) # TODO: fix it!
+			assert stmt.condition inherits AdditionExpression
+			assert stmt.condition.lastToken.lineNum == stmt.condition.firstToken.lineNum + 1
+			assert stmt.trueClause.statements.count == 1
+			assert stmt.trueClause.statements[0] inherits PrintStatement
 		body
 			ifKeyword = stream.expect(TokenKind.IfKeyword)
 			condition = Expression.parse(stream)

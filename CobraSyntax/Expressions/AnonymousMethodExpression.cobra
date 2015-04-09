@@ -1,6 +1,169 @@
 ﻿
 namespace Venom.CobraSyntax
 
-class AnonymousMethodExpression inherits Expression
-	pass
+interface IAnonymousMethodExpression
+	inherits IExpression
+
+	get signature as MethodSignature?
+
+
+class BaseAnonymousMethodExpression
+	inherits Expression
+	implements IAnonymousMethodExpression
+
+	get signature from var as MethodSignature?
+
+	var _validKinds as IReadOnlyList<of String> is readonly, shared = [
+		TokenKind.AnonymousMethodStart,
+		TokenKind.DoKeyword
+	]
+
+	def parse(stream as ITokenStream) as IAnonymousMethodExpression is shared, new
+		require stream.token.kind in _validKinds
+		doToken = stream.grabOneOf(_validKinds)
+		if doToken.kind == TokenKind.AnonymousMethodStart
+			signature = MethodSignature.parse(stream) to ?
+		
+		if stream.token.kind == TokenKind.AssignmentOperator
+			assignToken = stream.grab
+			expr = Expression.parse(stream)
+			return LambdaExpression(doToken, signature, assignToken, expr)
+		
+		stream.skipBlankLines
+
+		indent = stream.expect(TokenKind.Indent)
+		stmts = StatementList.parse(stream)
+		dedent = stream.expect(TokenKind.Dedent)
+		return AnonymousMethodExpression(doToken, signature, indent, stmts, dedent)
+
+
+	cue init(
+		doToken as Cobra.Compiler.IToken,
+		signature as MethodSignature?
+	)
+		require
+			doToken.kind in _validKinds
+		ensure
+			.firstToken is doToken
+		body
+			base.init(doToken, nil)
+			if signature <> nil
+				_signature = signature
+				_addChild(signature)
+
+class AnonymousMethodExpression
+	inherits BaseAnonymousMethodExpression
+	implements IStatementContainer
+
+	get indent from var as Cobra.Compiler.IToken
+	get statements from var as IReadOnlyList<of IStatement>
+	get dedent from var as Cobra.Compiler.IToken
+
+	def parse(stream as ITokenStream) as AnonymousMethodExpression is shared, new
+		require
+			stream.token.kind in _validKinds
+		test anonymous_method
+			source =
+			"do\n" +
+			"    print 'I am anonymous'\n" +
+			"    print 'That is neat'"
+			stream = TokenStream(source, 'test.cobra')
+			anon = AnonymousMethodExpression.parse(stream)
+			assert anon.firstToken.kind == TokenKind.DoKeyword
+			assert anon.lastToken.kind == TokenKind.Dedent
+			assert anon.signature == nil # TODO this should be a void signature instead
+			assert anon.statements.count == 2
+		test closure_with_params
+			source =
+			"z = 1\n" +
+			"do(x as int, y as int) as String\n" +
+			ns"    return '[x], [y], [z]'"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = Statement.parse(stream) to ExpressionStatement
+			assert stmt.expression inherits AssignmentExpression
+			stmt = Statement.parse(stream) to ExpressionStatement
+			anon = stmt.expression to AnonymousMethodExpression
+			assert anon.firstToken.kind == TokenKind.AnonymousMethodStart
+			assert anon.signature.parameterDeclarations.count == 2
+			assert anon.signature.returnTypeSpecification.identifier.name == "String"
+			assert anon.statements.count == 1
+			assert anon.statements[0] inherits ReturnStatement
+		test next_line_is_part_of_anonymous_method
+			source =
+			"assert 12 == .callArithmeticOp(do(a as int, b as int), 3, 4)\n" +
+			"    return a * b"
+			stream = TokenStream(source, 'test.cobra')
+			stmt = Statement.parse(stream) to AssertStatement
+			expr = stmt.expression to EqualityComparisonExpression
+			right = expr.rightExpression to MemberAccessExpression
+			call = right.rightExpression to CallExpression
+			assert call.identifier.name == "callArithmeticOp"
+			assert call.arguments.count == 3
+			anon = call.arguments[0] to AnonymousMethodExpression
+			assert anon.signature.parameterDeclarations.count == 2
+			assert anon.statements.count == 1 # TODO: not currently possible with current architecture
+		body
+			return BaseAnonymousMethodExpression.parse(stream) to AnonymousMethodExpression
+
+	cue init(
+		doToken as Cobra.Compiler.IToken,
+		signature as MethodSignature?,
+		indent as Cobra.Compiler.IToken,
+		stmts as IStatement*,
+		dedent as Cobra.Compiler.IToken
+	)
+		require
+			doToken.kind in _validKinds
+		ensure
+			.firstToken is doToken
+		body
+			base.init(doToken, signature)
+			_indent, _dedent = indent, dedent
+			_statements = StatementList(stmts)
+			for s in stmts, _addChild(s)
+			_lastToken = dedent
+
+
+class LambdaExpression
+	inherits BaseAnonymousMethodExpression
+
+	get assignToken from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+
+	def parse(stream as ITokenStream) as LambdaExpression is shared, new
+		require
+			stream.token.kind in _validKinds
+		test lambda
+			source = "do = _someExpression"
+			stream = TokenStream(source, 'test.cobra')
+			lambda = LambdaExpression.parse(stream)
+			assert lambda.firstToken.kind == TokenKind.DoKeyword
+			assert lambda.signature == nil
+			assert lambda.expression inherits IdentifierExpression
+		test lambda_with_params
+			source = "do(a as Foo, b as Bar) = a.compareTo(b)"
+			stream = TokenStream(source, 'test.cobra')
+			lambda = LambdaExpression.parse(stream)
+			assert lambda.firstToken.kind == TokenKind.AnonymousMethodStart
+			assert lambda.signature.parameterDeclarations.count == 2
+			assert lambda.signature.returnTypeSpecification == nil
+			assert lambda.expression inherits MemberAccessExpression
+		body
+			return BaseAnonymousMethodExpression.parse(stream) to LambdaExpression
+
+	cue init(
+		doToken as Cobra.Compiler.IToken,
+		signature as MethodSignature?,
+		assignToken as Cobra.Compiler.IToken,
+		expression as IExpression
+	)
+		require
+			doToken.kind in _validKinds
+		ensure
+			.firstToken is doToken
+		body
+			base.init(doToken, signature)
+			_assignToken = assignToken
+			_expression = expression
+			_addChild(expression)
 

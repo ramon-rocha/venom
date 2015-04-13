@@ -380,21 +380,6 @@ class TokenKind
 	#endregion
 
 	shared, readonly
-		var namespaceStatementKeywords as IReadOnlyList<of String> = [
-			.NamespaceKeyword,
-			.ClassKeyword,
-			.MixinKeyword,
-			.InterfaceKeyword,
-			.SigKeyword,
-			.StructKeyword,
-			.EnumKeyword,
-			.ExtendKeyword,
-			.UseKeyword
-		]
-			"""
-			These are the keywords used to start statements that are valid inside of a namespace.
-			In addition to namespace member declarations, use directives are also included.
-			"""
 		
 		var typeDeclarationKeywords as IReadOnlyList<of String> = [
 			.ClassKeyword,
@@ -406,6 +391,18 @@ class TokenKind
 		]
 			"""
 			These are keywords used to start a type declaration.
+			"""
+
+		var namespaceStatementKeywords as IReadOnlyList<of String> = [
+			.NamespaceKeyword,
+			.ExtendKeyword,
+			.UseKeyword
+		] + .typeDeclarationKeywords # If the declaration for namespaceStatementKeywords
+		                             # comes before typeDeclarationKeywords then this
+		                             # fails at run-time
+			"""
+			These are the keywords used to start statements that are valid inside of a namespace.
+			In addition to namespace member declarations, use directives are also included.
 			"""
 		
 		var modifierKeywords as IReadOnlyList<of String> = [

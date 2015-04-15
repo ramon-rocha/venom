@@ -38,6 +38,10 @@ class TypeDeclaration
 
 	def parse(stream as ITokenStream) as TypeDeclaration is new, shared
 		require stream.token.kind in TokenKind.typeDeclarationKeywords
+
+		if stream.token.kind == TokenKind.EnumKeyword
+			return EnumDeclaration.parse(stream)
+
 		kw = stream.grabOneOf(TokenKind.typeDeclarationKeywords)
 		id = Identifier.parse(stream) # don't use TypeIdentifier.parse here because this is not allowed to be qualified
 		isSig = kw.kind == TokenKind.SigKeyword
@@ -63,6 +67,7 @@ class TypeDeclaration
 		
 		if stream.token.kind == TokenKind.PassKeyword
 			passStmt = PassStatement.parse(stream) to ?
+			stream.skipBlankLines
 		
 		memberDecls = List<of ITypeMemberDeclaration>()
 		while not stream.token.endsBlock
@@ -311,8 +316,8 @@ class EnumDeclaration inherits TypeDeclaration
 				if not stream.grabOptional(TokenKind.Comma)
 					skipped.addRange(stream.skipToNextLine)
 				memberDecls.add(decl)
+				stream.skipBlankLines
 			
-			stream.skipBlankLines
 			dedent = stream.expect(TokenKind.Dedent)
 			return EnumDeclaration(kw, id, specs, indent, ofKeyword, intType, docString, dedent, memberDecls)
 

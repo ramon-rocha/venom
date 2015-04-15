@@ -35,6 +35,8 @@ class NamespaceDeclaration
 	get namespaceKeyword as Cobra.Compiler.IToken
 		return _firstToken
 
+	get useDirectives from var as IReadOnlyList<of UseDirective>
+
 	get declarations from var as IReadOnlyList<of INamespaceMemberDeclaration>
 
 	def parse(stream as ITokenStream) as INamespaceDeclaration is new, shared
@@ -47,6 +49,17 @@ class NamespaceDeclaration
 			assert ns.identifier.name == "Foo"
 			assert ns.indentToken == ns.dedentToken == nil
 			assert not ns.hasDocString
+			assert ns.useDirectives.count == 0
+			assert ns.declarations.count == 0
+		test
+			source = "namespace Foo\n\nuse Bar"
+			stream = TokenStream(source, 'test.cobra')
+			ns = NamespaceDeclaration.parse(stream) to NamespaceDeclaration
+			assert ns.identifier.name == "Foo"
+			assert ns.indentToken == ns.dedentToken == nil
+			assert not ns.hasDocString
+			assert ns.useDirectives.count == 1
+			assert ns.useDirectives[0].qualifiedId.name == "Bar"
 			assert ns.declarations.count == 0
 		test
 			source =
@@ -60,6 +73,7 @@ class NamespaceDeclaration
 			assert ns.indentToken <> nil
 			assert ns.dedentToken <> nil
 			assert ns.hasDocString
+			assert ns.useDirectives.count == 0
 			assert ns.declarations.count == 1
 			assert ns.declarations[0] inherits ClassDeclaration
 		test
@@ -75,6 +89,7 @@ class NamespaceDeclaration
 			assert ns.indentToken <> nil
 			assert ns.dedentToken <> nil
 			assert not ns.hasDocString
+			assert ns.useDirectives.count == 0
 			assert ns.declarations.count == 1
 			assert ns.declarations[0] inherits NamespaceDeclaration
 		body
@@ -91,17 +106,20 @@ class NamespaceDeclaration
 				stream.skipBlankLines
 			
 			declarations = List<of INamespaceMemberDeclaration>()
+			useDirectives = List<of UseDirective>()
 			isIndented = indent <> nil
 			while not stream.token.endsNamespaceDeclaration(isIndented)
 				if stream.token.kind == TokenKind.NamespaceKeyword
-					decl = NamespaceDeclaration.parse(stream) to INamespaceMemberDeclaration
+					declarations.add(NamespaceDeclaration.parse(stream) to INamespaceMemberDeclaration)
+				else if stream.token.kind == TokenKind.UseKeyword
+					useDirectives.add(UseDirective.parse(stream))
 				else
-					decl = TypeDeclaration.parse(stream)
-				declarations.add(decl)
+					declarations.add(TypeDeclaration.parse(stream))
+				
 				stream.skipBlankLines
 			
 			if isIndented, dedent = stream.expect(TokenKind.Dedent) to ?
-			return NamespaceDeclaration(keyword, id, indent, docString, dedent, declarations, skipped)
+			return NamespaceDeclaration(keyword, id, indent, docString, dedent, declarations, useDirectives, skipped)
 
 	cue init(
 		keyword as Cobra.Compiler.IToken,
@@ -110,6 +128,7 @@ class NamespaceDeclaration
 		docString as DocString?,
 		dedent as Cobra.Compiler.IToken?,
 		declarations as ISyntaxNode*?,
+		useDirectives as UseDirective*,
 		extraTokens as IReadOnlyTokenList?
 	)
 		require
@@ -119,3 +138,5 @@ class NamespaceDeclaration
 			base.init(keyword, identifier, indent, docString, dedent, declarations, extraTokens)
 			if declarations <> nil
 				_declarations = List<of INamespaceMemberDeclaration>(declarations to INamespaceMemberDeclaration*)
+			_useDirectives = List<of UseDirective>(useDirectives)
+			for ud in _useDirectives, _addChild(ud)

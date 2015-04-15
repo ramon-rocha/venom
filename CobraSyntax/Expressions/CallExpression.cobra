@@ -1,6 +1,56 @@
 ﻿
 namespace Venom.CobraSyntax
 
+class Argument
+	inherits SyntaxNode
+
+	var _validLabelKinds as IReadOnlyList<of String> is shared, readonly = [
+		TokenKind.OutKeyword,
+		TokenKind.InOutKeyword
+	]
+
+	invariant
+		_label <> nil implies _
+			_label.kind in _validLabelKinds
+	
+	get label from var as Cobra.Compiler.IToken?
+	get expression from var as IExpression
+
+	def parse(stream as ITokenStream) as Argument is shared, new
+		test
+			stream = TokenStream('x', 'test.cobra')
+			arg = Argument.parse(stream)
+			assert arg.label == nil
+			expr = arg.expression to IdentifierExpression
+			assert expr.name == "x"
+		test
+			stream = TokenStream('out x', 'test.cobra')
+			arg = Argument.parse(stream)
+			assert arg.label.kind == TokenKind.OutKeyword
+			expr = arg.expression to IdentifierExpression
+			assert expr.name == "x"
+		test
+			stream = TokenStream('inout x', 'test.cobra')
+			arg = Argument.parse(stream)
+			assert arg.label.kind == TokenKind.InOutKeyword
+			expr = arg.expression to IdentifierExpression
+			assert expr.name == "x"
+		body
+			label = stream.grabOneOfOptional(_validLabelKinds)
+			return Argument(label, Expression.parse(stream))
+
+	cue init(label as Cobra.Compiler.IToken?, expr as IExpression)
+		base.init(expr, nil)
+		if label <> nil
+			_label = _firstToken = label
+		_expression = expr
+
+	def toCobraSource as String is override
+		if _label <> nil
+			return _label.text + _expression.toCobraSource
+		return _expression.toCobraSource
+
+
 class CallExpression inherits Expression
 	"""
 	A method invocation such as foo(bar) or foo<of T>(bar)
@@ -10,6 +60,19 @@ class CallExpression inherits Expression
 		TokenKind.CallStart,
 		TokenKind.GenericIdentifierStart
 	]
+
+	get identifier from var as Identifier
+		"""The name of the method being invoked"""
+	
+	get openingParenthesis from var as Cobra.Compiler.IToken?
+
+	invariant
+		.commas.count > 0 implies .commas.count == .arguments.count - 1
+
+	get arguments from var as IReadOnlyList<of Argument>
+	get commas from var as IReadOnlyTokenList
+
+	get closingParenthesis from var as Cobra.Compiler.IToken?
 
 	def parse(stream as ITokenStream) as CallExpression is new, shared
 		require
@@ -23,7 +86,7 @@ class CallExpression inherits Expression
 			assert call.openingParenthesis <> nil
 			assert call.closingParenthesis <> nil
 			assert call.arguments.count == 1
-			argExpr = call.arguments[0] to IdentifierExpression
+			argExpr = call.arguments[0].expression to IdentifierExpression
 			assert argExpr.identifier.name == 'bar'
 		test
 			source = 'Foo()'
@@ -40,9 +103,9 @@ class CallExpression inherits Expression
 			call = CallExpression.parse(stream)
 			assert call.arguments.count == 3
 			assert call.commas.count == 2
-			assert call.arguments[0] inherits IdentifierExpression
-			assert call.arguments[1] inherits AdditionExpression
-			assert call.arguments[2] inherits NilLiteral
+			assert call.arguments[0].expression inherits IdentifierExpression
+			assert call.arguments[1].expression inherits AdditionExpression
+			assert call.arguments[2].expression inherits NilLiteral
 		test
 			source = 'foo<of String>'
 			stream = TokenStream(source, 'test.cobra')
@@ -57,9 +120,21 @@ class CallExpression inherits Expression
 			assert call.identifier.name == 'foo<of String>'
 			assert call.arguments.count == 3
 			assert call.commas.count == 2
-			assert call.arguments[0] inherits IdentifierExpression
-			assert call.arguments[1] inherits AdditionExpression
-			assert call.arguments[2] inherits NilLiteral
+			assert call.arguments[0].expression inherits IdentifierExpression
+			assert call.arguments[1].expression inherits AdditionExpression
+			assert call.arguments[2].expression inherits NilLiteral
+		test is_whitespace_agnostic
+			source = "Person('Bob',\n\t30)"
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.arguments.count == 2
+			assert call.arguments.last.firstToken.lineNum == call.arguments.first.firstToken.lineNum + 1
+		test inout_arguments
+			source = "increment(inout _count)"
+			stream = TokenStream(source, 'test.cobra')
+			call = CallExpression.parse(stream)
+			assert call.arguments.count == 1
+			assert call.arguments[0].label.kind == TokenKind.InOutKeyword
 		body
 			id = Identifier.parse(stream)
 			if id.firstToken.kind == TokenKind.GenericIdentifierStart
@@ -68,35 +143,33 @@ class CallExpression inherits Expression
 			else
 				# TODO: split id.firstToken into two tokens instead?
 				openParen = stream.token.copy(TokenKind.OpenParenthesis, "(")
+			if not stream implements IWhitespaceAgnosticTokenStream
+				stream = WhitespaceAgnosticTokenStreamWrapper(stream)
 			
-			args = CommaSeparatedExpressions.parse(stream)
+			args = List<of Argument>()
+			commas = TokenList()
+			while stream.token.kind <> TokenKind.CloseParenthesis and not stream.token.isEOF
+				if args.count <> 0, commas.add(stream.expect(TokenKind.Comma))
+				args.add(Argument.parse(stream))
+
 			closeParen = stream.expect(TokenKind.CallEnd)
-			return CallExpression(id, openParen, args, closeParen)
+			return CallExpression(id, openParen, args, commas, closeParen)
 
-
-	get identifier from var as Identifier
-		"""The name of the method being invoked"""
-	
-	get openingParenthesis from var as Cobra.Compiler.IToken?
-
-	get arguments from var as IReadOnlyList<of IExpression>
-	get commas from var as IReadOnlyTokenList
-
-	get closingParenthesis from var as Cobra.Compiler.IToken?
 
 	cue init(id as Identifier)
-		.init(id, nil, CommaSeparatedExpressions(), nil)
+		.init(id, nil, List<of Argument>(), TokenList(), nil)
 
 	cue init(
 		id as Identifier,
 		openParen as Cobra.Compiler.IToken?,
-		args as CommaSeparatedExpressions,
+		args as Argument*,
+		commas as Cobra.Compiler.IToken*,
 		closeParen as Cobra.Compiler.IToken?
 	)
 		require
 			openParen implies openParen.text == "("
 			closeParen implies closeParen.text == ")"
-			all for c in args.commas get c.text == ","
+			all for c in commas get c.text == ","
 		body
 			base.init(id.firstToken, nil)
 			_identifier = id
@@ -104,10 +177,10 @@ class CallExpression inherits Expression
 			
 			_openingParenthesis = openParen
 			
-			_arguments = args.expressions
-			for a in args.expressions, _addChild(a)
+			_arguments = List<of Argument>(args)
+			for a in args, _addChild(a)
 			
-			_commas = TokenList(args.commas)
+			_commas = TokenList(commas)
 			
 			if closeParen <> nil
 				_closingParenthesis = closeParen
@@ -122,6 +195,9 @@ class ImplicitCallExpression
 		Foo.Bar.Baz[](0)
 	"""
 
+	invariant
+		.arguments.count == 1
+
 	def parse(stream as ITokenStream) as ImplicitCallExpression is new, shared
 		test
 			source = ns"obj[i]('x')"
@@ -134,14 +210,14 @@ class ImplicitCallExpression
 			assert obj.indexer.expressions.count == 1
 			assert obj.indexer.expressions[0] inherits IdentifierExpression
 			assert call.arguments.count == 1
-			assert call.arguments[0] inherits StringLiteral
+			assert call.arguments[0].expression inherits StringLiteral
 		test
 			source = ns"String[](10)"
 			stream = TokenStream(source, 'test.cobra')
 			call = ImplicitCallExpression.parse(stream)
 			obj = call.expression to IndexedExpression
 			assert obj.indexer.expressions.count == 0
-			assert call.arguments[0] inherits IntegerLiteral
+			assert call.arguments[0].expression inherits IntegerLiteral
 		test
 			source = ns"Foo.Bar.Baz[](0)"
 			stream = TokenStream(source, 'test.cobra')
@@ -150,7 +226,7 @@ class ImplicitCallExpression
 			obj = call.expression to IndexedExpression
 			assert obj.leftExpression inherits MemberAccessExpression
 			assert obj.indexer.expressions.count == 0
-			assert call.arguments[0] inherits IntegerLiteral
+			assert call.arguments[0].expression inherits IntegerLiteral
 		body
 			return Expression.parse(stream) to ImplicitCallExpression
 
@@ -162,10 +238,10 @@ class ImplicitCallExpression
 	cue init(
 		expression as IExpression,
 		openParen as Cobra.Compiler.IToken,
-		args as CommaSeparatedExpressions,
+		args as Argument*,
 		closeParen as Cobra.Compiler.IToken
 	)
-		base.init(_makeEmptyIdentifier, openParen, args, closeParen)
+		base.init(_makeEmptyIdentifier, openParen, args, TokenList(), closeParen)
 		_firstToken = expression.firstToken
 		_expression = expression
 		_addChild(_expression)

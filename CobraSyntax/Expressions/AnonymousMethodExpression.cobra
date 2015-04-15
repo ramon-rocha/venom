@@ -99,7 +99,7 @@ class AnonymousMethodExpression
 			call = right.rightExpression to CallExpression
 			assert call.identifier.name == "callArithmeticOp"
 			assert call.arguments.count == 3
-			anon = call.arguments[0] to AnonymousMethodExpression
+			anon = call.arguments[0].expression to AnonymousMethodExpression
 			assert anon.signature.parameterDeclarations.count == 2
 			assert anon.statements.count == 1 # TODO: not currently possible with current architecture
 		body

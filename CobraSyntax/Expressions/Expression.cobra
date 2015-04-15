@@ -136,7 +136,8 @@ class Expression
 
 			else if opKind == TokenKind.OpenParenthesis
 				openParen = stream.grab
-				args = CommaSeparatedExpressions.parse(stream)
+				args = List<of Argument>(1)
+				args.add(Argument.parse(stream))
 				closeParen = stream.expect(TokenKind.CloseParenthesis)
 				left = ImplicitCallExpression(left, openParen, args, closeParen)
 				return _parse(stream, minPrecedence, left, precedenceMap)

@@ -30,7 +30,7 @@ class ExpressionStatement
 			member = right.rightExpression to CallExpression
 			assert member.identifier.name == 'readAllText'
 			assert member.arguments.count == 1
-			assert member.arguments[0] inherits StringLiteral
+			assert member.arguments[0].expression inherits StringLiteral
 			assert member.lastToken.kind == TokenKind.CallEnd
 
 		test hangingIndent

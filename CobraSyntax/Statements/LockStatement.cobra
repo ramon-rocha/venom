@@ -1,7 +1,10 @@
 
 namespace Venom.CobraSyntax
 
-class LockStatement inherits Statement
+class LockStatement
+	inherits Statement
+	implements IStatementContainer
+	adds StatementContainerBehavior
 	
 	get lockKeyword from var as Cobra.Compiler.IToken
 	get expression from var as IExpression
@@ -10,30 +13,43 @@ class LockStatement inherits Statement
 		require
 			stream.token.kind == TokenKind.LockKeyword
 		test
-			source = "lock this"
+			source = "lock _access, .doSomething"
 			stream = TokenStream(source, 'test.cobra')
 			stmt = LockStatement.parse(stream)
-			assert stmt.expression inherits ThisLiteral
-			assert stmt.firstToken.kind == TokenKind.LockKeyword
-			assert stmt.lastToken.kind == TokenKind.ThisKeyword
-			assert stmt.extraTokens.count == 0
+			assert stmt.expression inherits IdentifierExpression
+			assert stmt.statements.count == 1
 		test
-			source = "lock this foo bar"
+			source =
+			"lock this\n" +
+			"    .doSomething\n" +
+			"    .doSomethingElse"
 			stream = TokenStream(source, 'test.cobra')
 			stmt = LockStatement.parse(stream)
 			assert stmt.expression inherits ThisLiteral
-			assert stmt.firstToken.kind == TokenKind.LockKeyword
-			assert stmt.lastToken.kind == TokenKind.ThisKeyword
-			assert stmt.extraTokens.count == 2
+			assert stmt.statements.count == 2
 		body
 			keyword = stream.expect(TokenKind.LockKeyword)
 			expr = Expression.parse(stream)
-			skipped = stream.skipToNextLine
-			return LockStatement(keyword, expr, skipped)
+			if stream.token.kind <> TokenKind.Comma
+				skipped = stream.skipToNextLine
+			else
+				skipped = TokenList()
 
-	cue init(keyword as Cobra.Compiler.IToken, expression as IExpression, skipped as TokenList)
+			stream.skipBlankLines
+			clause = StatementClause.parse(stream)
+			return LockStatement(keyword, expr, clause, skipped)
+
+	cue init(
+		keyword as Cobra.Compiler.IToken,
+		expression as IExpression,
+		clause as StatementClause,
+		skipped as IReadOnlyTokenList
+	)
+		require keyword.kind == TokenKind.LockKeyword
 		base.init(keyword, skipped)
 		_lockKeyword = keyword
 		_expression = expression
 		_addChild(expression)
+		_clause = clause
+		_addChild(clause)
 

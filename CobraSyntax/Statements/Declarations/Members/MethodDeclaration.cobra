@@ -168,11 +168,13 @@ class BaseMethodDeclaration
 				docString = DocString.parse(stream)
 				stream.skipBlankLines
 			
-			if stream.token.kind == TokenKind.RequireKeyword
+			if stream.token.kind == TokenKind.RequireKeyword _
+			or stream.token.kind == TokenKind.LogicalOrOperator and stream.peek.kind == TokenKind.RequireKeyword
 				req = RequireDeclaration.parse(stream) to ?
 				stream.skipBlankLines
 
-			if stream.token.kind == TokenKind.EnsureKeyword
+			if stream.token.kind == TokenKind.EnsureKeyword _
+			or stream.token.kind == TokenKind.LogicalAndOperator and stream.peek.kind == TokenKind.EnsureKeyword
 				ens = EnsureDeclaration.parse(stream) to ?
 				stream.skipBlankLines
 

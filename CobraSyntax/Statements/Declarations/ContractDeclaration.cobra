@@ -132,7 +132,7 @@ class RequireDeclaration
 	def parse(stream as ITokenStream) as RequireDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.RequireKeyword _
-			or stream.token.kind == TokenKind.LogicalOrOperator
+			or stream.token.kind == TokenKind.LogicalOrOperator and stream.peek.kind == TokenKind.RequireKeyword
 		test
 			source = "require 1 + 1 == 2"
 			stream = TokenStream(source, 'test.cobra')
@@ -177,7 +177,7 @@ class EnsureDeclaration
 	def parse(stream as ITokenStream) as EnsureDeclaration is new, shared
 		require
 			stream.token.kind == TokenKind.EnsureKeyword _
-			or stream.token.kind == TokenKind.LogicalAndOperator
+			or stream.token.kind == TokenKind.LogicalAndOperator and stream.peek.kind == TokenKind.EnsureKeyword
 		test
 			source = "ensure true <> false"
 			stream = TokenStream(source, 'test.cobra')

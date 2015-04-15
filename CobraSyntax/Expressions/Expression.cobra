@@ -147,14 +147,19 @@ class Expression
 
 			right as IExpression? = nil
 			if opKind == TokenKind.TypeCastOperator or opKind == TokenKind.NilCoalescingCastOperator
-				right = TypeExpression.parse(stream)
+				if stream.token.kind == TokenKind.ExclamationPoint or stream.token.kind == TokenKind.QuestionMark
+					right = TypeExpression(stream.grab, nil)
+				else
+					right = TypeExpression.parse(stream)
 			else if opKind == TokenKind.MemberAccessOperator and stream.token.isKeyword
 				stream.replace(stream.token.copy(TokenKind.Identifier))
 				right = IdentifierExpression.parse(stream)
 			else
 				isRightAssoc = Cobra.Compiler.OperatorSpecs.rightAssoc.containsKey(opKind)
 				nextMinPrecedence = if(isRightAssoc, precedence, precedence + 1)
+
 				if opKind in BinaryOperatorExpression.implicitLineContinuationKinds _
+				and stream.token.kind == TokenKind.EndOfLine _
 				and not stream implements IWhitespaceAgnosticTokenStream
 					right = _parse(WhitespaceAgnosticTokenStreamWrapper(stream), nextMinPrecedence, nil, precedenceMap)
 				else
@@ -210,7 +215,7 @@ class Expression
 			on TokenKind.TryKeyword, return TryCatchExpression.parse(stream)
 
 			on TokenKind.DoKeyword or TokenKind.AnonymousMethodStart
-				return AnonymousMethodExpression.parse(stream)
+				return BaseAnonymousMethodExpression.parse(stream)
 			
 			on TokenKind.OpenParenthesis, return ParenthesizedExpression.parse(stream)
 

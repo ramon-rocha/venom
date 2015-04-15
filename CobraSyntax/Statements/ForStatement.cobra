@@ -110,7 +110,10 @@ class ForStatement
 				skipped = stream.skipToNextLine
 			else
 				skipped = TokenList()
+
+			stream.skipBlankLines
 			clause = StatementClause.parse(stream)
+
 			return ForStatement(forKeyword, loopVar, comma, loopVar2,
 				inKeyword, startExpr, colon1, stopExpr, colon2, stepExpr, clause, skipped)
 

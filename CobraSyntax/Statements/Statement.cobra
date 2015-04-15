@@ -42,7 +42,7 @@ class Statement
 			on TokenKind.TraceKeyword, return TraceStatement.parse(stream)
 			on TokenKind.TryKeyword, return TryCatchStatement.parse(stream)
 			on TokenKind.UsingKeyword, return UsingStatement.parse(stream)
-			on TokenKind.WhileKeyword, return WhileStatement.parse(stream)
+			on TokenKind.WhileKeyword or TokenKind.PostKeyword, return WhileStatement.parse(stream)
 			on TokenKind.YieldKeyword, return YieldStatement.parse(stream)
 			else
 				originalIndent = stream.indentLevel
@@ -117,7 +117,7 @@ class StatementClause
 		skipped as TokenList? = nil
 	)
 		require
-			firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
+			#firstToken.kind == TokenKind.Comma implies endToken.kind == TokenKind.EndOfLine
 			firstToken.kind == TokenKind.Indent implies endToken.kind == TokenKind.Dedent
 		body
 			base.init(firstToken, endToken, nil)

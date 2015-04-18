@@ -4,10 +4,12 @@ use ICSharpCode
 namespace Venom.CobraSyntax
 
 class CobraParser
+	"""
+	Turns Cobra source code into an abstract syntax tree (AST).
+	"""
 	
 	var _compilerSettings as CobraCompilerSettings
 	var _errors as IList<of NRefactory.TypeSystem.Error>?
-	var _stream as ITokenStream?
 
 	cue init
 		.init(nil)
@@ -15,14 +17,7 @@ class CobraParser
 	cue init(compilerArgs as CobraCompilerSettings?)
 		base.init
 		_compilerSettings = compilerArgs ? CobraCompilerSettings()
-		_errors = nil
-	
-	def _addError(token as Cobra.Compiler.IToken, msg as String, isWarning = false)
-		require _errors <> nil
-		errorType = NRefactory.TypeSystem.ErrorType.Error
-		if isWarning, errorType = NRefactory.TypeSystem.ErrorType.Warning
-		_errors.add(NRefactory.TypeSystem.Error(errorType, msg, token.lineNum, token.colNum))
-	
+
 	def parseTopLevel(path as String) as ISyntaxNode
 		"""
 		Accepts a path to a file containing Cobra source code. Reads all text
@@ -31,186 +26,13 @@ class CobraParser
 		source = File.readAllText(path)
 		return .parseTopLevel(source, path)
 	
-	def parseTopLevel(source as String, fileName as String?) as ISyntaxNode
+	def parseTopLevel(source as String, fileName as String) as ISyntaxNode
 		"""
 		Accepts Cobra source code and optionally an associated filename,
 		the code is lexed, parsed, and the root node for the resulting
 		abstract syntax tree is returned.
 		"""
-		fileName ?= ""
-		_errors = List<of NRefactory.TypeSystem.Error>()
-		try
-			_stream = TokenStream(source, fileName to !)
-
-			howFar = 0
-			while _stream.peek(howFar) is not Cobra.Compiler.Token.empty
-				t = _stream.peek(howFar)
-				print "@[t.shortLocationString] - [t.toPrintString]"
-				howFar += 1
-			
-		catch ex as Exception
-			_addError(Cobra.Compiler.Token.empty, ex.message)
-			print ex.message
-			#return RootNode()
-		
-		nodes = NodeList()
-		_stream.skipBlankLines
-		
-		token = _stream.token
-		if token.startsDocString
-			docString = DocString.parse(_stream to !) to ?
-			nodes.add(docString)
-		
-		while _stream.token is not Cobra.Compiler.Token.empty
-			
-			token = _stream.token
-			parsedNode as ISyntaxNode? = nil
-
-			kind = token.kind
-			if kind == TokenKind.EndOfFile
-				# no more tokens to parse
-				_stream.grab # next token will be empty and break the loop
-			
-			else if kind == TokenKind.EndOfLine
-				# at this level, we ignore empty lines
-				_stream.skipBlankLines
-			
-			else if kind == TokenKind.CompilerDirective
-				# we ignore compiler directives for now but really this is a TODO
-				_stream.skipToNextLine
-			
-			else if token.startsDocString
-				_addError(token, "A top-level docstring must appear before any declarations.")
-				# parse it anyways
-				parsedNode = DocString.parse(_stream to !)
-			
-			else if kind in TokenKind.namespaceStatementKeywords
-				# we are considered to be in the "top-level" namespace
-				parsedNode = _makeNamespaceStatement
-			
-			else if kind == TokenKind.Identifier and token.text == "assembly"
-				pass
-				# TODO: See Cobra.Compiler.CobraParser.assemblyDecl
-				#parsedNode = _makeAssemblyDeclaration
-			
-			else
-				trace _stream.grab
-				#throw FallThroughException("ERROR in parseTopLevel: no clause for token: [token.toTechString])")
-			
-			if parsedNode <> nil, nodes.add(parsedNode)
-		
-		kw = Cobra.Compiler.Token(nodes.first.fileName, 0, 0, 0, TokenKind.NamespaceKeyword, "", nil)
-		id = QualifiedIdentifier(Identifier(kw.copy(TokenKind.Identifier, "global")))
-		decls = List<of INamespaceMemberDeclaration>()
-		for n in nodes
-			if n implements INamespaceMemberDeclaration, decls.add(n)
-		globalNamespace = NamespaceDeclaration(kw, id, nil, docString, nil, decls, nil)
-		return globalNamespace
-	
-	def _makeNamespaceStatement as IStatement?
-		"""
-		Creates a statement node that is valid in the context of a namespace
-		"""
-		require _stream.token.kind in TokenKind.namespaceStatementKeywords
-		branch _stream.token.kind
-			on TokenKind.UseKeyword, return UseDirective.parse(_stream to !)
-			on TokenKind.ClassKeyword, return _makeClassDeclaration
-			
-			on TokenKind.NamespaceKeyword, trace _stream.grab
-			on TokenKind.MixinKeyword, trace _stream.grab
-			on TokenKind.InterfaceKeyword, trace _stream.grab
-			on TokenKind.SigKeyword, trace _stream.grab
-			on TokenKind.StructKeyword, trace _stream.grab
-			on TokenKind.EnumKeyword, trace _stream.grab
-			on TokenKind.ExtendKeyword, trace _stream.grab
-			else, print "UNKNOWN TOKEN IN CONTENXT OF NAMESPACE [_stream.grab]"
-		
-		_stream.skipTo(TokenKind.Dedent)
-		return nil
-	
-	def _makeIdentifierExpression as IdentifierExpression
-		return IdentifierExpression.parse(_stream to !)
-	
-	def _makeClassDeclaration as ClassDeclaration
-		# todo
-		require _stream.token.kind == TokenKind.ClassKeyword
-		return ClassDeclaration.parse(_stream to !)
-	
-	def _makeClassMembers as NodeList
-		# TODO
-		members = NodeList(1)
-		while not _stream.token.endsBlock
-			kind = _stream.token.kind
-			
-			/#if kind == TokenKind.SharedKeyword
-				members.add(_makeSharedBlock)#/
-			if kind == TokenKind.CueKeyword
-				#todo
-				while _stream.grab.kind <> TokenKind.Dedent
-					pass
-			else if kind == TokenKind.PropertyKeyword
-				#todo
-				while _stream.grab.kind <> TokenKind.Dedent
-					pass
-			else if kind == TokenKind.FieldKeyword
-				members.add(_makeFieldDeclaration)
-			else if kind == TokenKind.MethodKeyword
-				members.add(_makeMethodDeclaration)
-			else
-				trace _stream.grab
-			
-			_stream.skipBlankLines
-			
-		return members
-	
-	def _makeFieldDeclaration as FieldDeclaration
-		require _stream.token.kind == TokenKind.FieldKeyword
-		return FieldDeclaration.parse(_stream to !)
-	
-	def _makeMethodDeclaration as MethodDeclaration
-		return MethodDeclaration.parse(_stream to !)
-
-	
-	def _makeMethodBody(indentToken as Cobra.Compiler.IToken) as ISyntaxNode
-		# TODO
-		statements = NodeList()
-
-		while not _stream.token.endsBlock
-			stmt = _makeStatement
-			statements.add(stmt)
-			
-		dedentToken = _stream.expect(TokenKind.Dedent)
-		assert dedentToken.kind == TokenKind.Dedent
-		
-		#return BodySection(indentToken, dedentToken, statements, skippedTokens)
-		t = _stream.token
-		return Identifier(Cobra.Compiler.Token(t.fileName, t.lineNum, t.colNum, t.charNum, TokenKind.Identifier, '', nil))
-	
-	def _makeStatement as IStatement
-		# todo
-		branch _stream.token.kind
-			on TokenKind.PrintKeyword
-				return _makePrintStatement
-			
-		return ExpressionStatement.parse(_stream to !)
-	
-	def _makePrintStatement as PrintStatement
-		# TODO
-		require _stream.token.kind == TokenKind.PrintKeyword
-		return PrintStatement.parse(_stream to !)
-	
-	def _makeExpression as IExpression
-		# TODO
-		branch _stream.token.kind
-			on TokenKind.SingleQuotedString or TokenKind.SingleQuotedStringStart
-				return StringLiteral(_stream.grab)
-			on TokenKind.Identifier or TokenKind.CallStart
-				return _makeIdentifierExpression
-			on TokenKind.OpenBracket
-				return _makeListLiteral
-			else
-				trace _stream.grab
-				throw FallThroughException()
-	
-	def _makeListLiteral as ListLiteral
-		return ListLiteral.parse(_stream to !) to ListLiteral
+		stream = TokenStream(source, fileName)
+		ast = CompilationUnit.parse(stream)
+		# TODO: visit AST to collect parse errors
+		return ast

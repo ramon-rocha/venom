@@ -1,0 +1,120 @@
+﻿
+namespace Venom.CobraSyntax
+
+extend Cobra.Compiler.IToken
+
+	def endsCompilationUnit as bool
+		return .isEOF or this is Cobra.Compiler.Token.empty
+
+class CompilationUnit
+	inherits SyntaxNode
+	adds DocumentationBehavior
+	"""
+	The top-level node in an abstract syntax tree for a particular file.
+	"""
+
+	#get compilerDirectives from var as IReadOnlyList<of CompilerDirectiveExpression> # TODO
+	get useDirectives from var as IReadOnlyList<of UseDirective>
+	get namespaceDeclarations from var as IReadOnlyList<of INamespaceDeclaration>
+	get extensionDeclarations from var as IReadOnlyList<of ExtensionDeclaration>
+	get typeDeclarations from var as IReadOnlyList<of ITypeDeclaration>
+
+	def parse(stream as ITokenStream) as CompilationUnit is shared, new
+		test
+			source =
+			'"""\n' +
+			'This is the infamous "Hello, world." example.\n' +
+			'\n' +
+			'And this text you are reading right now is the "doc string" for the whole\n' +
+			'program. You can also put doc strings underneath classes, class variables,\n' +
+			'methods and properties.\n' +
+			'"""\n' +
+			'\n' +
+			'class Hello\n' +
+			'\n' +
+			'	def main\n' +
+			'		print "Hello, world."'
+			stream = TokenStream(source, 'test.cobra')
+			ast = CompilationUnit.parse(stream)
+
+			assert ast.useDirectives.count == 0
+
+			assert ast.hasDocString
+			assert ast.docString.content.startsWith('This is the infamous "Hello, world." example.')
+
+			assert ast.namespaceDeclarations.count == 0
+
+			assert ast.extensionDeclarations.count == 0
+
+			assert ast.typeDeclarations.count == 1
+			assert ast.typeDeclarations[0] inherits ClassDeclaration
+		body
+			stream.skipBlankLines
+
+			if stream.token.startsDocString
+				docString = DocString.parse(stream) to ?
+
+			useDirectives = List<of UseDirective>()
+			namespaces = List<of INamespaceDeclaration>()
+			extensions = List<of ExtensionDeclaration>()
+			types = List<of ITypeDeclaration>()
+			skipped = TokenList()
+
+			while not stream.token.endsCompilationUnit
+
+				kind = stream.token.kind
+				if kind == TokenKind.EndOfLine
+					stream.skipBlankLines
+
+				else if kind == TokenKind.CompilerDirective
+					# we ignore compiler directives for now but really this is a TODO
+					skipped.addRange(stream.skipToNextLine)
+
+				else if kind in TokenKind.namespaceStatementKeywords
+					if kind == TokenKind.UseKeyword
+						useDirectives.add(UseDirective.parse(stream))
+					else if kind == TokenKind.NamespaceKeyword
+						namespaces.add(NamespaceDeclaration.parse(stream))
+					else if kind == TokenKind.ExtendKeyword
+						extensions.add(ExtensionDeclaration.parse(stream))
+					else if kind in TokenKind.typeDeclarationKeywords
+						types.add(TypeDeclaration.parse(stream))
+					else
+						trace kind
+						skipped.add(stream.grab)
+				
+				else if kind == TokenKind.Identifier and stream.token.text == "assembly"
+					skipped.add(stream.grab)
+					# TODO: See Cobra.Compiler.CobraParser.assemblyDecl
+
+				else
+					throw FallThroughException("no clause for token: [stream.token.toTechString]")
+
+			return CompilationUnit(docString, useDirectives, namespaces, extensions, types, skipped)
+
+	cue init(
+		docString as DocString?,
+		useDirectives as UseDirective*,
+		namespaces as INamespaceDeclaration*,
+		extensions as ExtensionDeclaration*,
+		types as ITypeDeclaration*,
+		skipped as TokenList
+	)
+		base.init(skipped)
+		if docString <> nil
+			_docString = docString
+			_addChild(docString)
+			_firstToken = docString.firstToken
+
+		_useDirectives = List<of UseDirective>(useDirectives)
+		for ud in useDirectives, _addChild(ud)
+		_namespaceDeclarations = List<of INamespaceDeclaration>(namespaces)
+		for ns in namespaces, _addChild(ns)
+		_extensionDeclarations = List<of ExtensionDeclaration>(extensions)
+		for e in extensions, _addChild(ns)
+		_typeDeclarations = List<of ITypeDeclaration>(types)
+		for t in types, _addChild(t)
+
+
+	def toCobraSource as String is override
+		return "TODO"

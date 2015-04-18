@@ -85,16 +85,6 @@ class BaseContractDeclaration
 			_expressions = ExpressionList(expressions)
 			for e in _expressions, _addChild(e)
 
-	def toCobraSource as String is override
-		if _indent == nil
-			e = _expressions[0]
-			return "[_keyword.text] [e.toCobraSource]"
-
-		sb = StringBuilder(_keyword.text)
-		# TODO: indent
-		for e in _expressions, sb.appendLine(e.toCobraSource)
-		return sb.toString
-
 class InvariantDeclaration
 	inherits BaseContractDeclaration
 	implements ITypeMemberDeclaration

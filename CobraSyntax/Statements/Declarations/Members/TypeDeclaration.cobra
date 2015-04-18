@@ -104,11 +104,6 @@ class TypeDeclaration
 			for d in _memberDeclarations
 				_addChild(d)
 	
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [.childCount] child nodes ")
-		return sb.toString
-	
 
 
 

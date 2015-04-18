@@ -45,11 +45,6 @@ class Argument
 			_label = _firstToken = label
 		_expression = expr
 
-	def toCobraSource as String is override
-		if _label <> nil
-			return _label.text + _expression.toCobraSource
-		return _expression.toCobraSource
-
 
 class CallExpression inherits Expression
 	"""

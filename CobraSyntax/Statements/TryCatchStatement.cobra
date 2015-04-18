@@ -142,9 +142,6 @@ class TryClause
 		_clause = clause
 		_addChild(clause)
 
-	def toCobraSource as String is override
-		return "TODO"
-
 
 class CatchClause
 	inherits SyntaxNode
@@ -192,10 +189,6 @@ class CatchClause
 		_clause = clause
 		_addChild(clause)
 
-	def toCobraSource as String is override
-		return "TODO"
-
-
 class SuccessClause
 	inherits SyntaxNode
 	implements IStatementContainer
@@ -216,9 +209,6 @@ class SuccessClause
 		_clause = clause
 		_addChild(clause)
 
-	def toCobraSource as String is override
-		return "TODO"
-
 class FinallyClause
 	inherits SyntaxNode
 	implements IStatementContainer
@@ -238,6 +228,3 @@ class FinallyClause
 		base.init(finallyKeyword, clause.lastToken, nil)
 		_clause = clause
 		_addChild(clause)
-
-	def toCobraSource as String is override
-		return "TODO"

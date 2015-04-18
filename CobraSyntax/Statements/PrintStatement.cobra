@@ -132,16 +132,3 @@ class PrintStatement inherits Statement
 			_expressions = ExpressionList(expressions)
 			if destination, _addChild(destination)
 			for e in _expressions, _addChild(e) # TODO? Add expression list as single node
-
-	def toCobraSource as String is override
-		sb = StringBuilder("print ")
-		if .toKeyword
-			sb.append("to [_destination.toCobraSource]")
-			# TODO handle indent
-		exprBuilder = StringBuilder()
-		for e in .expressions
-			if exprBuilder.length <> 0, exprBuilder.append(", ")
-			exprBuilder.append(e.toCobraSource)
-
-		sb.append(exprBuilder.toString)
-		return sb.toString

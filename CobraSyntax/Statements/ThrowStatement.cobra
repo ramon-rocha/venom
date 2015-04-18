@@ -27,6 +27,3 @@ class ThrowStatement inherits Statement
 		_throwKeyword = keyword
 		_typeIdentifier = id
 		_addChild(id)
-
-	def toCobraSource as String is override
-		return "throw [_typeIdentifier.toCobraSource]()"

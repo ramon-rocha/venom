@@ -97,22 +97,6 @@ class MethodSignature inherits SyntaxNode
 			_lastToken = closeParens
 		else
 			throw FallThroughException("Could not determine _lastToken")
-	
-	def toCobraSource as String is override
-		test
-			source = "x as int, y as int) as List<of String>"
-			stream = TokenStream(source, 'test.cobra')
-			msig = MethodSignature.parse(stream)
-			assert msig.toCobraSource == source
-		body
-			sb = StringBuilder()
-			for param in _parameterDeclarations
-				if sb.length <> 0, sb.append(", ")
-				sb.append(param.toCobraSource)
-			sb.append(")")
-			if _returnTypeSpecification <> nil
-				sb.append(" [_returnTypeSpecification.toCobraSource]")
-			return sb.toString
 
 interface IMethodDeclaration
 	inherits ITypeMemberDeclaration
@@ -339,6 +323,3 @@ class MethodBody
 			_lastToken = _firstToken
 		_clause = StatementClause(_firstToken, _lastToken, stmts)
 		_addChild(_clause)
-
-	def toCobraSource as String is override
-		return "TODO"

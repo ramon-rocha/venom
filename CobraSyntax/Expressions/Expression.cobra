@@ -224,8 +224,3 @@ class Expression
 				trace stream.token  # TODO : see CobraParser line 3109
 		
 		return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty), nil) # TODO
-
-	def toCobraSource as String is override
-		return "TODO"
-
-

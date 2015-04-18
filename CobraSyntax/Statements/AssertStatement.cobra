@@ -34,6 +34,3 @@ class AssertStatement inherits Statement
 		_assertKeyword = keyword
 		_expression = expr
 		_addChild(expr)
-
-	def toCobraSource as String is override
-		return "assert " + _expression.toCobraSource

@@ -146,11 +146,6 @@ class UseDirective inherits Statement
 			if fromKeyword <> nil
 				_fromKeyword, _libraryName = fromKeyword, libraryName
 				_addChild(_libraryName to !)
-	
-	def toCobraSource as String is override
-		if _fromKeyword <> nil
-			return "use [_qualifiedId.toCobraSource] from [_libraryName.toCobraSource]"
-		return "use [_qualifiedId.toCobraSource]"
 
 
 class LibraryName
@@ -179,14 +174,3 @@ class LibraryName
 		base.init(libName.firstToken, nil)
 		_libraryFileName = libName.qualifiedName
 		_addChild(libName)
-
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [.libraryFileName] : [_firstToken.which]")
-		return sb.toString
-	
-	def toCobraSource as String is override
-		if .libraryFileName.length > _firstToken.text.length
-			return .libraryFileName
-		else
-			return _firstToken.text

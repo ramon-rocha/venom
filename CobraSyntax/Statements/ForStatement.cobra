@@ -74,7 +74,6 @@ class ForStatement
 			assert stmt.loopVar.name == "x"
 			assert stmt.loopVar.typeSpecification.identifier.name == "number"
 			assert stmt.stopExpression inherits SetLiteral
-			assert stmt.toCobraSource == source
 		test
 			source =
 			"for k, v in {'a': 1, 'b': 2, 'c':3}\n" +
@@ -148,21 +147,3 @@ class ForStatement
 			_addChild(stepExpression)
 		_clause = clause
 		_addChild(clause)
-
-	def toCobraSource as String is override
-		sb = StringBuilder("for [_loopVar.toCobraSource] in ")
-		if _colon1
-			sb.append(_startExpression.toCobraSource)
-			sb.append(":")
-		sb.append(_stopExpression.toCobraSource)
-		if _colon2
-			sb.append(":")
-			sb.append(_stepExpression.toCobraSource)
-		stmtsSource = _clause.toCobraSource
-		if stmtsSource.startsWith(",")
-			sb.append(stmtsSource)
-		else
-			sb.appendLine
-			for line in stmtsSource.splitLines
-				sb.appendLine("\t[line]")
-		return sb.toString

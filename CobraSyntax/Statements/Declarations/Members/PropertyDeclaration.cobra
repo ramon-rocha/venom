@@ -113,9 +113,6 @@ class PropertySignature
 			else if _parameterDeclarations.count <> 0
 				_lastToken = _parameterDeclarations.last.lastToken
 
-	def toCobraSource as String is override
-		return "TODO"
-
 
 class PropertyDeclaration
 	inherits TypeMemberDeclaration
@@ -625,10 +622,6 @@ class GetAccessor
 
 
 
-	def toCobraSource as String is override
-		return "TODO"
-
-
 class SetAccessor
 	inherits Accessor
 
@@ -652,6 +645,3 @@ class SetAccessor
 			assert setter.assignToken == setter.fromKeyword == nil
 		body
 			return _parse(stream, TokenKind.SetterKeyword) to SetAccessor
-
-	def toCobraSource as String is override
-		return "TODO"

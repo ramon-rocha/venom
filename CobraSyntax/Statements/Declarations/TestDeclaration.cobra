@@ -63,6 +63,3 @@ class TestDeclaration
 			_name = ""
 		_clause = StatementClause(indent, dedent, StatementList(statements))
 		_addChild(_clause)
-
-	def toCobraSource as String is override
-		return "TODO"

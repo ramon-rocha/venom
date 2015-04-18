@@ -96,12 +96,6 @@ class BranchStatement inherits Statement
 		if elseClause
 			_elseClause = elseClause
 			_addChild(elseClause)
-	
-	def toCobraSource as String is override
-		sb = StringBuilder("branch [_branchVariable]\n\t")
-		for o in _onClauses, sb.append(o.toCobraSource)
-		if _elseClause, sb.append(_elseClause.toCobraSource)
-		return sb.toString
 
 class BranchOnClause
 	inherits SyntaxNode
@@ -159,19 +153,6 @@ class BranchOnClause
 		_clause = clause
 		_addChild(clause)
 
-	def toCobraSource as String is override
-		sb = StringBuilder("on ")
-		valueBuilder = StringBuilder()
-		for e in _values
-			if valueBuilder.length <> 0, valueBuilder.append(" or ")
-			valueBuilder.append(e.toCobraSource)
-		sb.append(valueBuilder.toString)
-		if _unexpectedExpressions.count <> 0
-			for e in _unexpectedExpressions, sb.append(e.toCobraSource)
-		sb.appendLine
-		sb.append(_clause)
-		return sb.toString
-
 class BranchElseClause
 	inherits SyntaxNode
 	implements IStatementContainer
@@ -198,8 +179,3 @@ class BranchElseClause
 		base.init(elseKeyword, clause.lastToken, skipped)
 		_clause = clause
 		_addChild(clause)
-
-	def toCobraSource as String is override
-		sb = StringBuilder("else")
-		sb.append(_clause)
-		return sb.toString

@@ -24,14 +24,12 @@ class StringLiteral inherits LiteralExpression
 			string = StringLiteral.parse(stream)
 			assert string.firstToken.text == source
 			assert string.firstToken.value.toString == 'Hello, world!'
-			assert string.toCobraSource == '"Hello, world!"'
 		test
 			source = 'r"Hello, world!"'
 			stream = TokenStream(source, 'test.cobra')
 			string = StringLiteral.parse(stream)
 			assert string.firstToken.text == source
 			assert string.firstToken.value.toString == 'Hello, world!'
-			assert string.toCobraSource == 'r"Hello, world!"'
 		body
 			kind = stream.token.kind
 			if kind == TokenKind.SingleQuotedString or kind == TokenKind.DoubleQuotedString
@@ -40,14 +38,6 @@ class StringLiteral inherits LiteralExpression
 
 	cue init(token as Cobra.Compiler.IToken)
 		base.init(token, nil)
-
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [.firstToken.text] : [_firstToken.which]")
-		return sb.toString
-	
-	def toCobraSource as String is override
-		return _firstToken.text
 	
 
 class InterpolatedStringLiteral inherits StringLiteral
@@ -85,7 +75,6 @@ class InterpolatedStringLiteral inherits StringLiteral
 			assert string.parts[4] inherits StringLiteral
 			assert string.firstToken.kind == TokenKind.DoubleQuotedStringStart
 			assert string.lastToken.kind == TokenKind.DoubleQuotedStringEnd
-			assert string.toCobraSource == source
 		body
 			parts = ExpressionList()
 			start = stream.grabOneOf(_startKinds)
@@ -120,11 +109,6 @@ class InterpolatedStringLiteral inherits StringLiteral
 
 	get parts from var as IReadOnlyList<of IExpression>
 
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for p in .parts, sb.append(p.toCobraSource)
-		return sb.toString
-
 class FormattedExpression inherits Expression
 	"""
 	This is used exclusively for string substitutions that have formatting:
@@ -142,6 +126,3 @@ class FormattedExpression inherits Expression
 		return _format to !
 	
 	get expression from var as IExpression
-
-	def toCobraSource as String is override
-		return "[_expression.toCobraSource]:[.format]"

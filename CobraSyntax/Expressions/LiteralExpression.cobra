@@ -7,8 +7,6 @@ class LiteralExpression
 	"""
 	The base class for all literal expressions
 	"""
-	def toCobraSource as String is override
-		return _firstToken.text
 
 class NilLiteral inherits LiteralExpression
 	cue init(keyword as Cobra.Compiler.IToken)

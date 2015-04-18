@@ -58,14 +58,3 @@ class RaiseStatement inherits Statement
 		_commas = TokenList(commas)
 		_args = List<of IExpression>(args)
 		for a in _args, _addChild(a)
-
-	def toCobraSource as String is override
-		sb =StringBuilder("raise [_eventExpression.toCobraSource]")
-		if _args.count <> 0
-			sb.append(", ")
-			argBuilder = StringBuilder()
-			for a in _args
-				if argBuilder.length <> 0, argBuilder.append(", ")
-				argBuilder.append(a.toCobraSource)
-			sb.append(argBuilder.toString)
-		return sb.toString

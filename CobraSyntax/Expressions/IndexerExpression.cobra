@@ -12,7 +12,6 @@ class IndexedExpression inherits BinaryOperatorExpression
 			assert expr.indexer is expr.rightExpression
 			assert expr.indexer.expressions.count == 1
 			assert expr.indexer.expressions[0] inherits IdentifierExpression
-			assert expr.toCobraSource == source
 		test
 			source = r'list[1:2:10]'
 			stream = TokenStream(source, 'test.cobra')
@@ -21,7 +20,6 @@ class IndexedExpression inherits BinaryOperatorExpression
 			assert expr.indexer is expr.rightExpression
 			assert expr.indexer.expressions.count == 3
 			assert all for e in expr.indexer.expressions get e inherits IntegerLiteral
-			assert expr.toCobraSource == source
 		body
 			return Expression.parse(stream) to IndexedExpression
 
@@ -30,9 +28,6 @@ class IndexedExpression inherits BinaryOperatorExpression
 	
 	get indexer as IndexerExpression
 		return _rightExpression to IndexerExpression
-	
-	def toCobraSource as String is override
-		return _leftExpression.toCobraSource + _rightExpression.toCobraSource
 
 class IndexerExpression inherits Expression
 	"""
@@ -90,20 +85,3 @@ class IndexerExpression inherits Expression
 	
 	get expressions from var as IReadOnlyList<of IExpression?>
 	get separators from var as IReadOnlyTokenList
-
-	def toCobraSource as String is override
-		sb = StringBuilder(_firstToken.text)
-		exprIndex = sepIndex = 0
-		while exprIndex < _expressions.count or sepIndex < _separators.count
-			
-			if exprIndex < _expressions.count
-				e = _expressions[exprIndex]
-				if e <> nil, sb.append(e.toCobraSource)
-				exprIndex += 1
-
-			if sepIndex < _separators.count
-				sb.append(_separators[sepIndex].text)
-				sepIndex += 1
-
-		sb.append(_lastToken.text)
-		return sb.toString

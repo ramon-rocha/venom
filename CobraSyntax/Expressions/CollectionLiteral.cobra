@@ -143,13 +143,6 @@ class CollectionLiteral
 		_commas = TokenList(commas)
 		_isSpaceAgnostic = true
 
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for e in _elements
-			if sb.length <> 0, sb.append(', ')
-			sb.append(e.toCobraSource)
-		return "[_firstToken.text][sb.toString][_lastToken.text]"
-
 
 class ListLiteral inherits CollectionLiteral
 	"""

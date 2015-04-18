@@ -40,17 +40,6 @@ class IdentifierExpression
 			_typeSpecification = typeSpec
 			_addChild(typeSpec)
 
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [_identifier.name] : [_firstToken.which]")
-		return sb.toString
-	
-	def toCobraSource as String is override
-		sb = StringBuilder(_identifier.toCobraSource)
-		if _typeSpecification <> nil
-			sb.append(" [_typeSpecification.toCobraSource]")
-		return sb.toString
-
 class ExplicitTypeSpecification inherits SyntaxNode
 	"""
 	as Foo.Bar?
@@ -69,6 +58,3 @@ class ExplicitTypeSpecification inherits SyntaxNode
 		_asKeyword = kw
 		_identifier = typeId
 		_addChild(typeId)
-
-	def toCobraSource as String is override
-		return "as [_identifier.name.toString]"

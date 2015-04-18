@@ -59,26 +59,7 @@ interface ISyntaxNode
 		"""
 		A list of tokens that were not expected to be contained in this node but are.
 		"""
-	
-	get missingTokens as IReadOnlyTokenList
-		"""
-		A list of tokens that were expected but were missing from the source code when this node was constructed.
-		"""
-	
-	def toCobraSource as String
-		"""
-		Generates Cobra source code for this node and its children
-		"""
 
-	def toPrettyString as String is nonvirtual
-		"""
-		A human-readable representation of this node
-		"""
-	
-	def toPrettyString(level as int) as String is nonvirtual
-		"""
-		A human-readable representation of this node indented a number of times equal to 'level'.
-		"""
 
 class NodeList inherits List<of ISyntaxNode>
 	pass
@@ -277,51 +258,3 @@ class SyntaxNode
 		"""
 		A list of tokens that were not expected to be contained in this node.
 		"""
-	
-	get missingTokens from var as IReadOnlyTokenList = TokenList()
-		"""
-		A list of tokens that were expected but were missing from the source code when this node was constructed.
-		
-		The position of each token in the list is where the token was expected.
-		"""
-	
-	def toCobraSource as String is abstract
-		"""
-		Generates Cobra source code for this node and its children
-		"""
-
-	def _toPrettyString as String
-		ensure result.count('\n') == 0
-		return .toString.replace("Venom.CobraSyntax", "")
-	
-	def _appendIndent(sb as StringBuilder, count as int)
-		for i in count
-			sb.append('|   ')
-	
-	def toPrettyString as String is nonvirtual
-		"""
-		A human-readable representation of this node
-		"""
-		return .toPrettyString(0)
-
-	def toPrettyString(level as int) as String is nonvirtual
-		"""
-		A human-readable representation of this node indented a number of times equal to 'level'.
-		"""
-		sb = StringBuilder()
-		_appendIndent(sb, level)
-		sb.append(_toPrettyString)
-
-		if _firstToken is not Cobra.Compiler.Token.empty
-			bl = .beginLocation
-			el = .endLocation
-			sb.append(" ([bl.line], [bl.column]) - ([el.line], [el.column])")
-		
-		if _extraTokens.count <> 0
-			sb.append('; extra tokens: [_extraTokens]')
-		sb.appendLine
-		
-		for child in _children
-			sb.append(child.toPrettyString(level + 1))
-		
-		return sb.toString

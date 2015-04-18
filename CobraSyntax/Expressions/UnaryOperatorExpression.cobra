@@ -3,6 +3,9 @@ namespace Venom.CobraSyntax
 
 class UnaryOperatorExpression inherits Expression
 	
+	get operator from var as Cobra.Compiler.IToken
+	get expression from var as IExpression
+
 	var _unaryTypeMap as IReadOnlyDictionary<of String, Type> is readonly, shared = {
 		TokenKind.LogicalAllOperator : AllExpression,
 		TokenKind.LogicalAnyOperator : AnyExpression,
@@ -25,14 +28,6 @@ class UnaryOperatorExpression inherits Expression
 		base.init(op, nil)
 		_operator, _expression = op, expr
 		_addChild(expr)
-	
-	get operator from var as Cobra.Compiler.IToken
-	get expression from var as IExpression
-
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append("([_operator.text])")
-		return sb.toString
 
 class AllExpression inherits UnaryOperatorExpression
 	cue init(op as Cobra.Compiler.IToken, expr as IExpression)

@@ -119,19 +119,3 @@ class ParameterDeclaration
 		if defaultValue
 			_defaultValue = defaultValue
 			_addChild(defaultValue)
-	
-	def toCobraSource as String is override
-		test
-			source = ns"x as vari inout int = @[1, 2, 3, 4]"
-			stream = TokenStream(source, 'test.cobra')
-			param = ParameterDeclaration.parse(stream)
-			assert param.toCobraSource == source
-		body
-			sb = StringBuilder(_identifier.name)
-			if _asKeyword, sb.append(" as")
-			if .isVariableLength, sb.append(" vari")
-			if .isOutputOnly, sb.append(" out")
-			if .isInputAndOutput, sb.append(" inout")
-			if _typeIdentifier, sb.append(" [_typeIdentifier.toCobraSource]")
-			if _defaultValue, sb.append(" = [_defaultValue.toCobraSource]")
-			return sb.toString

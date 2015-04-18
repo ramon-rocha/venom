@@ -44,7 +44,3 @@ class ReturnStatement inherits Statement
 		if expression
 			_addChild(expression)
 			_expression = expression
-	
-	def toCobraSource as String is override
-		if _expression, return "return " + _expression.toCobraSource
-		return "return"

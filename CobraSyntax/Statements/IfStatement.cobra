@@ -143,13 +143,6 @@ class IfStatement inherits Statement
 			_falseClause = falseClause
 			_addChild(falseClause)
 
-	def toCobraSource as String is override
-		sb = StringBuilder("if ")
-		sb.append(_condition.toCobraSource)
-		sb.append(_trueClause.toCobraSource)
-		if _falseClause, sb.append(_falseClause.toCobraSource)
-		return sb.toString
-
 
 class ElseClause inherits StatementClause
 	
@@ -190,11 +183,3 @@ class ElseClause inherits StatementClause
 		base.init(elseKeyword, clause.lastToken)
 		_clause = clause
 		_addChild(clause)
-
-	def toCobraSource as String is override
-		sb = StringBuilder("else")
-		if _ifStatement
-			sb.append(" [_ifStatement.toCobraSource]")
-			return sb.toString
-		sb.append(_clause)
-		return sb.toString

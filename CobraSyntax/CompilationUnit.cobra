@@ -114,7 +114,3 @@ class CompilationUnit
 		for e in extensions, _addChild(ns)
 		_typeDeclarations = List<of ITypeDeclaration>(types)
 		for t in types, _addChild(t)
-
-
-	def toCobraSource as String is override
-		return "TODO"

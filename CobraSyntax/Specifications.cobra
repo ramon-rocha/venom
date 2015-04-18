@@ -54,19 +54,6 @@ class AttributeExpression
 		for a in args, _addChild(a)
 		_commas = TokenList(commas)
 
-	def toCobraSource as String is override
-		if _arguments.count == 0
-			return _identifier.toCobraSource
-
-		sb = StringBuilder()
-		for a in _arguments
-			if sb.length <> 0, sb.append(", ")
-			sb.append(a.toCobraSource)
-
-		if _closeParen <> nil, sb.append(")")
-
-		return "[_identifier.toCobraSource][sb.toString]"
-
 class AttributeSpecification
 	inherits SyntaxNode
 	"""
@@ -101,8 +88,6 @@ class AttributeSpecification
 			assert spec.attributes[2].identifier.name == "ItemProperty"
 			assert spec.attributes[2].arguments.count == 2
 			assert spec.attributes[2].arguments[1] inherits AssignmentExpression
-
-			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.HasKeyword)
 			attributes = List<of AttributeExpression>()
@@ -130,13 +115,6 @@ class AttributeSpecification
 		_attributes = List<of AttributeExpression>(atts)
 		for a in atts, _addChild(a)
 
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for a in _attributes
-			if sb.length <> 0, sb.append(", ")
-			sb.append(a.toCobraSource)
-		return "has [sb.toString]"
-
 class ModifierSpecification inherits SyntaxNode
 	"""
 	The syntax to specify access modifiers, overload modifiers, and other "is names"
@@ -158,7 +136,6 @@ class ModifierSpecification inherits SyntaxNode
 			spec = ModifierSpecification.parse(stream)
 			assert spec.modifierTokens.count == 1
 			assert spec.modifierTokens[0].kind == TokenKind.SharedKeyword
-			assert spec.toCobraSource == source
 		test
 			source = "is protected, abstract"
 			stream = TokenStream(source, 'test.cobra')
@@ -166,7 +143,6 @@ class ModifierSpecification inherits SyntaxNode
 			assert spec.modifierTokens.count == 2
 			assert spec.modifierTokens[0].kind == TokenKind.ProtectedKeyword
 			assert spec.modifierTokens[1].kind == TokenKind.AbstractKeyword
-			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.IsKeyword)
 			mods = TokenList()
@@ -188,13 +164,6 @@ class ModifierSpecification inherits SyntaxNode
 		_commas = TokenList(commas)
 		_lastToken = _modifierTokens.last
 
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for m in _modifierTokens
-			if sb.length <> 0, sb.append(", ")
-			sb.append(m.text)
-		return "is [sb.toString]"
-
 class BaseTypeSpecification inherits SyntaxNode
 	"""
 	The syntax for specifying the base type a declaration inherits from
@@ -212,7 +181,6 @@ class BaseTypeSpecification inherits SyntaxNode
 			spec = BaseTypeSpecification.parse(stream)
 			assert spec.typeIdentifier in spec.children
 			assert spec.typeIdentifier.qualifiedName == "System.Collections.Generic.IReadOnlyList<of int>"
-			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.InheritsKeyword)
 			id = TypeIdentifier.parse(stream)
@@ -223,9 +191,6 @@ class BaseTypeSpecification inherits SyntaxNode
 		_inheritsKeyword = keyword
 		_typeIdentifier = typeId
 		_addChild(typeId)
-
-	def toCobraSource as String is override
-		return "inherits [_typeIdentifier.toCobraSource]"
 
 class InterfaceSpecification inherits SyntaxNode
 	"""
@@ -249,7 +214,6 @@ class InterfaceSpecification inherits SyntaxNode
 			assert spec.typeIdentifiers.count == 2
 			assert spec.typeIdentifiers[0].name == "IBar"
 			assert spec.typeIdentifiers[1].name == "IBaz"
-			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.ImplementsKeyword)
 			types = List<of TypeIdentifier>()
@@ -266,13 +230,6 @@ class InterfaceSpecification inherits SyntaxNode
 		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
 		for t in _typeIdentifiers, _addChild(t)
 		_commas = TokenList(commas)
-
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for t in _typeIdentifiers
-			if sb.length <> 0, sb.append(", ")
-			sb.append(t.toCobraSource)
-		return "implements [sb.toString]"
 
 class GenericConstraint
 	inherits SyntaxNode
@@ -298,9 +255,6 @@ class GenericConstraint
 	cue init(id as Identifier)
 		base.init(id.firstToken, nil)
 		_addChild(id)
-
-	def toCobraSource as String is override
-		throw NotImplementedException()
 
 class GenericConstraintSpecification inherits SyntaxNode
 	"""
@@ -347,9 +301,6 @@ class GenericConstraintSpecification inherits SyntaxNode
 		for c in _genericConstraints, _addChild(c)
 		_commas = TokenList(commas)
 
-	def toCobraSource as String is override
-		throw NotImplementedException()
-
 class MixinSpecification inherits SyntaxNode
 	"""
 	The syntax for specifying the mixins added to a type declaration
@@ -374,7 +325,6 @@ class MixinSpecification inherits SyntaxNode
 			assert spec.typeIdentifiers.count == 2
 			assert spec.typeIdentifiers[0].name == "BarBehavior"
 			assert spec.typeIdentifiers[1].name == "BazBehavior"
-			assert spec.toCobraSource == source
 		body
 			kw = stream.expect(TokenKind.AddsKeyword)
 			types = List<of TypeIdentifier>()
@@ -391,13 +341,6 @@ class MixinSpecification inherits SyntaxNode
 		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
 		for t in _typeIdentifiers, _addChild(t)
 		_commas = TokenList(commas)
-
-	def toCobraSource as String is override
-		sb = StringBuilder()
-		for t in _typeIdentifiers
-			if sb.length <> 0, sb.append(", ")
-			sb.append(t.toCobraSource)
-		return "adds [sb.toString]"
 
 interface ISpecifications
 	inherits ISyntaxNode
@@ -570,6 +513,3 @@ class Specifications
 		for c in mixins, _addChild(c)
 		_genericConstraints = List<of GenericConstraintSpecification>(constraints)
 		for c in constraints, _addChild(c)
-	
-	def toCobraSource as String is override
-		return "TODO"

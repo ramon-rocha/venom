@@ -46,6 +46,3 @@ class ExpectStatement
 		_addChild(typeId)
 		_clause = clause
 		_addChild(clause)
-	
-	def toCobraSource as String is override
-		return "expect [_exceptionTypeIdentifier.toCobraSource][_clause.toCobraSource]"

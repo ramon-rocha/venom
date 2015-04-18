@@ -48,8 +48,3 @@ class YieldStatement inherits Statement
 		base.init(yieldKeyword, expression.lastToken, skipped)
 		_yieldKeyword, _expression = yieldKeyword, expression
 		_addChild(expression)
-
-	def toCobraSource as String is override
-		if _breakKeyword <> nil
-			return "yield break"
-		return "yield [_expression.toCobraSource]"

@@ -68,7 +68,6 @@ class Identifier
 			token = Cobra.Compiler.Token("test.cobra", 4, 8, 30, TokenKind.Identifier, "testing", nil)
 			id = Identifier(token)			
 			assert id.name == "testing"
-			assert id.toCobraSource == "testing"
 			assert id.isCamelCased
 			assert not id.isPascalCased
 			assert not id.isUnderscored
@@ -87,7 +86,6 @@ class Identifier
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.Identifier, "File", nil)
 			id = Identifier(token)
 			assert id.name == "File"
-			assert id.toCobraSource == "File"
 			assert not id.isCamelCased
 			assert id.isPascalCased
 			assert not id.isUnderscored
@@ -95,7 +93,6 @@ class Identifier
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.Identifier, "__secret", nil)
 			id = Identifier(token)
 			assert id.name == "__secret"
-			assert id.toCobraSource == "__secret"
 			assert id.isCamelCased
 			assert not id.isPascalCased
 			assert id.isUnderscored
@@ -103,7 +100,6 @@ class Identifier
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.CallStart, "_someCall(", nil)
 			id = Identifier(token)
 			assert id.name == "_someCall"
-			assert id.toCobraSource == "_someCall("
 			assert id.isCamelCased
 			assert not id.isPascalCased
 			assert id.isUnderscored
@@ -111,7 +107,6 @@ class Identifier
 			token = Cobra.Compiler.Token("", 1, 1, 1, TokenKind.GenericIdentifierStart, "Foo<of", nil)
 			id = Identifier(token)
 			assert id.name == "Foo"
-			assert id.toCobraSource == "Foo<of"
 			assert not id.isCamelCased
 			assert id.isPascalCased
 			assert not id.isUnderscored
@@ -125,14 +120,6 @@ class Identifier
 					_name = text[0:text.length - 3]
 				else
 					_name = text
-	
-	def _toPrettyString as String is override
-		sb = StringBuilder(base._toPrettyString)
-		sb.append(" : [.name] : [_firstToken.which]")
-		return sb.toString
-		
-	def toCobraSource as String is override
-		return _firstToken.text
 		
 class QualifiedIdentifier inherits Identifier
 	"""
@@ -235,12 +222,6 @@ class QualifiedIdentifier inherits Identifier
 				_qualifiedName = "[left].[_right.name]"
 		
 		return _qualifiedName to !
-
-	def _toPrettyString as String is override
-		return .toString + " : [.qualifiedName]"
-	
-	def toCobraSource as String is override
-		return .qualifiedName #TODO: preserve any whitespace between identifiers and dots
 	
 
 use ICobraToken = Cobra.Compiler.IToken # workaround inability to use Cobra.Compiler.IToken* as parameter type

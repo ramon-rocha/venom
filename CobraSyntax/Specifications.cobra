@@ -557,7 +557,7 @@ class Specifications
 		constraints as GenericConstraintSpecification*)
 		base.init
 		if indent <> nil
-			_indentToken = _firstToken = indent
+			_indentToken = _firstToken = _lastToken = indent
 		_modifiers = List<of ModifierSpecification>(mods)
 		for c as ISyntaxNode in mods, _addChild(c)
 		_baseTypes = List<of BaseTypeSpecification>(bases)

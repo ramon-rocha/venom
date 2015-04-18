@@ -90,9 +90,10 @@ class SyntaxNode
 	This is the base class from which all other nodes in the syntax tree inherit.
 	"""
 
-	# doesn't work due to compiler bug
-	/#invariant
+
+	invariant
 		_firstToken.charNum <= _lastToken.charNum
+		/# # doesn't work due to compiler bug
 		all for c in .children get _firstToken.charNum <= c.firstToken
 		all for c in .children get c.lastToken <= _lastToken.charNum #/
 

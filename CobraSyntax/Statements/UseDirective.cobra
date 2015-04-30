@@ -168,7 +168,8 @@ class LibraryName
 	
 	cue init(stringToken as Cobra.Compiler.IToken)
 		base.init(stringToken, nil)
-		_libraryFileName = stringToken.value to String
+		fileName = stringToken.value to? String?
+		_libraryFileName = fileName ? ""
 		
 	cue init(libName as QualifiedIdentifier)
 		base.init(libName.firstToken, nil)

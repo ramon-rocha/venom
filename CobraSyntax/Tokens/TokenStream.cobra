@@ -281,8 +281,7 @@ class TokenStream
 		for kind in kinds
 			token = .grabOptional(kind)
 			if token <> nil, break
-		if token == nil
-			.expect(kinds[0])
+		token ?= .expect(kinds[0])
 		return token to !
 
 	def grabOneOfOptional(kinds as IReadOnlyList<of String>) as ICobraToken?

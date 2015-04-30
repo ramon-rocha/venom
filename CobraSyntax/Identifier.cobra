@@ -237,7 +237,7 @@ class GenericIdentifier inherits Identifier
 	"""
 
 	var _openIdentifier as Identifier
-	var _commas as IReadOnlyTokenList
+	get commas from var as IReadOnlyTokenList
 	get types from var as IReadOnlyList<of TypeIdentifier>
 
 	def parse(stream as ITokenStream) as GenericIdentifier is new, shared

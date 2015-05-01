@@ -8,6 +8,25 @@ interface IMemberDeclaration
 	"""
 	pass
 
+class ErrorMember
+	inherits SyntaxNode
+	implements IMemberDeclaration
+	adds NamedBehavior, DocumentationBehavior
+	"""
+	Represents an unknown member declaration or other invalid member construct
+	"""
+
+	invariant
+		.extraTokens.count == 1
+		.extraTokens[0] is .firstToken
+		.firstToken is .lastToken
+
+	cue init(token as Cobra.Compiler.IToken)
+		base.init(token, nil)
+		_extraTokens = TokenList([token])
+		_name, _docString = "", nil
+
+
 class MemberDeclaration
 	inherits Statement
 	implements IMemberDeclaration
@@ -64,6 +83,15 @@ interface ITypeMemberDeclaration inherits IMemberDeclaration
 	"""A member declaration that appears inside a type declaration"""
 	pass
 
+class ErrorTypeMember
+	inherits ErrorMember
+	implements ITypeMemberDeclaration
+	"""
+	Represents an unknown member declaration appearing inside a type
+	or other invalid type member construct
+	"""
+
+
 class TypeMemberDeclaration
 	inherits MemberDeclaration
 	implements ITypeMemberDeclaration
@@ -98,8 +126,7 @@ class TypeMemberDeclaration
 			on TokenKind.EventKeyword, return EventDeclaration.parse(stream)
 			on TokenKind.TestKeyword, return TestDeclaration.parse(stream)
 		
-		trace stream.token
-		return nil # TODO
+		return ErrorTypeMember(stream.grab)
 
 class EnumMemberDeclaration
 	inherits TypeMemberDeclaration

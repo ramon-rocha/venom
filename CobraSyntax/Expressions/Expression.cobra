@@ -222,5 +222,18 @@ class Expression
 
 			else
 				trace stream.token  # TODO : see CobraParser line 3109
-		
-		return IdentifierExpression(Identifier(Cobra.Compiler.Token.empty), nil) # TODO
+
+		# missing expression
+		return ErrorExpression(stream.token.copy, nil)
+
+class ErrorExpression
+	inherits Expression
+	"""
+	An unknown expression or missing expression
+	"""
+
+	invariant
+		.extraTokens.count == 0
+		.firstToken.kind == TokenKind.Identifier
+		.firstToken.isEmpty
+		.firstToken is .lastToken

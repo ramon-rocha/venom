@@ -60,6 +60,11 @@ interface ISyntaxNode
 		A list of tokens that were not expected to be contained in this node but are.
 		"""
 
+	get errors as IReadOnlyList<of NRefactory.TypeSystem.Error>
+		"""
+		Any parsing or syntax errors present in this node.
+		"""
+
 
 class NodeList inherits List<of ISyntaxNode>
 	pass
@@ -73,10 +78,14 @@ class SyntaxNode
 
 
 	invariant
+		
 		_firstToken.charNum <= _lastToken.charNum
+
 		/# # doesn't work due to compiler bug
 		all for c in .children get _firstToken.charNum <= c.firstToken
 		all for c in .children get c.lastToken <= _lastToken.charNum #/
+
+		#.errors.count >= .extraTokens.count # but why doesn't this work?
 
 	shared
 		def parse(stream as ITokenStream) as ISyntaxNode
@@ -258,3 +267,18 @@ class SyntaxNode
 		"""
 		A list of tokens that were not expected to be contained in this node.
 		"""
+
+	var _errors is readonly = List<of NRefactory.TypeSystem.Error>()
+	get errors as IReadOnlyList<of NRefactory.TypeSystem.Error>
+		"""
+		Any parsing or syntax errors present in this node.
+		"""
+		return _errors
+
+	def _addError(error as NRefactory.TypeSystem.Error)
+		require
+			error not in _errors
+		ensure
+			error in _errors
+		body
+			_errors.add(error)

@@ -1,0 +1,29 @@
+﻿
+use ICSharpCode.NRefactory.TypeSystem
+
+namespace Venom.CobraSyntax
+
+class ErrorComparer inherits Comparer<of Error>
+
+	def compare(e1 as Error?, e2 as Error?) as int is override
+		or require
+			e1 <> nil
+			e2 <> nil
+		body
+			r1 = e1.region
+			r2 = e2.region
+
+			if r1.fileName <> r2.fileName
+				return r1.fileName.compareTo(r2.fileName)
+
+			if r1.beginLine < r2.beginLine
+				return -1
+			else if r1.beginLine > r2.beginLine
+				return 1
+			
+			if r1.beginColumn < r2.beginColumn
+				return -1
+			else if r1.beginColumn > r2.beginColumn
+				return 1
+			
+			return e1.message.compareTo(e2.message)

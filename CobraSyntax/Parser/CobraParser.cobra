@@ -9,7 +9,6 @@ class CobraParser
 	"""
 	
 	var _compilerSettings as CobraCompilerSettings
-	var _errors as IList<of NRefactory.TypeSystem.Error>?
 
 	cue init
 		.init(nil)
@@ -28,11 +27,19 @@ class CobraParser
 	
 	def parseTopLevel(source as String, fileName as String) as ISyntaxNode
 		"""
-		Accepts Cobra source code and optionally an associated filename,
-		the code is lexed, parsed, and the root node for the resulting
-		abstract syntax tree is returned.
+		Accepts Cobra source code and an associated filename, the code is lexed, parsed,
+		and the root node for the resulting abstract syntax tree is returned.
 		"""
 		stream = TokenStream(source, fileName)
 		ast = CompilationUnit.parse(stream)
-		# TODO: visit AST to collect parse errors
 		return ast
+
+	def parseStatement(source as String, fileName as String) as IStatement
+		stream = TokenStream(source, fileName)
+		stmt = Statement.parse(stream)
+		return stmt
+
+	def parseExpression(source as String, fileName as String) as IExpression
+		stream = TokenStream(source, fileName)
+		expr = Expression.parse(stream)
+		return expr

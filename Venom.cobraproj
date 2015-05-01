@@ -115,6 +115,7 @@
     <Compile Include="CobraSyntax\Statements\Declarations\Members\ConstantDeclaration.cobra" />
     <Compile Include="CobraSyntax\Statements\Declarations\ParameterDeclaration.cobra" />
     <Compile Include="CobraSyntax\CompilationUnit.cobra" />
+    <Compile Include="CobraSyntax\Parser\ErrorComparer.cobra" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Cobra\Cobra.targets" />
   <ItemGroup>

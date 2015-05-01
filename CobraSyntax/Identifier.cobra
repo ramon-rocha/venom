@@ -236,6 +236,9 @@ class GenericIdentifier inherits Identifier
 	Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>
 	"""
 
+	invariant
+		.lastToken.kind == TokenKind.GenericIdentifierEnd
+
 	var _openIdentifier as Identifier
 	get commas from var as IReadOnlyTokenList
 	get types from var as IReadOnlyList<of TypeIdentifier>

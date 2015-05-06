@@ -53,6 +53,7 @@ class TokenKind
 	const Indent = 'INDENT'
 	const Dedent = 'DEDENT'
 	const CompilerDirective = 'AT_ID'
+	const DoubleQuote = 'DOUBLE_QUOTE'
 	#endregion
 
 	#region Misc. Keywords

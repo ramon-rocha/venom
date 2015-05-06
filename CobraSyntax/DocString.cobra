@@ -35,30 +35,75 @@ extend Cobra.Compiler.IToken
 
 class DocString inherits SyntaxNode
 
+	invariant
+		.firstToken.kind == TokenKind.DocStringLine implies .firstToken is .lastToken
+		.firstToken.kind == TokenKind.DocStringStart implies .lastToken.kind == TokenKind.DocStringEnd
+		.firstToken.startsDocString
+		.lastToken.endsDocString
+
+	get content from var as String
+
 	def parse(stream as ITokenStream) as DocString is new, shared
 		require
-			stream.token.startsDocString
-		ensure
-			result.firstToken.startsDocString
-			result.lastToken.endsDocString
+			stream.token.startsDocString _
+			or (stream.token.kind == TokenKind.DoubleQuotedString _
+				and stream.token.text == '""' _
+				and stream.peek.kind == TokenKind.DoubleQuote)
 		test oneLine
-			filename = 'DocStringTest.cobra'
-			stream = TokenStream('"""This is a doc string"""', filename)
+			stream = TokenStream('"""This is a doc string"""', "")
 			ds = DocString.parse(stream)
+			assert ds.errors.count == 0
 			assert ds.firstToken is ds.lastToken
 			assert ds.content == "This is a doc string"
 		test multiLine
-			filename = 'DocStringTest.cobra'
-			stream = TokenStream('"""\n This\n is\n a\n doc\n string\n too\n"""', filename)
+			stream = TokenStream('"""\n This\n is\n a\n doc\n string\n too\n"""', "")
 			ds = DocString.parse(stream)
-			assert ds.firstToken is not ds.lastToken
+			assert ds.errors.count == 0
 			assert ds.firstToken.lineNum == 1
 			assert ds.lastToken.lineNum == 8
 			assert ds.lastToken.text.startsWith('"""')
 			assert ds.content == " This\n is\n a\n doc\n string\n too\n"
+		test empty_oneLine
+			stream = TokenStream('""""""', "")
+			ds = DocString.parse(stream)
+			assert ds.content == ""
+			assert ds.errors.count == 0
+		test empty_multiLine
+			stream = TokenStream('"""\n"""', "")
+			ds = DocString.parse(stream)
+			assert ds.content == ""
+			assert ds.errors.count == 0
+		test unfinished_oneLine
+			stream = TokenStream('"""Unfinished doc string', "")
+			ds = DocString.parse(stream)
+			assert ds.errors.count == 1
+			assert not ds.lastToken.isMissing # the entire doc string is one token
+			assert ds.content == "Unfinished doc string"
+			assert ds.errors[0].region.beginColumn == ds.firstToken.colNum + ds.firstToken.length
+		test unfinished_multiLine
+			stream = TokenStream('"""\nUnfinished\ndoc\nstring', "")
+			ds = DocString.parse(stream)
+			assert ds.errors.count == 1
+			assert ds.lastToken.isMissing
+			assert ds.content == "Unfinished\ndoc\nstring\n"
+			assert ds.errors[0].region.beginColumn == ds.lastToken.colNum
 		body
 			token = stream.grab
 			if token.kind == TokenKind.DocStringLine
+				return DocString(token)
+			
+			if token.kind == TokenKind.DoubleQuotedString _
+			and token.text == '""' _
+			and stream.token.kind == TokenKind.DoubleQuote
+				# treat as an unfinished single-line doc string
+				offset = token.charNum + token.length
+				skipped = stream.skipToNextLine
+				content = StringBuilder()
+				for t in skipped
+					content.append(c' ', t.charNum - offset)
+					offset = t.charNum + t.length
+					content.append(t.text)
+				token = token.copy(TokenKind.DocStringLine, token.text + content.toString)
 				return DocString(token)
 			
 			# multi-line doc string
@@ -70,11 +115,20 @@ class DocString inherits SyntaxNode
 			return DocString(openTag, content.toString, closeTag)
 
 	cue init(oneLiner as Cobra.Compiler.IToken)
-		require oneLiner.kind == TokenKind.DocStringLine
-		base.init(oneLiner, nil)
-		content = oneLiner.text
-		lastIndex = content.lastIndexOf('"""')
-		_content = content.substring(3, lastIndex - 3)
+		require
+			oneLiner.kind == TokenKind.DocStringLine
+			oneLiner.text.startsWith('"""')
+		body
+			base.init(oneLiner, nil)
+			content = oneLiner.text
+			lastIndex = content.lastIndexOf('"""')
+			if lastIndex > 2
+				_content = content.substring(3, lastIndex - 3)
+			else
+				line, col = oneLiner.lineNum, oneLiner.colNum + oneLiner.length
+				_addError(line, col, 1, "Expecting more doc string contents or the end of the doc string")
+				_content = content.substring(3)
+
 	
 	cue init(openTag as Cobra.Compiler.IToken, content as String, closeTag as Cobra.Compiler.IToken)
 		require
@@ -83,5 +137,5 @@ class DocString inherits SyntaxNode
 		body
 			base.init(openTag, closeTag, nil)
 			_content = content
-	
-	get content from var as String
+			if closeTag.isMissing
+				_addError(closeTag, "Expecting more doc string contents or the end of the doc string")

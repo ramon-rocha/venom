@@ -275,10 +275,30 @@ class SyntaxNode
 		"""
 		return _errors
 
-	def _addError(error as NRefactory.TypeSystem.Error)
+	def _addError(token as Cobra.Compiler.IToken, message as String)
+		line, col = token.lineNum, token.colNum
+		length = if(token.length > 0, token.length, 1)
+		_addError(line, col, length, message)
+
+	def _addError(line as int, col as int, message as String)
 		require
-			error not in _errors
-		ensure
-			error in _errors
+			line > 0
+			col > 0
 		body
-			_errors.add(error)
+			_addError(line, col, 1, message)
+
+	def _addError(line as int, col as int, length as int, message as String)
+		require
+			line > 0
+			col > 0
+			length > 0
+		body
+			region = NRefactory.TypeSystem.DomRegion(_fileName, line, col, line, col + length)
+			typ = NRefactory.TypeSystem.ErrorType.Error
+			err = NRefactory.TypeSystem.Error(typ, message, region)
+			_addError(err)
+	
+	def _addError(error as NRefactory.TypeSystem.Error)
+		require error not in _errors
+		ensure error in _errors
+		_errors.add(error)

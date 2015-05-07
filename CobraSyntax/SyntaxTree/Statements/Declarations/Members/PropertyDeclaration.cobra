@@ -258,10 +258,7 @@ class PropertyDeclaration
 				return PropertyDeclaration(setter)
 			else
 				keyword = stream.expect(TokenKind.PropertyKeyword)
-				if stream.token.kind in Identifier.validKinds
-					id = Identifier.parse(stream)
-				else
-					id = Identifier(stream.token.copy(TokenKind.Identifier, ""))
+				id = Identifier.parse(stream)
 
 			signature = PropertySignature.parse(stream)
 			stream.skipBlankLines
@@ -409,11 +406,7 @@ class Accessor
 
 	def _parse(stream as ITokenStream, keywordKind as String) as Accessor is shared
 		keyword = stream.expect(keywordKind)
-
-		if stream.token.kind in Identifier.validKinds
-			id = Identifier.parse(stream)
-		else
-			id = Identifier(stream.token.copy(TokenKind.Identifier, ""))
+		id = Identifier.parse(stream)
 
 		signature = PropertySignature.parse(stream)
 		stream.skipBlankLines

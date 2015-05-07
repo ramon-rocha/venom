@@ -279,19 +279,11 @@ class BaseTypeSpecification inherits SyntaxNode
 			kw = stream.expect(TokenKind.InheritsKeyword)
 			types = List<of TypeIdentifier>()
 			commas = TokenList()
-			if stream.token.kind in Identifier.validKinds
-				typeId = TypeIdentifier.parse(stream)
-			else
-				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-			types.add(typeId)
+			types.add(TypeIdentifier.parse(stream))
 
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
-				if stream.token.kind in Identifier.validKinds
-					typeId = TypeIdentifier.parse(stream)
-				else
-					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-				types.add(typeId)
+				types.add(TypeIdentifier.parse(stream))
 			
 			return BaseTypeSpecification(kw, types, commas)
 
@@ -341,19 +333,11 @@ class InterfaceSpecification inherits SyntaxNode
 			kw = stream.expect(TokenKind.ImplementsKeyword)
 			types = List<of TypeIdentifier>()
 			commas = TokenList()
-			if stream.token.kind in Identifier.validKinds
-				typeId = TypeIdentifier.parse(stream)
-			else
-				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-			types.add(typeId)
+			types.add(TypeIdentifier.parse(stream))
 
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
-				if stream.token.kind in Identifier.validKinds
-					typeId = TypeIdentifier.parse(stream)
-				else
-					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-				types.add(typeId)
+				types.add(TypeIdentifier.parse(stream))
 			
 			return InterfaceSpecification(kw, types, commas)
 
@@ -479,19 +463,11 @@ class MixinSpecification inherits SyntaxNode
 			kw = stream.expect(TokenKind.AddsKeyword)
 			types = List<of TypeIdentifier>()
 			commas = TokenList()
-			if stream.token.kind in Identifier.validKinds
-				typeId = TypeIdentifier.parse(stream)
-			else
-				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-			types.add(typeId)
+			types.add(TypeIdentifier.parse(stream))
 
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
-				if stream.token.kind in Identifier.validKinds
-					typeId = TypeIdentifier.parse(stream)
-				else
-					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
-				types.add(typeId)
+				types.add(TypeIdentifier.parse(stream))
 
 			return MixinSpecification(kw, types, commas)
 

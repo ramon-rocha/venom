@@ -47,8 +47,10 @@ class Identifier
 	] + TokenKind.cobraTypes
 	
 	def parse(stream as ITokenStream) as Identifier is new, shared
-		require
-			stream.token.kind in .validKinds
+		ensure
+			old stream.token.kind in Identifier.validKinds implies not result.firstToken.isMissing
+			old stream.token.kind not in Identifier.validKinds implies result.firstToken.isMissing
+			result.firstToken.isMissing implies stream.token is old stream.token
 		body
 			kind = stream.token.kind
 			if kind == TokenKind.GenericIdentifierStart
@@ -140,8 +142,10 @@ class QualifiedIdentifier inherits Identifier
 	get right from var as Identifier?
 
 	def parse(stream as ITokenStream) as QualifiedIdentifier is new, shared
-		require
-			stream.token.kind in .validKinds
+		ensure
+			old stream.token.kind in Identifier.validKinds implies not result.firstToken.isMissing
+			old stream.token.kind not in Identifier.validKinds implies result.firstToken.isMissing
+			result.firstToken.isMissing implies stream.token is old stream.token
 		test
 			source = "System"
 			stream = TokenStream(source, "")
@@ -192,16 +196,10 @@ class QualifiedIdentifier inherits Identifier
 			assert id.errors.count == 1
 		body
 			left = Identifier.parse(stream)
-			
 			if stream.token.kind <> TokenKind.Dot
 				return QualifiedIdentifier(left)
-			
 			dot = stream.grab
-			kind = stream.token.kind
-			if kind in .validKinds
-				right = QualifiedIdentifier.parse(stream)
-			else
-				right = QualifiedIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+			right = QualifiedIdentifier.parse(stream)
 			return QualifiedIdentifier(left, dot, right)
 	
 	cue init(identifier as Identifier)
@@ -330,22 +328,10 @@ class GenericIdentifier inherits Identifier
 			open = TypeIdentifier(Identifier(stream.grab))
 			commas = TokenList()
 			types = List<of TypeIdentifier>()
-			kind = stream.token.kind
-			if kind in .validKinds
-				id = TypeIdentifier.parse(stream)
-			else
-				missingToken = stream.expect(TokenKind.Identifier)
-				id = TypeIdentifier(Identifier(missingToken))
-			types.add(id)
+			types.add(TypeIdentifier.parse(stream))
 			while not stream.endsGenericIdentifier
 				commas.add(stream.expect(TokenKind.Comma))
-				kind = stream.token.kind
-				if kind in .validKinds
-					id = TypeIdentifier.parse(stream)
-				else
-					missingToken = stream.expect(TokenKind.Identifier)
-					id = TypeIdentifier(Identifier(missingToken))
-				types.add(id)
+				types.add(TypeIdentifier.parse(stream))
 			if stream.token.kind == TokenKind.BitwiseShiftRightOperator
 				# for cases like Dictionary<of String, List<of String>>
 				close = stream.token.copy(TokenKind.GenericIdentifierEnd, ">")
@@ -406,8 +392,10 @@ class TypeIdentifier inherits QualifiedIdentifier
 	}
 
 	def parse(stream as ITokenStream) as TypeIdentifier is new, shared
-		require
-			stream.token.kind in .validKinds
+		ensure
+			old stream.token.kind in Identifier.validKinds implies not result.firstToken.isMissing
+			old stream.token.kind not in Identifier.validKinds implies result.firstToken.isMissing
+			result.firstToken.isMissing implies stream.token is old stream.token
 		test
 			source = "int"
 			stream = TokenStream(source, "")

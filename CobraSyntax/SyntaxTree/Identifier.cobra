@@ -132,6 +132,9 @@ class QualifiedIdentifier inherits Identifier
 	System.Collections.Generic.List<of int>
 	"""
 
+	invariant
+		.right <> nil implies .dot <> nil
+
 	get left from var as Identifier
 	get dot from var as Cobra.Compiler.IToken?
 	get right from var as Identifier?
@@ -141,23 +144,26 @@ class QualifiedIdentifier inherits Identifier
 			stream.token.kind in .validKinds
 		test
 			source = "System"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = QualifiedIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.left.name == id.name == id.qualifiedName == "System"
 			assert id.dot == nil
 			assert id.right == nil
 		test
 			source = "System.Collections"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = QualifiedIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Collections"
 			assert id.qualifiedName == "System.Collections"
 			assert id.left.name == "System"
 			assert id.right.name == "Collections"
 		test
 			source = "System.Collections.Generic"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = QualifiedIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Generic"
 			assert id.qualifiedName == "System.Collections.Generic"
 			assert id.left.name == "System"
@@ -166,8 +172,9 @@ class QualifiedIdentifier inherits Identifier
 			assert right.right.name == "Generic"
 		test
 			source = "System.Collections.Generic.List<of int>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = QualifiedIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "List<of int>"
 			assert id.qualifiedName == "System.Collections.Generic.List<of int>"
 			assert id.left.name == "System"
@@ -178,6 +185,11 @@ class QualifiedIdentifier inherits Identifier
 			right = right.right to QualifiedIdentifier
 			assert right.left.name == "Generic"
 			assert right.right.name == "List<of int>"
+		test unfinished_identifier
+			source = "Foo."
+			stream = TokenStream(source, "")
+			id = QualifiedIdentifier.parse(stream)
+			assert id.errors.count == 1
 		body
 			left = Identifier.parse(stream)
 			
@@ -200,6 +212,7 @@ class QualifiedIdentifier inherits Identifier
 		_left, _dot, _right = left, dot, right
 		_addChild(left)
 		if right
+			if right.firstToken.isMissing, _addError(right.firstToken, "Expecting an identifier")
 			_name = right.name
 			_addChild(right)
 		else
@@ -223,6 +236,15 @@ class QualifiedIdentifier inherits Identifier
 		
 		return _qualifiedName to !
 
+extend ITokenStream
+
+	def endsGenericIdentifier as bool
+		kind = .token.kind
+		return kind == TokenKind.GenericIdentifierEnd _
+		or kind == TokenKind.EndOfLine _
+		or kind == TokenKind.BitwiseShiftRightOperator _ # >>
+		or kind == TokenKind.EndOfFile _
+		or .token is Cobra.Compiler.Token.empty
 
 class GenericIdentifier inherits Identifier
 	"""
@@ -247,41 +269,63 @@ class GenericIdentifier inherits Identifier
 			stream.token.kind == TokenKind.GenericIdentifierStart
 		test
 			source = "List<of int>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "List<of int>"
 			assert id.types.count == 1
 			assert id.types[0].name == 'int'
 		test
 			source = "List<of List<of int>>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "List<of List<of int>>"
 			typeId1 = id.types[0].left to QualifiedIdentifier
 			assert typeId1.left inherits GenericIdentifier
 		test
 			source = "Dictionary<of String, int>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Dictionary<of String, int>"
 			assert id.types.count == 2
 		test
 			source = "Dictionary<of System.String, int>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Dictionary<of System.String, int>"
 		test
 			source = "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Dictionary<of Foo.Bar, System.Collections.Generic.List<of System.String>>"
 			assert id.types.count == 2
 		test
 			source = "Tuple<of int, int, int, int, int, int>"
-			stream = TokenStream(source, "test.cobra")
+			stream = TokenStream(source, "")
 			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 0
 			assert id.name == "Tuple<of int, int, int, int, int, int>"
 			assert id.types.count == 6
+		test unfinished_generic_identifier
+			source = "Dictionary<of String, "
+			stream = TokenStream(source, "")
+			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 2
+			assert id.types.count == 2
+			assert id.types[1].firstToken.isMissing
+			assert id.lastToken.isMissing
+		test missing_comma
+			source = "Dictionary<of String int>"
+			stream = TokenStream(source, "")
+			id = GenericIdentifier.parse(stream)
+			assert id.errors.count == 1
+			assert id.commas.count == 1
+			assert id.commas[0].isMissing
+			assert not id.lastToken.isMissing
 		body
 			open = TypeIdentifier(Identifier(stream.grab))
 			commas = TokenList()
@@ -293,8 +337,8 @@ class GenericIdentifier inherits Identifier
 				missingToken = stream.expect(TokenKind.Identifier)
 				id = TypeIdentifier(Identifier(missingToken))
 			types.add(id)
-			while stream.token.kind == TokenKind.Comma
-				commas.add(stream.grab)
+			while not stream.endsGenericIdentifier
+				commas.add(stream.expect(TokenKind.Comma))
 				kind = stream.token.kind
 				if kind in .validKinds
 					id = TypeIdentifier.parse(stream)
@@ -302,7 +346,15 @@ class GenericIdentifier inherits Identifier
 					missingToken = stream.expect(TokenKind.Identifier)
 					id = TypeIdentifier(Identifier(missingToken))
 				types.add(id)
-			close = stream.expect(TokenKind.GenericIdentifierEnd)	
+			if stream.token.kind == TokenKind.BitwiseShiftRightOperator
+				# for cases like Dictionary<of String, List<of String>>
+				close = stream.token.copy(TokenKind.GenericIdentifierEnd, ">")
+				replaceWith = Cobra.Compiler.Token(close.fileName,
+					close.lineNum, close.colNum + 1, close.charNum + 1,
+					TokenKind.GenericIdentifierEnd, ">", nil)
+				stream.replace(replaceWith)
+			else
+				close = stream.expect(TokenKind.GenericIdentifierEnd)	
 			return GenericIdentifier(open, commas, types, close)
 	
 	cue init(
@@ -321,6 +373,8 @@ class GenericIdentifier inherits Identifier
 			_openIdentifier, _lastToken = open, close
 			_addChild(open)
 
+			for c in commas
+				if c.isMissing, _addError(c, "Expecting a comma")
 			_commas = TokenList(commas)
 			_types = List<of TypeIdentifier>(types)
 
@@ -330,9 +384,12 @@ class GenericIdentifier inherits Identifier
 			for t in _types
 				_addChild(t)
 				typeNames.add(t.qualifiedName)
+				if t.firstToken.isMissing, _addError(t.firstToken, "Expecting an identifier")
 			sb.append(typeNames.join(', '))
 			sb.append(">")
 			_name = sb.toString
+
+			if close.isMissing, _addError(close, "Expecting a '>' character")
 
 
 class TypeIdentifier inherits QualifiedIdentifier
@@ -353,35 +410,45 @@ class TypeIdentifier inherits QualifiedIdentifier
 			stream.token.kind in .validKinds
 		test
 			source = "int"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			typeId = TypeIdentifier.parse(stream)
+			assert typeId.errors.count == 0
 			assert typeId.qualifiedName == source
 		test
 			source = "String?"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			typeId = TypeIdentifier.parse(stream)
+			assert typeId.errors.count == 0
 			assert typeId inherits NilableTypeIdentifier
 			assert typeId.qualifiedName == source
 		test
 			source = ns"Foo.Bar<of T>[]"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			typeId = TypeIdentifier.parse(stream)
+			assert typeId.errors.count == 0
 			assert typeId inherits ArrayTypeIdentifier
 			assert typeId.qualifiedName == source
 		test
 			source = "Foo.Bar*"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			typeId = TypeIdentifier.parse(stream)
+			assert typeId.errors.count == 0
 			assert typeId inherits StreamTypeIdentifier
 			assert typeId.qualifiedName == source
 		test
 			source = "Foo.Bar.IType?*?" # fully qualified nilable stream of nilable ITypes
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			typeId = TypeIdentifier.parse(stream) to NilableTypeIdentifier
+			assert typeId.errors.count == 0
 			wrapped1 = typeId.wrappedTypeIdentifier to StreamTypeIdentifier
 			wrapped2 = wrapped1.wrappedTypeIdentifier to NilableTypeIdentifier
 			assert wrapped2.wrappedTypeIdentifier.qualifiedName == "Foo.Bar.IType"
 			assert typeId.qualifiedName == source
+		test wrong_array_type_identifier_format
+			source = ns"int[10]"
+			stream = TokenStream(source, "")
+			typeId = TypeIdentifier.parse(stream) to ArrayTypeIdentifier
+			assert typeId.errors.count == 1
 		body
 			typeId = TypeIdentifier(QualifiedIdentifier.parse(stream))
 
@@ -448,3 +515,10 @@ class ArrayTypeIdentifier
 		base.init(typeId, closeBracket)
 		_extraTokens = TokenList(skipped)
 		_openBracket = openBracket
+		if skipped.count > 0
+			if skipped[0].kind == TokenKind.IntegerLiteral
+				txt = skipped[0].text
+				_addError(
+					skipped[0], "The size of the array is not part of its type. " +
+					"Specify the size when creating the array such as: [typeId]\[]([txt])."
+				)

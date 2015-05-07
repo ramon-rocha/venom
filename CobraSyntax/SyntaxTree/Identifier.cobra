@@ -222,9 +222,8 @@ class QualifiedIdentifier inherits Identifier
 				_qualifiedName = "[left].[_right.name]"
 		
 		return _qualifiedName to !
-	
 
-use ICobraToken = Cobra.Compiler.IToken # workaround inability to use Cobra.Compiler.IToken* as parameter type
+
 class GenericIdentifier inherits Identifier
 	"""
 	Examples:
@@ -306,7 +305,12 @@ class GenericIdentifier inherits Identifier
 			close = stream.expect(TokenKind.GenericIdentifierEnd)	
 			return GenericIdentifier(open, commas, types, close)
 	
-	cue init(open as Identifier, commas as ICobraToken*, types as TypeIdentifier*, close as Cobra.Compiler.IToken)
+	cue init(
+		open as Identifier,
+		commas as Cobra.Compiler.IToken*,
+		types as TypeIdentifier*,
+		close as Cobra.Compiler.IToken
+	)
 		require
 			open.firstToken.kind == TokenKind.GenericIdentifierStart
 			close.kind == TokenKind.GenericIdentifierEnd

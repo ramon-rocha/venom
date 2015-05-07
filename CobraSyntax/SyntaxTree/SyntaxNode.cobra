@@ -302,3 +302,13 @@ class SyntaxNode
 		require error not in _errors
 		ensure error in _errors
 		_errors.add(error)
+
+	def _addWarning(line as int, col as int, message as String)
+		require
+			line > 0
+			col > 0
+		body
+			region = NRefactory.TypeSystem.DomRegion(_fileName, line, col, line, col + 1)
+			typ = NRefactory.TypeSystem.ErrorType.Warning
+			warning = NRefactory.TypeSystem.Error(typ, message, region)
+			_addError(warning)

@@ -36,7 +36,7 @@ class CompilationUnit
 			'		print "Hello, world."'
 			stream = TokenStream(source, 'test.cobra')
 			ast = CompilationUnit.parse(stream)
-
+			assert ast.errors.count == 0
 			assert ast.useDirectives.count == 0
 
 			assert ast.hasDocString
@@ -48,6 +48,12 @@ class CompilationUnit
 
 			assert ast.typeDeclarations.count == 1
 			assert ast.typeDeclarations[0] inherits ClassDeclaration
+		test
+			stream = TokenStream("", "")
+			ast = CompilationUnit.parse(stream)
+			assert ast.errors.count == 1
+			assert ast.errors[0].errorType == ICSharpCode.NRefactory.TypeSystem.ErrorType.Warning
+			assert ast.errors[0].message == "File is empty"
 		body
 			stream.skipBlankLines
 
@@ -114,3 +120,5 @@ class CompilationUnit
 		for e in extensions, _addChild(ns)
 		_typeDeclarations = List<of ITypeDeclaration>(types)
 		for t in types, _addChild(t)
+
+		if .childCount == 0, _addWarning(1, 1, "File is empty")

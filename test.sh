@@ -11,13 +11,13 @@ cobra -test \
 -reference:Mono.Cecil.dll \
 *.cobra \
 TypeSystem/*.cobra \
-CobraSyntax/*.cobra \
-CobraSyntax/Parser/*.cobra \
 CobraSyntax/Tokens/*.cobra \
-CobraSyntax/Expressions/*.cobra \
-CobraSyntax/Statements/*.cobra \
-CobraSyntax/Statements/Declarations/*.cobra \
-CobraSyntax/Statements/Declarations/Members/*.cobra \
+CobraSyntax/SyntaxTree/*.cobra \
+CobraSyntax/Parser/*.cobra \
+CobraSyntax/SyntaxTree/Expressions/*.cobra \
+CobraSyntax/SyntaxTree/Statements/*.cobra \
+CobraSyntax/SyntaxTree/Statements/Declarations/*.cobra \
+CobraSyntax/SyntaxTree/Statements/Declarations/Members/*.cobra \
 TestData/TestData.cobra
 
 rm test-*

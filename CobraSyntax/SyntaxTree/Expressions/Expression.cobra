@@ -224,7 +224,8 @@ class Expression
 				trace stream.token  # TODO : see CobraParser line 3109
 
 		# missing expression
-		return ErrorExpression(stream.token.copy, nil)
+		t = stream.token
+		return ErrorExpression(Cobra.Compiler.Token(t.fileName, t.lineNum, t.colNum, t.charNum, t.kind, "", nil, true))
 
 class ErrorExpression
 	inherits Expression
@@ -234,6 +235,10 @@ class ErrorExpression
 
 	invariant
 		.extraTokens.count == 0
-		.firstToken.kind == TokenKind.Identifier
 		.firstToken.isEmpty
 		.firstToken is .lastToken
+		.errors.count == 1
+
+	cue init(token as Cobra.Compiler.IToken)
+		base.init(token, nil)
+		_addError(.firstToken, "Expecting an expression but got [.firstToken.kind]")

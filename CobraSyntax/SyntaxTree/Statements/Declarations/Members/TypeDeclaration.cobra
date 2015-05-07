@@ -159,7 +159,8 @@ class ClassDeclaration inherits TypeDeclaration
 			c = ClassDeclaration.parse(stream)
 			assert c.name == "Foo"
 			assert c.specification.baseTypes.count == 1
-			assert c.specification.baseTypes[0].typeIdentifier.name == "Bar"
+			assert c.specification.baseTypes[0].typeIdentifiers.count == 1
+			assert c.specification.baseTypes[0].typeIdentifiers[0].name == "Bar"
 			assert c.passStatement == nil
 			assert c.docString == nil
 			assert c.memberDeclarations.count == 0

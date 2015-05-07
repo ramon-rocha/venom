@@ -13,6 +13,20 @@ enum AccessModifiers
 	Private = 4
 	Internal = 8
 
+extend ITokenStream
+
+	def endsAttributeExpression as bool
+		kind = .token.kind
+		return kind == TokenKind.CloseParenthesis _
+		or kind == TokenKind.EndOfFile _
+		or .token is Cobra.Compiler.Token.empty
+
+	def endsModifierSpecification as bool
+		kind = .token.kind
+		return kind <> TokenKind.Comma _
+		and kind not in TokenKind.modifierKeywords
+
+
 class AttributeExpression
 	inherits Expression
 	"""
@@ -30,34 +44,70 @@ class AttributeExpression
 		.closeParen <> nil implies .identifier.firstToken.text.endsWith("(")
 
 	def parse(stream as ITokenStream) as AttributeExpression is new, shared
-		id = Identifier.parse(stream)
-		if id.firstToken.kind <> TokenKind.CallStart
-			return AttributeExpression(id, ExpressionList(), TokenList(), nil)
-		
-		args = ExpressionList()
-		args.add(Expression.parse(stream))
-		commas = TokenList()
-		while stream.token.kind <> TokenKind.CloseParenthesis
-			commas.add(stream.expect(TokenKind.Comma))
+		require
+			stream.token.kind in Identifier.validKinds
+		test
+			source = "ItemProperty('Turbo', defaultValue = false)"
+			stream = TokenStream(source, "")
+			att = AttributeExpression.parse(stream)
+			assert att.errors.count == 0
+			assert all for c in att.children get c.errors.count == 0
+			assert att.identifier.name == "ItemProperty"
+			assert att.arguments.count == 2
+			assert att.arguments[0] inherits StringLiteral
+			assert att.arguments[1] inherits AssignmentExpression
+		test
+			source = "ItemProperty('Turbo', "
+			stream = TokenStream(source, "")
+			att = AttributeExpression.parse(stream)
+			assert att.errors.count == 1
+			assert att.arguments.count == 2
+			assert att.lastToken.isMissing
+			assert att.arguments[0] inherits StringLiteral
+			assert att.arguments[0].errors.count == 0
+			assert att.arguments[1] inherits ErrorExpression
+			assert att.arguments[1].errors.count == 1
+			assert att.arguments[1].firstToken.isMissing
+		body
+			id = Identifier.parse(stream)
+			if id.firstToken.kind <> TokenKind.CallStart
+				return AttributeExpression(id, ExpressionList(), TokenList(), nil)
+			
+			args = ExpressionList()
 			args.add(Expression.parse(stream))
-		close = stream.grab
-		return AttributeExpression(id, args, commas, close)
+			commas = TokenList()
+			stream = WhitespaceAgnosticTokenStreamWrapper(stream)
+			while not stream.endsAttributeExpression
+				commas.add(stream.expect(TokenKind.Comma))
+				expr = Expression.parse(stream)
+				args.add(expr)
+				if expr inherits ErrorExpression, break
+			close = stream.expect(TokenKind.CloseParenthesis)
+			return AttributeExpression(id, args, commas, close)
 
 	cue init(id as Identifier, args as IExpression*, commas as Cobra.Compiler.IToken*, close as Cobra.Compiler.IToken?)
 		base.init(id, nil)
 		_identifier = id
+		if id.firstToken.isMissing
+			_addError(id.firstToken, "Expecting an attribute identifier")
+		
 		if close
 			_closeParen = _lastToken = close
+			if close.isMissing, _addError(close, "Expecting a closing parenthesis")
 		else
 			_lastToken = id.lastToken
 		_arguments = ExpressionList(args)
 		for a in args, _addChild(a)
 		_commas = TokenList(commas)
+		for c in commas
+			if c.isMissing, _addError(c, "Expecting a comma")
 
 class AttributeSpecification
 	inherits SyntaxNode
 	"""
-	The syntax to specify one or more attributes applied to a declaration
+	The syntax to specify one or more attributes applied to a declaration such as:
+
+	has ObsoleteAttribute('Use Foo instead')
 	"""
 
 	get hasKeyword from var as Cobra.Compiler.IToken
@@ -75,8 +125,10 @@ class AttributeSpecification
 		test
 			source =
 			"has Serializable, ObsoleteAttribute('Replaced by Foo class'), ItemProperty('Turbo', defaultValue = false)"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = AttributeSpecification.parse(stream)
+			assert spec.errors.count == 0
+			assert all for c in spec.children get c.errors.count == 0
 			assert spec.attributes.count == 3
 			assert spec.attributes[0].identifier.name == "Serializable"
 			assert spec.attributes[0].arguments.count == 0
@@ -132,17 +184,34 @@ class ModifierSpecification inherits SyntaxNode
 			stream.token.kind == TokenKind.IsKeyword
 		test
 			source = "is shared"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = ModifierSpecification.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.modifierTokens.count == 1
 			assert spec.modifierTokens[0].kind == TokenKind.SharedKeyword
 		test
 			source = "is protected, abstract"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = ModifierSpecification.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.modifierTokens.count == 2
 			assert spec.modifierTokens[0].kind == TokenKind.ProtectedKeyword
 			assert spec.modifierTokens[1].kind == TokenKind.AbstractKeyword
+		test invalid_modifier
+			source = "is final"
+			stream = TokenStream(source, "")
+			spec = ModifierSpecification.parse(stream)
+			assert spec.errors.count == 1
+			assert spec.modifierTokens.count == 1
+			assert spec.modifierTokens[0].isMissing
+			assert spec.modifierTokens[0].text <> "final"
+			assert stream.token.text == "final"
+		test missing_commas
+			source = "is shared protected abstract"
+			stream = TokenStream(source, "")
+			spec = ModifierSpecification.parse(stream)
+			assert spec.errors.count == 2
+			assert all for c in spec.commas get c.isMissing
 		body
 			kw = stream.expect(TokenKind.IsKeyword)
 			mods = TokenList()
@@ -150,8 +219,8 @@ class ModifierSpecification inherits SyntaxNode
 			m = stream.grabOneOf(TokenKind.modifierKeywords)
 			mods.add(m)
 
-			while stream.token.kind in TokenKind.Comma
-				commas.add(stream.grab)
+			while not stream.endsModifierSpecification
+				commas.add(stream.expect(TokenKind.Comma))
 				m = stream.grabOneOf(TokenKind.modifierKeywords)
 				mods.add(m)
 
@@ -161,7 +230,12 @@ class ModifierSpecification inherits SyntaxNode
 		base.init(isKeyword, nil)
 		_isKeyword = isKeyword
 		_modifierTokens = TokenList(modTokens)
+		for m in modTokens
+			if m.isMissing
+				_addError(m, "Expecting a modifier keyword")
 		_commas = TokenList(commas)
+		for c in commas
+			if c.isMissing, _addError(c, "Multiple access modifiers should be separated by commas")
 		_lastToken = _modifierTokens.last
 
 class BaseTypeSpecification inherits SyntaxNode
@@ -170,32 +244,73 @@ class BaseTypeSpecification inherits SyntaxNode
 	"""
 
 	get inheritsKeyword from var as Cobra.Compiler.IToken
-	get typeIdentifier from var as TypeIdentifier
+	get typeIdentifiers from var as IReadOnlyList<of TypeIdentifier>
+	get commas from var as IReadOnlyTokenList
+
+	invariant
+		.typeIdentifiers.count == .commas.count + 1
 
 	def parse(stream as ITokenStream) as BaseTypeSpecification is new, shared
 		require
 			stream.token.kind == TokenKind.InheritsKeyword
 		test
 			source = "inherits System.Collections.Generic.IReadOnlyList<of int>"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = BaseTypeSpecification.parse(stream)
-			assert spec.typeIdentifier in spec.children
-			assert spec.typeIdentifier.qualifiedName == "System.Collections.Generic.IReadOnlyList<of int>"
+			assert spec.errors.count == 0
+			assert spec.typeIdentifiers.count == 1
+			assert all for typeId in spec.typeIdentifiers get typeId in spec.children
+			assert spec.typeIdentifiers[0].qualifiedName == "System.Collections.Generic.IReadOnlyList<of int>"
+		test
+			source = "inherits IFoo, IBar"
+			stream = TokenStream(source, "")
+			spec = BaseTypeSpecification.parse(stream)
+			assert spec.errors.count == 0
+			assert spec.typeIdentifiers.count == 2
+			assert all for typeId in spec.typeIdentifiers get typeId in spec.children
+		test missing_id
+			source = "inherits "
+			stream = TokenStream(source, "")
+			spec = BaseTypeSpecification.parse(stream)
+			assert spec.errors.count == 1
+			assert spec.typeIdentifiers.count == 1
+			assert spec.typeIdentifiers[0].firstToken.isMissing
 		body
 			kw = stream.expect(TokenKind.InheritsKeyword)
-			id = TypeIdentifier.parse(stream)
-			return BaseTypeSpecification(kw, id)
+			types = List<of TypeIdentifier>()
+			commas = TokenList()
+			if stream.token.kind in Identifier.validKinds
+				typeId = TypeIdentifier.parse(stream)
+			else
+				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+			types.add(typeId)
 
-	cue init(keyword as Cobra.Compiler.IToken, typeId as TypeIdentifier)
+			while stream.token.kind == TokenKind.Comma
+				commas.add(stream.grab)
+				if stream.token.kind in Identifier.validKinds
+					typeId = TypeIdentifier.parse(stream)
+				else
+					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+				types.add(typeId)
+			
+			return BaseTypeSpecification(kw, types, commas)
+
+	cue init(keyword as Cobra.Compiler.IToken, typeIds as TypeIdentifier*, commas as Cobra.Compiler.IToken*)
 		base.init(keyword, nil)
 		_inheritsKeyword = keyword
-		_typeIdentifier = typeId
-		_addChild(typeId)
+		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
+		for t in _typeIdentifiers
+			if t.firstToken.isMissing
+				_addError(t.firstToken, "Expecting a base type identifier")
+			_addChild(t)
+		_commas = TokenList(commas)
 
 class InterfaceSpecification inherits SyntaxNode
 	"""
 	The syntax for specifying the interface(s) a declaration implements
 	"""
+
+	#This is almost identical to BaseTypeSpecification
 
 	get implementsKeyword from var as Cobra.Compiler.IToken
 	get typeIdentifiers from var as IReadOnlyList<of TypeIdentifier>
@@ -209,26 +324,47 @@ class InterfaceSpecification inherits SyntaxNode
 			stream.token.kind == TokenKind.ImplementsKeyword
 		test
 			source = "implements Foo.IBar, IBaz"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = InterfaceSpecification.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.typeIdentifiers.count == 2
 			assert spec.typeIdentifiers[0].name == "IBar"
 			assert spec.typeIdentifiers[1].name == "IBaz"
+		test missing_id
+			source = "implements "
+			stream = TokenStream(source, "")
+			spec = InterfaceSpecification.parse(stream)
+			assert spec.errors.count == 1
+			assert spec.typeIdentifiers.count == 1
+			assert spec.typeIdentifiers[0].firstToken.isMissing
 		body
 			kw = stream.expect(TokenKind.ImplementsKeyword)
 			types = List<of TypeIdentifier>()
 			commas = TokenList()
-			types.add(TypeIdentifier.parse(stream))
+			if stream.token.kind in Identifier.validKinds
+				typeId = TypeIdentifier.parse(stream)
+			else
+				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+			types.add(typeId)
+
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
-				types.add(TypeIdentifier.parse(stream))
+				if stream.token.kind in Identifier.validKinds
+					typeId = TypeIdentifier.parse(stream)
+				else
+					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+				types.add(typeId)
+			
 			return InterfaceSpecification(kw, types, commas)
 
 	cue init(keyword as Cobra.Compiler.IToken, typeIds as TypeIdentifier*, commas as Cobra.Compiler.IToken*)
 		base.init(keyword, nil)
 		_implementsKeyword = keyword
 		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
-		for t in _typeIdentifiers, _addChild(t)
+		for t in _typeIdentifiers
+			if t.firstToken.isMissing
+				_addError(t.firstToken, "Expecting an interface identifier")
+			_addChild(t)
 		_commas = TokenList(commas)
 
 class GenericConstraint
@@ -295,10 +431,16 @@ class GenericConstraintSpecification inherits SyntaxNode
 		base.init(whereKeyword, nil)
 		_whereKeyword = whereKeyword
 		_genericParameter = genericParameter
+		if genericParameter.firstToken.isMissing
+			_addError(genericParameter.firstToken, "Expecting a generic parameter identifier")
 		_addChild(genericParameter)
 		_mustKeyword, _beKeyword = mustKeyword, beKeyword
+		if mustKeyword.isMissing, _addError(mustKeyword, "Expecting 'must' keyword")
+		if beKeyword.isMissing, _addError(beKeyword, "Expecting 'be' keyword")
 		_genericConstraints = List<of GenericConstraint>(genericConstraints)
-		for c in _genericConstraints, _addChild(c)
+		for c in _genericConstraints
+			if c.firstToken.isMissing, _addError(c.firstToken, "Expecting a generic constraint")
+			_addChild(c)
 		_commas = TokenList(commas)
 
 class MixinSpecification inherits SyntaxNode
@@ -320,26 +462,47 @@ class MixinSpecification inherits SyntaxNode
 			stream.token.kind == TokenKind.AddsKeyword
 		test
 			source = "adds Foo.BarBehavior, BazBehavior"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			spec = MixinSpecification.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.typeIdentifiers.count == 2
 			assert spec.typeIdentifiers[0].name == "BarBehavior"
 			assert spec.typeIdentifiers[1].name == "BazBehavior"
+		test missing_mixin_identifiers
+			source = "adds "
+			stream = TokenStream(source, "")
+			spec = MixinSpecification.parse(stream)
+			assert spec.errors.count == 1
+			assert spec.typeIdentifiers.count == 1
+			assert spec.typeIdentifiers[0].firstToken.isMissing
 		body
 			kw = stream.expect(TokenKind.AddsKeyword)
 			types = List<of TypeIdentifier>()
 			commas = TokenList()
-			types.add(TypeIdentifier.parse(stream))
+			if stream.token.kind in Identifier.validKinds
+				typeId = TypeIdentifier.parse(stream)
+			else
+				typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+			types.add(typeId)
+
 			while stream.token.kind == TokenKind.Comma
 				commas.add(stream.grab)
-				types.add(TypeIdentifier.parse(stream))
+				if stream.token.kind in Identifier.validKinds
+					typeId = TypeIdentifier.parse(stream)
+				else
+					typeId = TypeIdentifier(Identifier(stream.expect(TokenKind.Identifier)))
+				types.add(typeId)
+
 			return MixinSpecification(kw, types, commas)
 
 	cue init(keyword as Cobra.Compiler.IToken, typeIds as TypeIdentifier*, commas as Cobra.Compiler.IToken*)
 		base.init(keyword, nil)
 		_addsKeyword = keyword
 		_typeIdentifiers = List<of TypeIdentifier>(typeIds)
-		for t in _typeIdentifiers, _addChild(t)
+		for t in _typeIdentifiers
+			if t.firstToken.isMissing
+				_addError(t.firstToken, "Expecting a mixin identifier")
+			_addChild(t)
 		_commas = TokenList(commas)
 
 interface ISpecifications
@@ -390,10 +553,11 @@ class Specifications
 	def parse(stream as ITokenStream) as ISpecifications is new, shared
 		test
 			source = "class Foo is abstract inherits Bar\n\tpass"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			stream.grab
 			stream.grab
 			spec = Specifications.parse(stream)
+			assert spec.errors.count == 0
 			assert not spec.isIndented
 			assert spec.modifiers.count == 1
 			assert spec.attributes.count == 0
@@ -412,9 +576,10 @@ class Specifications
 			"    implements IFoo, IFooBar\n" +
 			'    """Foo class is the best class"""\n' +
 			"    pass"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			stream.skipToNextLine
 			spec = Specifications.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.isIndented
 			assert spec.modifiers.count == 1
 			assert spec.modifiers[0].modifierTokens.count == 2
@@ -436,9 +601,10 @@ class Specifications
 			"    where T must be callable\n" +
 			'    """Foo class is the best class"""\n' +
 			"    pass"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			stream.skipTo(TokenKind.GenericIdentifierEnd)
 			spec = Specifications.parse(stream)
+			assert spec.errors.count == 0
 			assert spec.isIndented
 			assert spec.genericConstraints.count == 2
 			assert spec.baseTypes.count == 1

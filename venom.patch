@@ -1,0 +1,113 @@
+Index: Source/Cobra.MSBuild/CobraCompiler.cobra
+===================================================================
+--- Source/Cobra.MSBuild/CobraCompiler.cobra	(revision 3117)
++++ Source/Cobra.MSBuild/CobraCompiler.cobra	(working copy)
+@@ -179,9 +179,10 @@
+ 		args.appendNativeCompilerArg("/win32res:", .win32Resource)
+ 		
+ 		args.appendNativeCompilerArg("", .nativeCompilerArgs)
+-		
++
++		pwd = Directory.getCurrentDirectory
+ 		for s in .sources
+-			sourcePath = s.getMetadata("FullPath")
++			sourcePath = s.getMetadata("FullPath").replace(pwd, ".")
+ 			if sourcePath.contains(" ")
+ 				sourcePath = '"[sourcePath]"'
+ 			args.append(" [sourcePath]")
+Index: Source/CobraParser.cobra
+===================================================================
+--- Source/CobraParser.cobra	(revision 3117)
++++ Source/CobraParser.cobra	(working copy)
+@@ -2823,8 +2823,9 @@
+ 			'NOTIN':			35,
+ 
+ 			'AND':				30,
+-			'OR':				30,
+ 
++			'OR':				25,
++
+ 			'IMPLIES':			20,
+ 
+ 			'ASSIGN':			20,
+@@ -3628,12 +3629,19 @@
+ 		if types.count==1
+ 			return types[0]
+ 		else
+-			# if the last type is an array we need to fix things up--the array applies to the whole qualified type
++			# if the last type is wrapped we need to fix things up--the [], *, ?, etc. applies to the whole qualified type
+ 			lastTypeId = types.last
+-			if lastTypeId inherits ArrayTypeIdentifier
++			if lastTypeId inherits WrappedTypeIdentifier
+ 				types[types.count-1] = lastTypeId.theWrappedTypeIdentifier
+ 				innerType = QualifiedTypeIdentifier(types)
+-				return ArrayTypeIdentifier(lastTypeId.token, innerType)
++				if lastTypeId inherits ArrayTypeIdentifier
++					return ArrayTypeIdentifier(lastTypeId.token, innerType)
++				else if lastTypeId inherits StreamTypeIdentifier
++					return StreamTypeIdentifier(lastTypeId.token, innerType)
++				else if lastTypeId inherits NilableTypeIdentifier
++					return NilableTypeIdentifier(lastTypeId.token, innerType)
++				else
++					throw FallThroughException(lastTypeId)
+ 			else
+ 				return QualifiedTypeIdentifier(types)
+ 
+Index: Source/CobraTokenizer.cobra
+===================================================================
+--- Source/CobraTokenizer.cobra	(revision 3117)
++++ Source/CobraTokenizer.cobra	(working copy)
+@@ -337,8 +337,9 @@
+ 		if tok.isEOF
+ 			colNum = 0
+ 			while _indentCount > 0
+-				if colNum == 0, colNum = .lastToken.colNum + 1
+-				t = Token(.lastToken.fileName, .lastToken.lineNum, colNum, .lastToken.charNum, 'DEDENT', '', '')
++				last = .lastToken
++				if colNum == 0, colNum = last.colNum + 1
++				t = Token(last.fileName, last.lineNum, colNum, last.charNum + last.length, 'DEDENT', '', '')
+ 				_tokenQueue.enqueue(t)
+ 				_indentCount -= 1
+ 				colNum += 1
+Index: Source/Tokenizer.cobra
+===================================================================
+--- Source/Tokenizer.cobra	(revision 3117)
++++ Source/Tokenizer.cobra	(working copy)
+@@ -637,7 +637,7 @@
+ 		if _tokenQueue.count
+ 			return _tokenQueue.dequeue
+ 		# check for EOF
+-		if not _sourceLine or not _sourceLine.length and not _obtainSource()
++		if (not _sourceLine or not _sourceLine.length) and not _obtainSource()
+ 			return .makeEOF
+ #		count, didCheckTokenDefs = 0, false
+ #		try
+Index: Tests/100-basics/041-bool.cobra
+===================================================================
+--- Tests/100-basics/041-bool.cobra	(revision 3117)
++++ Tests/100-basics/041-bool.cobra	(working copy)
+@@ -28,8 +28,8 @@
+ 
+ 			# 2 bool ops
+ 			assert true and true or false
+-			assert not (true or true and false)
+ 			assert true and false or true
++			assert true or true and false
+ 			assert true or false and true
+ 
+ 			# comparison
+Index: Tests/400-misc-bugs/200-qual-arg.cobra
+===================================================================
+--- Tests/400-misc-bugs/200-qual-arg.cobra	(revision 3117)
++++ Tests/400-misc-bugs/200-qual-arg.cobra	(working copy)
+@@ -14,5 +14,10 @@
+ 					s = sep
+ 				return sb.toString
+ 
++		def matchAll(text as String, rexes as System.Text.RegularExpressions.Regex*) as bool
++			# compiler used to choke on parsing fully qualified stream types
++			return all for r in rexes get r.isMatch(text)
++
++
+ 		def main
+ 			pass

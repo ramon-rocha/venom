@@ -1,3 +1,6 @@
+
+# Cobra cannot resolve references when running
+# tests if they are not in the working directory.
 cp lib/ICSharpCode.NRefactory.dll .
 cp lib/Mono.Cecil.dll .
 

@@ -27,8 +27,9 @@ class ConstantDeclaration inherits TypeMemberDeclaration
 			stream.token.kind == TokenKind.ConstKeyword
 		test
 			source = "const x = 1"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			constant = ConstantDeclaration.parse(stream)
+			assert constant.errors.count == 0
 			assert constant.name == constant.identifier.name == "x"
 			assert constant.asKeyword == nil
 			assert constant.typeIdentifier == nil
@@ -38,8 +39,9 @@ class ConstantDeclaration inherits TypeMemberDeclaration
 			assert constant.docString == nil
 		test
 			source = "const x as number = 1.0"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			constant = ConstantDeclaration.parse(stream)
+			assert constant.errors.count == 0
 			assert constant.name == constant.identifier.name == "x"
 			assert constant.asKeyword <> nil
 			assert constant.typeIdentifier.qualifiedName == "number"
@@ -49,8 +51,9 @@ class ConstantDeclaration inherits TypeMemberDeclaration
 			assert constant.docString == nil
 		test
 			source = "const x as number is protected = 1.0"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			constant = ConstantDeclaration.parse(stream)
+			assert constant.errors.count == 0
 			assert constant.name == constant.identifier.name == "x"
 			assert constant.asKeyword <> nil
 			assert constant.typeIdentifier.qualifiedName == "number"
@@ -64,8 +67,9 @@ class ConstantDeclaration inherits TypeMemberDeclaration
 			"const x = 1.0\n" +
 			"    is protected\n" +
 			"    has Obsolete('use y instead')"
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			constant = ConstantDeclaration.parse(stream)
+			assert constant.errors.count == 0
 			assert constant.name == constant.identifier.name == "x"
 			assert constant.asKeyword == nil
 			assert constant.typeIdentifier == nil
@@ -80,8 +84,9 @@ class ConstantDeclaration inherits TypeMemberDeclaration
 			"    = 1.0\n" +
 			"    is protected\n" +
 			'    """the docstring goes here"""'
-			stream = TokenStream(source, 'test.cobra')
+			stream = TokenStream(source, "")
 			constant = ConstantDeclaration.parse(stream)
+			assert constant.errors.count == 0
 			assert constant.name == constant.identifier.name == "x"
 			assert constant.asKeyword == nil
 			assert constant.typeIdentifier == nil

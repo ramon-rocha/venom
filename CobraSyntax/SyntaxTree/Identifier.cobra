@@ -375,7 +375,7 @@ class GenericIdentifier inherits Identifier
 			sb.append(">")
 			_name = sb.toString
 
-			if close.isMissing, _addError(close, "Expecting a '>' character")
+			if close.isMissing, _addError(close.lineNum, close.colNum + 1, "Expecting a '>' character")
 
 
 class TypeIdentifier inherits QualifiedIdentifier

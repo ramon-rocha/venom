@@ -7,8 +7,69 @@ class CobraParser
 	"""
 	Turns Cobra source code into an abstract syntax tree (AST).
 	"""
+
+	test
+		source =
+		'"""\n' +
+		'This is the infamous "Hello, world." example.\n' +
+		'\n' +
+		'And this text you are reading right now is the "doc string" for the whole\n' +
+		'program. You can also put doc strings underneath classes, class variables,\n' +
+		'methods and properties.\n' +
+		'"""\n' +
+		'\n' +
+		'class Hello\n' +
+		'\n' +
+		'	def main\n' +
+		'		print "Hello, world."'
+		parser = CobraParser()
+
+		ast = parser.parseTopLevel(source, "") to CompilationUnit
+		assert parser.errors.count == 0
+		assert ast.hasDocString
+		assert ast.typeDeclarations.count == 1
+
+		typeDecl = ast.typeDeclarations[0] to ClassDeclaration
+		assert typeDecl.name == "Hello"
+		assert not typeDecl.docString
+		assert typeDecl.memberDeclarations.count == 1
+
+		methodDecl = typeDecl.memberDeclarations[0] to MethodDeclaration
+		assert methodDecl.name == "main"
+		assert methodDecl.signature == nil
+		assert methodDecl.body.statements.count == 1
+
+		stmt = methodDecl.body.statements[0] to PrintStatement
+		assert stmt.expressions.count == 1
+		assert stmt.expressions[0] inherits StringLiteral
+
+
+	test unfinished_statement_parses_but_has_errors
+		source = "numbers = List<of "
+		parser = CobraParser()
+
+		stmt = parser.parseStatement(source, "") to ExpressionStatement
+		assert stmt.errors.count == 0 # the errors are in the identifier
+
+		expr = stmt.expression to AssignmentExpression
+		assert expr.errors.count == 0
+		assert expr.leftExpression.errors.count == 0
+		print expr.rightExpression.toString
+		call = expr.rightExpression to CallExpression # List<of Foo>()
+		assert call.errors.count == 0
+		assert call.identifier.errors.count == 2
+
+		assert parser.errors.count == 2
+		assert parser.errors[0].message == "Expecting an identifier"
+		assert parser.errors[1].message == "Expecting a '>' character"
+	
 	
 	var _compilerSettings as CobraCompilerSettings
+	var _errComparer is shared, readonly = ErrorComparer()
+
+	var _errors = List<of NRefactory.TypeSystem.Error>()
+	get errors as IReadOnlyList<of NRefactory.TypeSystem.Error>
+		return _errors.sorted(_errComparer)
 
 	cue init
 		.init(nil)
@@ -30,16 +91,28 @@ class CobraParser
 		Accepts Cobra source code and an associated filename, the code is lexed, parsed,
 		and the root node for the resulting abstract syntax tree is returned.
 		"""
+		_errors.clear
 		stream = TokenStream(source, fileName)
 		ast = CompilationUnit.parse(stream)
+		_errors.addRange(_collectErrors(ast))
 		return ast
 
 	def parseStatement(source as String, fileName as String) as IStatement
+		_errors.clear
 		stream = TokenStream(source, fileName)
 		stmt = Statement.parse(stream)
+		_errors.addRange(_collectErrors(stmt))
 		return stmt
 
 	def parseExpression(source as String, fileName as String) as IExpression
+		_errors.clear
 		stream = TokenStream(source, fileName)
 		expr = Expression.parse(stream)
+		_errors.addRange(_collectErrors(expr))
 		return expr
+
+	def _collectErrors(node as ISyntaxNode) as IReadOnlyList<of NRefactory.TypeSystem.Error>
+		errors = List<of NRefactory.TypeSystem.Error>(node.errors)
+		for c in node.children
+			errors.addRange(_collectErrors(c))
+		return errors
